@@ -82,6 +82,7 @@ See [docs/v1-to-v2-changes.md](docs/v1-to-v2-changes.md) for what's different an
 - **Web access** — search and fetch content from the web
 - **Container isolation** — agents are sandboxed in Docker containers (macOS/Linux/WSL2)
 - **Credential security** — agents never hold raw API keys. Outbound requests route through [OneCLI's Agent Vault](https://github.com/onecli/onecli), which injects credentials at request time and enforces per-agent policies and rate limits.
+- **Agent Gate scans** — run `ncl agent-gate scan` to check a real agent group for AI secret setup, package risk, MCP integration health, behavior scenario coverage, and five-pillar readiness before a demo or CI merge. See [docs/agent-gate.md](docs/agent-gate.md).
 - **Agent templates**: stamp a ready-to-run agent (instructions + MCP tools + skills, no secrets) from a reusable bundle via `ncl groups create --template <ref>`. Templates load from the local `templates/` folder; populate it by hand or by copying from the [public library](https://github.com/nanocoai/nanoclaw-templates). See [docs/templates.md](docs/templates.md).
 
 ## Accounts and what leaves your machine
