@@ -44,6 +44,10 @@ The Windows lane is intentionally honest: it is blocking, but it runs the portab
 
 ## Architecture
 
+<p align="center">
+  <img src="assets/area51-architecture.svg" alt="Area51 architecture diagram showing platform edge, host control plane, session database boundary, contained runtime, Agent Gate, and quarantine plan">
+</p>
+
 Area51 has five main layers:
 
 1. **Host process**
@@ -71,18 +75,30 @@ Area51 has five main layers:
 
    Agent Gate scores a group across capabilities, evolution, skill efficiency, integration, and security. It detects missing secrets, missing policy surfaces, invalid MCP wiring, risky package versions, and scenario coverage gaps. When risk is found, Area51 produces fail-closed reports and an Incus quarantine plan: freeze/stop, snapshot, isolate networking, label evidence, and preserve artifacts.
 
-The high-level flow is:
+### Message Flow
 
-```text
-message/webhook/task
-  -> channel adapter
-  -> host routing and permission checks
-  -> inbound.db
-  -> session container
-  -> agent runner/provider
-  -> outbound.db
-  -> host validation and delivery
-  -> platform response
+```mermaid
+sequenceDiagram
+    autonumber
+    participant P as Platform
+    participant C as Channel Adapter
+    participant H as Host Control Plane
+    participant I as inbound.db
+    participant R as Session Container
+    participant O as outbound.db
+    participant G as Delivery Guard
+
+    P->>C: message, webhook, or task
+    C->>H: normalized event + platform IDs
+    H->>H: route, permission check, session lookup
+    H->>I: write messages_in row
+    H->>R: wake session container
+    R->>I: read pending work
+    R->>R: run provider, tools, MCP, Agent Gate checks
+    R->>O: write response, ack, or system action
+    H->>O: poll outbound rows
+    H->>G: validate delivery target and policy
+    G->>P: send approved platform response
 ```
 
 The design goal is simple: the agent can ask and act inside its scoped runtime, but the host owns identity, routing, permissions, credentials, delivery, and quarantine.
