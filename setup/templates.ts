@@ -95,9 +95,7 @@ export function cloneRegistry(): ClonedRegistry {
 export function listTemplatesFromDir(dir: string): TemplateEntry[] {
   if (!fs.existsSync(dir)) return [];
   const rootName = path.basename(path.resolve(dir));
-  const rels = (fs.readdirSync(dir, { recursive: true }) as string[]).map((entry) =>
-    entry.split(path.sep).join('/'),
-  );
+  const rels = (fs.readdirSync(dir, { recursive: true }) as string[]).map((entry) => entry.split(path.sep).join('/'));
 
   const refs = new Set<string>();
   for (const rel of rels) {
@@ -107,7 +105,7 @@ export function listTemplatesFromDir(dir: string): TemplateEntry[] {
 
   // A context/instructions.md outside any plugin is the pre-plugin template
   // layout. Fail with a pointer instead of silently listing nothing. (The
-  // same file INSIDE a plugin — e.g. ai.nanoco.area51/context/ — is fine.)
+  // same file INSIDE a plugin — e.g. ai.area51.agent/context/ — is fine.)
   const legacy = rels
     .filter((rel) => rel === LEGACY_MARKER || rel.endsWith(`/${LEGACY_MARKER}`))
     .map((rel) => (rel === LEGACY_MARKER ? '.' : rel.slice(0, -(LEGACY_MARKER.length + 1))))

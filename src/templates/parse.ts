@@ -13,7 +13,7 @@ import fs from 'fs';
 import path from 'path';
 
 import type { McpServerConfig } from '../container-config.js';
-import { readNanoclawExtension } from './extension.js';
+import { readArea51Extension } from './extension.js';
 import { parsePluginManifest, PLUGIN_MANIFEST_FILE } from './manifest.js';
 import { readPluginMcp } from './mcp.js';
 import { walkPluginDir } from './plugin-dir.js';
@@ -26,13 +26,13 @@ export type { TemplateTask } from './tasks.js';
 export interface Template {
   /** The manifest's machine name — also the folder the plugin is stamped under. */
   name: string;
-  /** Display name from extensions["ai.nanoco.area51"].agentName, when given. */
+  /** Display name from extensions["ai.area51.agent"].agentName, when given. */
   agentName?: string;
   mcpServers: Record<string, McpServerConfig>; // mcp.json — name -> validated launch config
-  instructions?: string; // ai.nanoco.area51/context/instructions.md (optional persona)
+  instructions?: string; // ai.area51.agent/context/instructions.md (optional persona)
   contextExtras: { name: string; content: string }[]; // other extension-dir context/**/*.md
   skills: { name: string; srcDir: string }[]; // skills/<name>/ conforming skill folders
-  tasks: TemplateTask[]; // ai.nanoco.area51/tasks/*.md, created paused when stamped
+  tasks: TemplateTask[]; // ai.area51.agent/tasks/*.md, created paused when stamped
   /** Absolute, containment-validated plugin root (stamping copies from here). */
   dir: string;
   /** Named skip/ignore notices — never silently stripped components. */
@@ -71,7 +71,7 @@ export function parseTemplate(dir: string): Template {
   const manifest = parsePluginManifest(manifestRaw);
   const { skills, report: skillsReport } = readPluginSkills(dir);
   const { servers, report: mcpReport } = readPluginMcp(dir);
-  const extension = readNanoclawExtension(dir, manifest.extensions);
+  const extension = readArea51Extension(dir, manifest.extensions);
 
   return {
     name: manifest.name,

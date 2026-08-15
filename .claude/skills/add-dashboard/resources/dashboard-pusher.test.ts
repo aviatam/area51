@@ -22,7 +22,7 @@ vi.mock('./config.js', async () => {
   return { ...actual, DATA_DIR: '/tmp/area51-test-dashboard', ASSISTANT_NAME: 'TestBot' };
 });
 // The dashboard server package isn't needed to prove the integration point.
-vi.mock('@nanoco/area51-dashboard', () => ({ startDashboard: vi.fn() }));
+vi.mock('@area51/dashboard', () => ({ startDashboard: vi.fn() }));
 // Don't read the real .env — the test controls config via process.env only.
 vi.mock('./env.js', () => ({ readEnvFile: () => ({}) }));
 

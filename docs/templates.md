@@ -10,7 +10,7 @@ Templates use the vendor-neutral
 [Agent Plugins 1.0.0](https://agent-plugins.org) directory format. The
 portable surface (skills, `mcp.json`) follows the spec exactly; everything
 Area51-specific (persona, extra context, tasks, display name) rides in the
-spec's extension mechanism under the `ai.nanoco.area51` namespace. Two
+spec's extension mechanism under the `ai.area51.agent` namespace. Two
 consequences:
 
 - **A Area51 template is a conformant plugin.** Dropped into another
@@ -34,7 +34,7 @@ or you can populate it yourself.
 > one fails with a migration error. Re-fetch the template from the registry,
 > or convert it: add `plugin.json`, rename `.mcp.json` to `mcp.json` (spec
 > `$schema` + a declared `type` per server), and move `context/` and `tasks/`
-> under `ai.nanoco.area51/`.
+> under `ai.area51.agent/`.
 
 ## Using a template
 
@@ -101,7 +101,7 @@ and defaults sensibly:
 ├── plugin.json                  # REQUIRED: Agent Plugins manifest ($schema + name; the discovery marker)
 ├── mcp.json                     # optional: stdio or streamable-http MCP servers, NO secrets
 ├── skills/<name>/               # optional: one folder per skill (SKILL.md + any references/), copied whole
-├── ai.nanoco.area51/          # optional: the Area51 extension dir (spec §8.2)
+├── ai.area51.agent/          # optional: the Area51 extension dir (spec §8.2)
 │   ├── context/
 │   │   ├── instructions.md      # the agent's standing persona
 │   │   └── additional_context/  # extra .md files, referenced from instructions.md by relative path
@@ -115,10 +115,10 @@ and defaults sensibly:
 | `plugin.json`                                          | Plugin identity: exact 1.0.0 `$schema`, spec-valid `name`, optional metadata and `extensions`               | **Yes**  |
 | `skills/<name>/`                                       | A skill, auto-triggered by its `description` (SKILL.md frontmatter needs `name` + `description`)            | No       |
 | `mcp.json` → `mcpServers`                              | MCP tool servers (validated, then written to container config)                                               | No       |
-| `ai.nanoco.area51/context/instructions.md`           | The agent's persona, prepended to its `CLAUDE.md`/`AGENTS.md` every spawn (system-prompt tier, any provider) | No       |
-| `ai.nanoco.area51/context/**/*.md` (others)          | Extra context, copied into the agent's workspace with the same layout relative to `instructions.md`          | No       |
-| `ai.nanoco.area51/tasks/*.md`                        | Recurring scheduled tasks, created paused pending user activation                                            | No       |
-| `extensions["ai.nanoco.area51"].agentName` (manifest) | Display name for the stamped group; defaults to the template folder leaf                                    | No       |
+| `ai.area51.agent/context/instructions.md`           | The agent's persona, prepended to its `CLAUDE.md`/`AGENTS.md` every spawn (system-prompt tier, any provider) | No       |
+| `ai.area51.agent/context/**/*.md` (others)          | Extra context, copied into the agent's workspace with the same layout relative to `instructions.md`          | No       |
+| `ai.area51.agent/tasks/*.md`                        | Recurring scheduled tasks, created paused pending user activation                                            | No       |
+| `extensions["ai.area51.agent"].agentName` (manifest) | Display name for the stamped group; defaults to the template folder leaf                                    | No       |
 
 Failure boundaries follow the spec: an invalid `plugin.json` (or a containment
 or size violation, below) rejects the whole template; a malformed `mcp.json`
@@ -179,7 +179,7 @@ With several groups stamped from the same plugin, pass `--id <group-id>` to
 pick the one to update. To deliberately stamp a second agent from a plugin
 that is already in use, pass `--new`.
 
-The plugin (including its `ai.nanoco.area51` extension) is the **source of
+The plugin (including its `ai.area51.agent` extension) is the **source of
 truth** for everything it stamps. Restamping resets those surfaces to the new
 template version and touches nothing else:
 
@@ -237,7 +237,7 @@ the agent container. At stamp time Area51 enforces:
 
 ### Recurring tasks
 
-Each immediate Markdown file under `ai.nanoco.area51/tasks/` defines one
+Each immediate Markdown file under `ai.area51.agent/tasks/` defines one
 recurring task. The filename becomes its readable name, the frontmatter
 supplies its cron schedule, an optional script can decide whether to wake the
 agent, and the Markdown body is the prompt:
@@ -288,10 +288,10 @@ run passed while paused, the task is eligible immediately.
 
 ### Referencing extra context files
 
-Extra `.md` files under `ai.nanoco.area51/context/` (by convention in an
+Extra `.md` files under `ai.area51.agent/context/` (by convention in an
 `additional_context/` subfolder) are copied into the agent's workspace
 preserving their position relative to `instructions.md` — a template file at
-`ai.nanoco.area51/context/additional_context/pricing.md` is readable by the
+`ai.area51.agent/context/additional_context/pricing.md` is readable by the
 agent as `additional_context/pricing.md`, the same relative path you'd use
 from `instructions.md` itself. Nothing is injected automatically: the agent
 only reads an extra file if `instructions.md` points to it, so reference every
@@ -411,7 +411,7 @@ Templates ship in the separate
 [`aviatam/area51-templates`](https://github.com/aviatam/area51-templates)
 repo, not this one. To add one: fork that repo, drop a plugin directory at
 `<category>/<template>/` with at least `plugin.json` and (registry policy) a
-persona at `ai.nanoco.area51/context/instructions.md`, run that repo's
+persona at `ai.area51.agent/context/instructions.md`, run that repo's
 `node scripts/check-templates.mjs`, test it end to end (copy it under
 `templates/` and run
 `area51 groups create --template <category>/<template> --name Test`), confirm

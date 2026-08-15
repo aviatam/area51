@@ -2,9 +2,9 @@
  * The Area51 side-channel of a plugin — everything that is not portable
  * Agent Plugins surface lives behind this one module boundary:
  *
- *   - the `ai.nanoco.area51/` extension directory (persona, context extras,
+ *   - the `ai.area51.agent/` extension directory (persona, context extras,
  *     scheduled tasks), the spec's §8.2 mechanism for client-specific files
- *   - the `extensions["ai.nanoco.area51"]` manifest key (agentName)
+ *   - the `extensions["ai.area51.agent"]` manifest key (agentName)
  *
  * Everything here is optional: a plain conformant plugin with no Area51
  * extension stamps fine (skills + MCP, folder-derived name, no persona, no
@@ -16,9 +16,9 @@ import path from 'path';
 
 import { readTasks, type TemplateTask } from './tasks.js';
 
-export const AREA51_EXTENSION_NS = 'ai.nanoco.area51';
+export const AREA51_EXTENSION_NS = 'ai.area51.agent';
 
-export interface NanoclawExtension {
+export interface Area51Extension {
   /** Display name for the stamped agent group; folder-leaf fallback applies when absent. */
   agentName?: string;
   /** Persona from <ns>/context/instructions.md — optional by decision; registries may require it by policy. */
@@ -33,10 +33,7 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-export function readNanoclawExtension(
-  pluginDir: string,
-  manifestExtensions: Record<string, unknown>,
-): NanoclawExtension {
+export function readArea51Extension(pluginDir: string, manifestExtensions: Record<string, unknown>): Area51Extension {
   const report: string[] = [];
 
   let agentName: string | undefined;
@@ -49,9 +46,7 @@ export function readNanoclawExtension(
       if (value !== undefined) {
         if (typeof value === 'string' && value.trim()) agentName = value.trim();
         else
-          report.push(
-            `plugin.json: extensions["${AREA51_EXTENSION_NS}"].agentName must be a nonempty string; ignored`,
-          );
+          report.push(`plugin.json: extensions["${AREA51_EXTENSION_NS}"].agentName must be a nonempty string; ignored`);
       }
       for (const key of Object.keys(ours)) {
         if (key !== 'agentName') {

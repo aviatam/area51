@@ -31,7 +31,7 @@ is the auth boundary** — it binds `127.0.0.1` by default. Only ever bind a
 private interface (e.g. a tailnet IP), never a public one.
 
 It's distinct from `/add-dashboard` (which pushes JSON snapshots to a separate
-`@nanoco/area51-dashboard` npm package): clidash has **zero dependencies**, no
+`@area51/dashboard` npm package): clidash has **zero dependencies**, no
 build step, no push pipeline, and no edits to Area51 source — it just reads
 `area51` and the session DBs.
 

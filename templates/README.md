@@ -31,7 +31,7 @@ empty).
 ├── plugin.json                  # REQUIRED: Agent Plugins manifest ($schema + name)
 ├── mcp.json                     # optional: stdio / streamable-http MCP servers, NO secrets
 ├── skills/<name>/               # optional: one folder per skill (SKILL.md + references/), copied whole
-├── ai.nanoco.area51/          # optional: Area51 extension dir
+├── ai.area51.agent/          # optional: Area51 extension dir
 │   ├── context/
 │   │   ├── instructions.md      # the agent's standing persona, prepended to its
 │   │   │                        #   CLAUDE.md/AGENTS.md every spawn
@@ -43,7 +43,7 @@ empty).
 
 Notes:
 - **Extra context is copied preserving its layout relative to `instructions.md`**
-  (`ai.nanoco.area51/context/additional_context/faq.md` →
+  (`ai.area51.agent/context/additional_context/faq.md` →
   `additional_context/faq.md` in the agent's workspace). Nothing is referenced
   automatically — `instructions.md` must point to each file (e.g. "Pricing
   rules live in `additional_context/pricing.md`").
@@ -71,7 +71,7 @@ Templates in the **pre-plugin layout** (a bare `context/instructions.md`, a
 `.mcp.json`) are no longer read — stamping one fails with a migration error.
 Re-fetch the template from the registry, or convert it (add `plugin.json`,
 rename `.mcp.json` to `mcp.json` with the spec `$schema` + per-server `type`,
-move `context/` and `tasks/` under `ai.nanoco.area51/`).
+move `context/` and `tasks/` under `ai.area51.agent/`).
 
 Full authoring reference: the
 [registry README](https://github.com/aviatam/area51-templates#anatomy-of-a-template)

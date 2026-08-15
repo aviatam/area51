@@ -73,7 +73,7 @@ export async function startDashboard(): Promise<void> {
     log.info('Dashboard disabled (no DASHBOARD_SECRET)');
     return;
   }
-  const { startDashboard: startServer } = await import('@nanoco/area51-dashboard');
+  const { startDashboard: startServer } = await import('@area51/dashboard');
   startServer({ port, secret });
   startDashboardPusher({ port, secret, intervalMs: 60000 });
 }

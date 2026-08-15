@@ -63,11 +63,8 @@ describe('setup template library', () => {
     fs.writeFileSync(path.join(source, 'sales', 'sdr', 'plugin.json'), '{"name":"sdr"}');
     // A context/instructions.md INSIDE a plugin (the Area51 extension dir)
     // must not trip the legacy detection.
-    fs.mkdirSync(path.join(source, 'sales', 'sdr', 'ai.nanoco.area51', 'context'), { recursive: true });
-    fs.writeFileSync(
-      path.join(source, 'sales', 'sdr', 'ai.nanoco.area51', 'context', 'instructions.md'),
-      'Sell well.',
-    );
+    fs.mkdirSync(path.join(source, 'sales', 'sdr', 'ai.area51.agent', 'context'), { recursive: true });
+    fs.writeFileSync(path.join(source, 'sales', 'sdr', 'ai.area51.agent', 'context', 'instructions.md'), 'Sell well.');
     fs.mkdirSync(path.join(source, 'sales', 'sdr', '.git'), { recursive: true });
     fs.writeFileSync(path.join(source, 'sales', 'sdr', '.git', 'config'), 'ignored');
 
