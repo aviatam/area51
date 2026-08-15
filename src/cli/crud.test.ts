@@ -168,7 +168,7 @@ describe('genericCreate postCommit hook', () => {
     const cmd = lookup('wirings-create');
     await cmd!.handler({ messaging_group_id: 'mg-1', agent_group_id: 'ag-1' }, hostCtx);
 
-    // Live-refresh parity with `ncl destinations add`: without postCommit the
+    // Live-refresh parity with `area51 destinations add`: without postCommit the
     // running container keeps serving the stale projection and drops replies
     // to this chat as "unknown destination" until a restart — issue #2389.
     expect(writeDestinationsSpy).toHaveBeenCalledWith('ag-1', 'sess-1');

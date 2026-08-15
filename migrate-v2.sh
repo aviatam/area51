@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 #
-# migrate-v2.sh — Migrate a NanoClaw v1 install into this v2 checkout.
+# migrate-v2.sh — Migrate a Area51 v1 install into this v2 checkout.
 #
 # Run from the v2 directory:
 #   bash migrate-v2.sh
 #
 # If you're in Claude Code, exit first or open a separate terminal.
 #
-# Finds v1 automatically (sibling directory, or $NANOCLAW_V1_PATH).
+# Finds v1 automatically (sibling directory, or $AREA51_V1_PATH).
 # Installs prerequisites (Node, pnpm, deps) via the existing setup.sh
 # bootstrap, then runs the migration steps.
 #
@@ -138,7 +138,7 @@ mkdir -p "$STEPS_DIR"
 } > "$MIGRATE_LOG"
 
 echo
-bold "NanoClaw v1 → v2 migration"
+bold "Area51 v1 → v2 migration"
 echo
 echo
 
@@ -147,7 +147,7 @@ echo
 step_info "Installing prerequisites (Node, pnpm, dependencies)…"
 
 BOOTSTRAP_RAW="$STEPS_DIR/01-bootstrap.log"
-export NANOCLAW_BOOTSTRAP_LOG="$BOOTSTRAP_RAW"
+export AREA51_BOOTSTRAP_LOG="$BOOTSTRAP_RAW"
 
 if bash "$PROJECT_ROOT/setup.sh" > "$BOOTSTRAP_RAW" 2>&1; then
   # Parse the status block from setup.sh output
@@ -176,7 +176,7 @@ else
 fi
 
 # setup.sh may have installed pnpm to a prefix not on our PATH — replay
-# the same lookup nanoclaw.sh does.
+# the same lookup area51.sh does.
 if ! command -v pnpm >/dev/null 2>&1 && command -v npm >/dev/null 2>&1; then
   NPM_PREFIX="$(npm config get prefix 2>/dev/null)"
   if [ -n "$NPM_PREFIX" ] && [ -x "$NPM_PREFIX/bin/pnpm" ]; then
@@ -193,12 +193,12 @@ fi
 
 find_v1() {
   # Explicit override
-  if [ -n "${NANOCLAW_V1_PATH:-}" ]; then
-    if [ -f "$NANOCLAW_V1_PATH/store/messages.db" ]; then
-      echo "$NANOCLAW_V1_PATH"
+  if [ -n "${AREA51_V1_PATH:-}" ]; then
+    if [ -f "$AREA51_V1_PATH/store/messages.db" ]; then
+      echo "$AREA51_V1_PATH"
       return 0
     fi
-    step_fail "NANOCLAW_V1_PATH=$NANOCLAW_V1_PATH does not contain store/messages.db"
+    step_fail "AREA51_V1_PATH=$AREA51_V1_PATH does not contain store/messages.db"
     return 1
   fi
 
@@ -232,8 +232,8 @@ if V1_PATH=$(find_v1); then
 else
   step_fail "No v1 install found"
   echo
-  echo "  $(dim 'Set NANOCLAW_V1_PATH to point at your v1 checkout:')"
-  echo "  $(dim 'NANOCLAW_V1_PATH=~/nanoclaw bash migrate-v2.sh')"
+  echo "  $(dim 'Set AREA51_V1_PATH to point at your v1 checkout:')"
+  echo "  $(dim 'AREA51_V1_PATH=~/area51 bash migrate-v2.sh')"
   echo
   abort "v1-not-found"
 fi
@@ -271,8 +271,8 @@ step_ok "Phase 0 complete — ready to migrate"
 echo
 log "Phase 0 complete: groups=$GROUP_COUNT tasks=$TASK_COUNT env_keys=$ENV_KEYS"
 
-export NANOCLAW_V1_PATH="$V1_PATH"
-export NANOCLAW_V2_PATH="$PROJECT_ROOT"
+export AREA51_V1_PATH="$V1_PATH"
+export AREA51_V2_PATH="$PROJECT_ROOT"
 
 # ─── run_step helper ─────────────────────────────────────────────────────
 # Runs a TypeScript migration step, captures output, reports success/failure.
@@ -355,8 +355,8 @@ echo
 echo "$(bold 'Phase 2: Channels')"
 echo
 
-# Channel selection — clack multiselect (interactive) or NANOCLAW_CHANNELS env var.
-# NANOCLAW_CHANNELS accepts comma-separated channel names: "telegram,discord"
+# Channel selection — clack multiselect (interactive) or AREA51_CHANNELS env var.
+# AREA51_CHANNELS accepts comma-separated channel names: "telegram,discord"
 SELECTED_CHANNELS=()
 CHANNEL_SELECT_OUT="$STEPS_DIR/2a-channels-selected.txt"
 
@@ -532,7 +532,7 @@ if command -v docker >/dev/null 2>&1; then
   # Honour an install that pulls rather than builds. The bare form deliberately
   # exits 3 there rather than replacing pulled bytes with a local build, so
   # calling it unconditionally would report "build failed" on a working install.
-  IMAGE_SOURCE_SETTING="$(grep '^NANOCLAW_HARDENED_IMAGE=' .env 2>/dev/null | tail -n1 | cut -d= -f2- | tr -d '"' | tr -d "'" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+  IMAGE_SOURCE_SETTING="$(grep '^AREA51_HARDENED_IMAGE=' .env 2>/dev/null | tail -n1 | cut -d= -f2- | tr -d '"' | tr -d "'" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
   if [ "$IMAGE_SOURCE_SETTING" = "true" ]; then
     BUILD_ARGS="pull"
     step_info "Fetching pinned agent container image…"
@@ -570,7 +570,7 @@ echo "$(bold 'Service switchover')"
 echo
 
 # Disable the v1 service so it doesn't auto-start, but leave the unit file
-# on disk so the user can rollback with: systemctl --user start nanoclaw
+# on disk so the user can rollback with: systemctl --user start area51
 # Idempotent — safe to call multiple times.
 disable_v1_service() {
   if [ "$PLATFORM_SERVICE" = "systemd" ]; then
@@ -596,12 +596,12 @@ PLATFORM_SERVICE=""
 
 if [ "$(uname -s)" = "Darwin" ]; then
   PLATFORM_SERVICE="launchd"
-  V1_SERVICE="com.nanoclaw"
+  V1_SERVICE="com.area51"
   # v2 uses install-slug for unique service names
   V2_SERVICE=$(pnpm exec tsx -e "import{getLaunchdLabel}from'./src/install-slug.js';console.log(getLaunchdLabel())" 2>/dev/null || echo "")
 elif [ "$(uname -s)" = "Linux" ]; then
   PLATFORM_SERVICE="systemd"
-  V1_SERVICE="nanoclaw"
+  V1_SERVICE="area51"
   V2_SERVICE=$(pnpm exec tsx -e "import{getSystemdUnit}from'./src/install-slug.js';console.log(getSystemdUnit())" 2>/dev/null || echo "")
 fi
 

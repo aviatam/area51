@@ -138,7 +138,7 @@ export function createApp(userConfig) {
   // ---- detail commands (drill-down: get, config-get, …) -------------------
 
   const cmdInflight = new Map();
-  const ID_RE = /^[A-Za-z0-9:_.-]+$/; // ncl ids / uuids; no shell metas (and execFile never shells)
+  const ID_RE = /^[A-Za-z0-9:_.-]+$/; // area51 ids / uuids; no shell metas (and execFile never shells)
 
   async function runCommand(cliName, cmdName, resourceName, id) {
     const cliCfg = config.clis[cliName];
@@ -148,7 +148,7 @@ export function createApp(userConfig) {
       err.statusCode = 404;
       throw err;
     }
-    const needsResource = template.includes('{resource}');
+    const needsResource = template.iarea51udes('{resource}');
     if (needsResource) {
       const resources = await discoverResources(cliName);
       if (!resources.some((r) => r.name === resourceName)) {
@@ -157,7 +157,7 @@ export function createApp(userConfig) {
         throw err;
       }
     }
-    if (template.includes('{id}') && !ID_RE.test(id ?? '')) {
+    if (template.iarea51udes('{id}') && !ID_RE.test(id ?? '')) {
       const err = new Error('Invalid id');
       err.statusCode = 400;
       throw err;
@@ -356,7 +356,7 @@ export function createApp(userConfig) {
         return;
       }
 
-      // Message activity (read per-session DBs; ncl has no messages resource).
+      // Message activity (read per-session DBs; area51 has no messages resource).
       if (urlPath === '/api/activity') {
         if (!config.activity) { sendJson(res, 200, { ok: true, configured: false }); return; }
         const days = config.activity.days ?? 14;

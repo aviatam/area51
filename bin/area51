@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# area51 — NanoClaw + Incus security runtime launcher.
+# area51 — Area51 security runtime launcher.
 
 set -euo pipefail
 

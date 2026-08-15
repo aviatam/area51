@@ -1,7 +1,7 @@
 /**
  * Sanctioned version pins for external components (`versions.json` at the
  * repo root) — the single machine-checkable source. Setup steps read their
- * pin here; `/update-nanoclaw` diffs the file across an update and routes
+ * pin here; `/update-area51` diffs the file across an update and routes
  * the user to the migration doc for any pin that moved (see CONTRIBUTING.md,
  * "Breaking changes").
  */

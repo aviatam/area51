@@ -1,4 +1,4 @@
-# NanoClaw Architecture (Draft)
+# Area51 Architecture (Draft)
 
 > **Draft — design intent, not a line-by-line spec.** Some passages predate the current implementation and can drift from it. The root [CLAUDE.md](../CLAUDE.md) and the cited source files (`src/`, `container/agent-runner/src/`) are the source of truth; when this doc and the code disagree, trust the code. Notably, scheduling MCP tools do **not** write `inbound.db` directly — they emit `messages_out` system actions that the host applies (see [agent-runner-details.md](agent-runner-details.md) and `src/modules/scheduling/`).
 
@@ -57,7 +57,7 @@ Platform event
 
 Channel adapters are responsible for:
 1. Receiving platform events (webhooks, polling, websockets — platform-specific)
-2. **Filtering**: deciding which messages to forward to the host for processing. This can be stateless (regex trigger match) or stateful (e.g., "was the bot mentioned in this thread at some point? If so, forward all subsequent messages"). The adapter receives a stream of unfiltered platform messages and decides which ones to pass on. How it decides is an implementation detail — NanoClaw doesn't know or care.
+2. **Filtering**: deciding which messages to forward to the host for processing. This can be stateless (regex trigger match) or stateful (e.g., "was the bot mentioned in this thread at some point? If so, forward all subsequent messages"). The adapter receives a stream of unfiltered platform messages and decides which ones to pass on. How it decides is an implementation detail — Area51 doesn't know or care.
 3. Extracting and standardizing two IDs:
    - **Platform channel ID** — identifies the conversation (WhatsApp group, Slack channel, email thread)
    - **Platform thread ID** — optional sub-context (Slack thread, GitHub PR comment thread)
@@ -112,18 +112,18 @@ No `channel_configs` table — channel-type-level behavior is baked into the ada
 Chat SDK adapters are wrapped per-channel:
 - Each Chat SDK adapter gets its own Chat instance
 - Concurrency mode is configured per-channel (concurrent for chat, queue for tasks, debounce for webhooks)
-- A bridge wraps the Chat instance + adapter to conform to NanoClaw's standard channel interface
+- A bridge wraps the Chat instance + adapter to conform to Area51's standard channel interface
 - Chat SDK handles: webhook parsing, dedup, message history, platform API calls, rich content delivery
-- NanoClaw handles: routing, agent lifecycle, session management
+- Area51 handles: routing, agent lifecycle, session management
 
 **Chat SDK's subscription model:**
 
-Chat SDK has its own thread-level subscription concept (distinct from NanoClaw's channel-level registration):
+Chat SDK has its own thread-level subscription concept (distinct from Area51's channel-level registration):
 - `onNewMention` / `onNewMessage(regex)` — fires on first contact (e.g., @mention in a Slack thread)
 - `thread.subscribe()` — opts into all future messages in that thread
 - `onSubscribedMessage` — fires for all messages in subscribed threads
 
-This is sub-channel granularity. NanoClaw registers at the channel level ("listen to this Discord channel"). Chat SDK subscribes at the thread level ("track this specific Slack thread"). The bridge lets Chat SDK manage its own subscriptions internally — NanoClaw doesn't interfere with or replicate this.
+This is sub-channel granularity. Area51 registers at the channel level ("listen to this Discord channel"). Chat SDK subscribes at the thread level ("track this specific Slack thread"). The bridge lets Chat SDK manage its own subscriptions internally — Area51 doesn't interfere with or replicate this.
 
 **Platform capability differences:**
 
@@ -136,7 +136,7 @@ Capabilities vary significantly across adapters (see [Chat SDK adapter docs](htt
 
 The host/bridge handles graceful degradation — if an agent posts a card on a platform that doesn't support cards, it falls back to text.
 
-Non-Chat-SDK channels (WhatsApp via Baileys, Gmail, custom integrations) implement the NanoClaw channel interface directly — no bridge, no Chat SDK types.
+Non-Chat-SDK channels (WhatsApp via Baileys, Gmail, custom integrations) implement the Area51 channel interface directly — no bridge, no Chat SDK types.
 
 ## Container Lifecycle
 
@@ -278,7 +278,7 @@ One-shot and recurring tasks use the same tables — no separate scheduler.
 
 ### messages_in content by kind
 
-**`chat`** — simple NanoClaw format. Any channel can produce this.
+**`chat`** — simple Area51 format. Any channel can produce this.
 ```json
 {
   "sender": "John",
@@ -310,7 +310,7 @@ One-shot and recurring tasks use the same tables — no separate scheduler.
 
 Output `kind` determines the format and delivery adapter. Default: agent-runner copies `kind` and routing fields from the messages_in row it's responding to.
 
-**`chat`** — simple NanoClaw format. NanoClaw channel delivers via `sendMessage(text)`.
+**`chat`** — simple Area51 format. Area51 channel delivers via `sendMessage(text)`.
 ```json
 { "text": "LGTM, merging now" }
 ```
@@ -486,7 +486,7 @@ The central DB session row creation is the serialization point. No provider sess
 
 ### Output Delivery
 
-NanoClaw does not stream tokens to users. The provider's query interface yields complete results, but a result's text is not delivered as-is: the agent-runner parses it for `<message to="name">...</message>` blocks (`dispatchResultText` in poll-loop.ts) and writes one messages_out row per block, addressed to that destination with its thread context resolved per destination. Everything outside a block — including `<internal>...</internal>` — is scratchpad: logged, never sent. A block naming an unknown destination is dropped into the scratchpad log.
+Area51 does not stream tokens to users. The provider's query interface yields complete results, but a result's text is not delivered as-is: the agent-runner parses it for `<message to="name">...</message>` blocks (`dispatchResultText` in poll-loop.ts) and writes one messages_out row per block, addressed to that destination with its thread context resolved per destination. Everything outside a block — including `<internal>...</internal>` — is scratchpad: logged, never sent. A block naming an unknown destination is dropped into the scratchpad log.
 
 If a result produced text but no valid block, the agent-runner pushes a one-time `<system>` nudge into the live turn asking the agent to re-wrap its response. The exception is a non-retryable error result (e.g. a billing error) with no envelope, which is delivered as an error notice instead of being dropped as scratchpad. Mid-turn interim updates go out through the `send_message` MCP tool; the final-text envelope parsing is how a turn's reply reaches the user. The host delivers complete messages_out rows to channels.
 
@@ -548,7 +548,7 @@ The architecture is **flexible for code changes, not configurable for everything
 
 ### Code Structure for Skill Customization
 
-NanoClaw is customized via skills — branches that get merged into the user's installation. Different skills add different capabilities (channels, integrations, behaviors). The code must be structured so that:
+Area51 is customized via skills — branches that get merged into the user's installation. Different skills add different capabilities (channels, integrations, behaviors). The code must be structured so that:
 
 1. **Different customizations don't conflict.** Adding Slack and adding Telegram should not produce merge conflicts. Adding a new MCP tool should not conflict with adding a channel. Each type of customization should touch its own file(s).
 
@@ -905,7 +905,7 @@ MCP tools write to the container's own `outbound.db`. Anything that needs a chan
 (There is no `send_to_agent` tool — agent-to-agent is `send_message` to an `agent` destination.)
 
 **Scheduling**: scheduled-task management is not an MCP surface — it lives on
-`ncl tasks` (create/list/get/update/cancel/pause/resume/run/append-log). Due
+`area51 tasks` (create/list/get/update/cancel/pause/resume/run/append-log). Due
 task rows live in the agent group's system session and are woken by the host
 sweep.
 
@@ -942,7 +942,7 @@ Messages starting with `/` are checked against three lists:
 - If sent by a non-admin user, the command is rejected with an error message. Not forwarded to the agent.
 
 **Filtered commands (dropped entirely):**
-- Commands that don't make sense in the NanoClaw context or could cause issues
+- Commands that don't make sense in the Area51 context or could cause issues
 - Silently dropped — no error, no forwarding
 
 The command lists are hardcoded in the agent-runner. Admin verification happens host-side before the message ever reaches the container: `src/command-gate.ts` queries `user_roles` (owner / global admin / scoped-admin-of-this-agent-group) and either passes the message through, drops it, or routes it elsewhere. The container has no notion of admin identity — no env var, no DB query, no per-message check.
@@ -976,5 +976,5 @@ Pre-scripts: if a task message has a `script` field, run it first. If `wakeAgent
 
 ## Related Documents
 
-- **[api-details.md](api-details.md)** — Channel adapter interface (NanoClaw + Chat SDK bridge), message content examples, host delivery logic
+- **[api-details.md](api-details.md)** — Channel adapter interface (Area51 + Chat SDK bridge), message content examples, host delivery logic
 - **[agent-runner-details.md](agent-runner-details.md)** — AgentProvider interface, MCP tools, message formatting, media handling, provider implementations

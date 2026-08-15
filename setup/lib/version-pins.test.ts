@@ -1,6 +1,6 @@
 /**
  * versions.json is the machine-checkable source for sanctioned component
- * versions: setup steps read it, /update-nanoclaw diffs it across updates.
+ * versions: setup steps read it, /update-area51 diffs it across updates.
  * These tests go red if the file, the pin, or the onecli-step wiring is
  * deleted — the pin moving back to a hardcoded constant is the regression
  * this guards against.

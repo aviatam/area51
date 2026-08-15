@@ -110,7 +110,7 @@ function scratchRoot(): string {
   writeFileSync(join(root, 'setup/providers/index.ts'), '// setup provider barrel\n');
   writeFileSync(
     join(root, 'setup/index.ts'),
-    ['const STEPS = {', '  // >>> nanoclaw:setup-steps', '  // <<< nanoclaw:setup-steps', '};', ''].join('\n'),
+    ['const STEPS = {', '  // >>> area51:setup-steps', '  // <<< area51:setup-steps', '};', ''].join('\n'),
   );
   writeFileSync(join(root, 'container/cli-tools.json'), '[]\n');
   return root;

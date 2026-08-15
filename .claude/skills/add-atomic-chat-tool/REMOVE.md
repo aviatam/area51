@@ -13,7 +13,7 @@ rm -f container/agent-runner/src/atomic-chat-mcp-stdio.ts \
 
 ## 2. Unregister the MCP server
 
-In `container/agent-runner/src/index.ts`, remove the `atomic_chat: { … }` entry from the `mcpServers` object (leave `nanoclaw` and any other entries).
+In `container/agent-runner/src/index.ts`, remove the `atomic_chat: { … }` entry from the `mcpServers` object (leave `area51` and any other entries).
 
 ## 3. Revert the host-side edits in `src/container-runner.ts`
 
@@ -27,7 +27,7 @@ Remove the Atomic Chat block from `.env.example`, and the `ATOMIC_CHAT_*` lines 
 
 ## 5. Rebuild and restart
 
-Run from your NanoClaw project root:
+Run from your Area51 project root:
 
 ```bash
 pnpm run build && ./container/build.sh
@@ -45,5 +45,5 @@ systemctl --user restart $(systemd_unit)
 After removal, confirm the tool is gone — in a wired agent, asking it to "list atomic chat models" should report no such tool, and the logs should show no `[ATOMIC]` lines after the last restart:
 
 ```bash
-grep "\[ATOMIC\]" logs/nanoclaw.log | tail -5
+grep "\[ATOMIC\]" logs/area51.log | tail -5
 ```

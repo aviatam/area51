@@ -3,7 +3,7 @@
 # The split is deliberate and is about which side holds which credential:
 #
 #   AWS   warms the Echo pull-through cache, verifies the image, and promotes it
-#         into nanoclaw/agent. It can push images; it cannot write this repo
+#         into area51/agent. It can push images; it cannot write this repo
 #         beyond firing the dispatch below.
 #   here  reads the registry read-only and opens a pull request. It can write
 #         this repo; it cannot push an image.
@@ -45,7 +45,7 @@ jobs:
       - name: Find the newest promoted image
         id: candidate
         env:
-          REPO_NAME: nanoclaw/agent
+          REPO_NAME: area51/agent
         run: |
           set -euo pipefail
 
@@ -98,7 +98,7 @@ jobs:
           # The registry host comes from the pin already in the file, so this
           # workflow can never redirect the pin at a different registry. With no
           # usable host there is nothing safe to synthesize — an empty one would
-          # commit "/nanoclaw/agent@sha256:…", which resolves nowhere.
+          # commit "/area51/agent@sha256:…", which resolves nowhere.
           registry = pin.split('/', 1)[0] if '/' in pin else ''
           if '.' not in registry:
               print('found=false')
@@ -176,13 +176,13 @@ jobs:
             fi
             if [ -n "${PAYLOAD_UPSTREAM:-}" ]; then
               echo "Upstream digest \`${PAYLOAD_UPSTREAM}\` — compare against the current pin's to see"
-              echo "whether the NanoClaw content changed or only the hardened base underneath it."
+              echo "whether the Area51 content changed or only the hardened base underneath it."
             fi
             if [ -n "${PAYLOAD_LOCK:-}" ]; then
               echo "Agent-runner lock label \`${PAYLOAD_LOCK}\`."
             fi
             echo
-            echo "Promoted into \`nanoclaw/agent\` by the AWS refresh worker, which verified the"
+            echo "Promoted into \`area51/agent\` by the AWS refresh worker, which verified the"
             echo "index shape, both platforms, the provenance label and the lock label before"
             echo "copying. Those figures come from the dispatch payload and are here to read, not"
             echo "to trust — \`verify-agent-image\` re-derives all of them on this PR from the"

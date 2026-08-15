@@ -9,7 +9,7 @@ import fs from 'fs';
 import path from 'path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const TEST_ROOT = '/tmp/nanoclaw-test-cli-plugin-guard';
+const TEST_ROOT = '/tmp/area51-test-cli-plugin-guard';
 
 vi.mock('../../container-runner.js', () => ({
   wakeContainer: vi.fn().mockResolvedValue(undefined),
@@ -21,9 +21,9 @@ vi.mock('../../container-runner.js', () => ({
 
 vi.mock('../../config.js', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../config.js')>()),
-  GROUPS_DIR: '/tmp/nanoclaw-test-cli-plugin-guard/groups',
-  DATA_DIR: '/tmp/nanoclaw-test-cli-plugin-guard/data',
-  TEMPLATES_DIR: '/tmp/nanoclaw-test-cli-plugin-guard/templates',
+  GROUPS_DIR: '/tmp/area51-test-cli-plugin-guard/groups',
+  DATA_DIR: '/tmp/area51-test-cli-plugin-guard/data',
+  TEMPLATES_DIR: '/tmp/area51-test-cli-plugin-guard/templates',
 }));
 
 vi.mock('../../log.js', () => ({
@@ -32,7 +32,7 @@ vi.mock('../../log.js', () => ({
 
 import { closeDb, initTestDb, runMigrations } from '../../db/index.js';
 import { getContainerConfig } from '../../db/container-configs.js';
-import { NANOCLAW_EXTENSION_NS } from '../../templates/extension.js';
+import { AREA51_EXTENSION_NS } from '../../templates/extension.js';
 import { MCP_SCHEMA_URL, PLUGIN_SCHEMA_URL } from '../../templates/manifest.js';
 import { createAgentFromTemplate } from '../../templates/create-agent.js';
 import { dispatch } from '../dispatch.js';
@@ -41,9 +41,9 @@ import './groups.js';
 
 function writeTemplate(): void {
   const tpl = path.join(TEST_ROOT, 'templates', 'sdr');
-  fs.mkdirSync(path.join(tpl, NANOCLAW_EXTENSION_NS, 'context'), { recursive: true });
+  fs.mkdirSync(path.join(tpl, AREA51_EXTENSION_NS, 'context'), { recursive: true });
   fs.writeFileSync(path.join(tpl, 'plugin.json'), JSON.stringify({ $schema: PLUGIN_SCHEMA_URL, name: 'sdr' }));
-  fs.writeFileSync(path.join(tpl, NANOCLAW_EXTENSION_NS, 'context', 'instructions.md'), 'You are an SDR agent.\n');
+  fs.writeFileSync(path.join(tpl, AREA51_EXTENSION_NS, 'context', 'instructions.md'), 'You are an SDR agent.\n');
   fs.writeFileSync(
     path.join(tpl, 'mcp.json'),
     JSON.stringify({
@@ -72,7 +72,7 @@ afterEach(() => {
   fs.rmSync(TEST_ROOT, { recursive: true, force: true });
 });
 
-describe('plugin-owned MCP server guard (ncl groups config)', () => {
+describe('plugin-owned MCP server guard (area51 groups config)', () => {
   it('refuses to overwrite a plugin-owned server', async () => {
     const res = await run('groups-config-add-mcp-server', {
       id: groupId,
@@ -104,10 +104,10 @@ describe('plugin-owned MCP server guard (ncl groups config)', () => {
   });
 });
 
-describe('ncl groups create --template on an already-stamped plugin', () => {
+describe('area51 groups create --template on an already-stamped plugin', () => {
   it('previews the in-place update without --yes and applies with it', async () => {
     fs.writeFileSync(
-      path.join(TEST_ROOT, 'templates', 'sdr', NANOCLAW_EXTENSION_NS, 'context', 'instructions.md'),
+      path.join(TEST_ROOT, 'templates', 'sdr', AREA51_EXTENSION_NS, 'context', 'instructions.md'),
       'You are an SDR agent v2.\n',
     );
 

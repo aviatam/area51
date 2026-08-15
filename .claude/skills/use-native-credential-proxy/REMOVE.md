@@ -31,7 +31,7 @@ Remove the native-credential block from `.env.example`, and from `.env` strip th
 ```bash
 for f in .env .env.example; do
   [ -f "$f" ] || continue
-  sed -i.bak '/^NANOCLAW_NATIVE_CREDENTIALS=/d' "$f" && rm -f "$f.bak"
+  sed -i.bak '/^AREA51_NATIVE_CREDENTIALS=/d' "$f" && rm -f "$f.bak"
 done
 ```
 
@@ -39,7 +39,7 @@ done
 
 ## 4. Rebuild and restart
 
-Run from your NanoClaw project root:
+Run from your Area51 project root:
 
 ```bash
 pnpm run build

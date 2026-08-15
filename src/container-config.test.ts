@@ -2,7 +2,7 @@
  * Group-timezone resolution (agent-level timezone feature).
  *
  * The chain is: valid per-group override → install-global TIMEZONE. An
- * invalid stored value (hand-edited DB — the ncl write path validates) must
+ * invalid stored value (hand-edited DB — the area51 write path validates) must
  * fall back to the global timezone, not silently become UTC, and must never
  * be materialized into container.json.
  */
@@ -140,10 +140,10 @@ describe('parseMcpServerConfig', () => {
   });
 
   it('accepts headers on http entries and rejects them on stdio entries', () => {
-    expect(parseMcpServerConfig({ url: 'https://mcp.example.com/mcp', headers: { 'X-Client': 'nanoclaw' } })).toEqual({
+    expect(parseMcpServerConfig({ url: 'https://mcp.example.com/mcp', headers: { 'X-Client': 'area51' } })).toEqual({
       type: 'http',
       url: 'https://mcp.example.com/mcp',
-      headers: { 'X-Client': 'nanoclaw' },
+      headers: { 'X-Client': 'area51' },
     });
     expect(() => parseMcpServerConfig({ command: 'server', headers: { A: 'b' } })).toThrow(/only valid with url/);
     expect(() => parseMcpServerConfig({ url: 'https://mcp.example.com/mcp', headers: { A: 1 } })).toThrow(

@@ -15,10 +15,10 @@ set -euo pipefail
 # reaches the process that owns the prompt rather than this shell.
 #
 # Env (all optional, all read by the driver itself):
-#   NANOCLAW_REGISTRY_TOKEN        Existing account token — adopt it, no prompts
-#   NANOCLAW_REGISTRY_ENROLL_CODE  Operator-issued code — enroll, no prompts
-#   NANOCLAW_REGISTRY_API          Broker base URL
-#   NANOCLAW_WORKOS_CLIENT_ID      Device-flow client id (public, not a secret)
+#   AREA51_REGISTRY_TOKEN        Existing account token — adopt it, no prompts
+#   AREA51_REGISTRY_ENROLL_CODE  Operator-issued code — enroll, no prompts
+#   AREA51_REGISTRY_API          Broker base URL
+#   AREA51_WORKOS_CLIENT_ID      Device-flow client id (public, not a secret)
 #
 # Exit codes:
 #   0  signed in, or already signed in

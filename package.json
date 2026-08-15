@@ -1,13 +1,12 @@
 {
-  "name": "nanoclaw",
+  "name": "area51",
   "version": "2.2.0",
   "description": "Personal AI assistant. Lightweight, secure, customizable.",
   "type": "module",
   "packageManager": "pnpm@10.33.0",
   "main": "dist/index.js",
   "bin": {
-    "area51": "bin/area51",
-    "ncl": "bin/ncl"
+    "area51": "bin/area51"
   },
   "scripts": {
     "build": "tsc",
@@ -20,7 +19,7 @@
     "prepare": "husky",
     "setup": "tsx setup/index.ts",
     "setup:auto": "tsx setup/auto.ts",
-    "ncl": "tsx src/cli/client.ts",
+    "area51": "tsx src/cli/client.ts",
     "chat": "tsx scripts/chat.ts",
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix",

@@ -32,7 +32,7 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 
 /**
  * plugin-data subpaths declared as a server `cwd` (`${PLUGIN_DATA}/sub`).
- * The stamp owns creating these: plugin-data is NanoClaw-managed writable
+ * The stamp owns creating these: plugin-data is Area51-managed writable
  * space, so a declared nested cwd must exist before the server first
  * launches or its `cd` fails and the server never boots. `./` and
  * `${PLUGIN_ROOT}` cwds point into the shipped plugin instead — if those
@@ -103,7 +103,7 @@ export function readPluginMcp(pluginDir: string): { servers: Record<string, McpS
 function readServerEntry(name: string, entry: unknown, report: string[]): McpServerConfig | string {
   // Shared intake gate: names reach provider config writers with structural
   // syntax (codex TOML table headers), so the charset allowlist applies here
-  // exactly as in the approval and ncl paths.
+  // exactly as in the approval and area51 paths.
   try {
     validateMcpServerName(name);
   } catch (err) {

@@ -16,8 +16,8 @@ to Codex and back. The switch runs from the host.
 ## Switching
 
 ```bash
-ncl groups config update --id <group-id> --provider codex
-ncl groups restart --id <group-id>
+area51 groups config update --id <group-id> --provider codex
+area51 groups restart --id <group-id>
 ```
 
 Sessions resolve their provider at container spawn, so existing sessions use
@@ -57,8 +57,8 @@ filesystem search (`rg`, `find`, and relative Markdown links).
 ## Rolling back
 
 ```bash
-ncl groups config update --id <group-id> --provider claude
-ncl groups restart --id <group-id>
+area51 groups config update --id <group-id> --provider claude
+area51 groups restart --id <group-id>
 ```
 
 Memory and standing instructions need no reverse migration because both

@@ -5,7 +5,7 @@ description: Add Telegram channel integration via Chat SDK.
 
 # Add Telegram Channel
 
-Adds Telegram bot support via the Chat SDK bridge. NanoClaw doesn't ship
+Adds Telegram bot support via the Chat SDK bridge. Area51 doesn't ship
 channels in trunk — this skill copies the Telegram adapter, its
 formatting/pairing helpers, and their tests in from the `channels` branch. The
 `pair-telegram` setup step is maintained in trunk, so it is not copied here.
@@ -48,7 +48,7 @@ dormant marker region (skipped if already present — `pair-telegram` ships in c
 so this idempotent-skips on a normal install, but is expressed for a
 clean-upstream rebuild). The pairing handshake below spawns this step:
 
-```nc:append to:setup/index.ts at:nanoclaw:setup-steps
+```nc:append to:setup/index.ts at:area51:setup-steps
 'pair-telegram': () => import('./pair-telegram.js'),
 ```
 
@@ -169,4 +169,4 @@ this channel with `/init-first-agent` (or `/manage-channels`).
 
 **The bot ignores group messages.** Group Privacy is on, so the bot only sees @-mentions and replies. BotFather → `/mybots` → your bot → Bot Settings → Group Privacy → Turn off — then remove and re-add the bot to the group so the change takes effect.
 
-**Everything green but no replies.** Run `pnpm exec vitest run src/channels/telegram-registration.test.ts` — red means the barrel import or the `@chat-adapter/telegram` install drifted, so re-run the Apply steps. If green, restart again (`bash setup/lib/restart.sh`) and check `logs/nanoclaw.error.log` for token errors.
+**Everything green but no replies.** Run `pnpm exec vitest run src/channels/telegram-registration.test.ts` — red means the barrel import or the `@chat-adapter/telegram` install drifted, so re-run the Apply steps. If green, restart again (`bash setup/lib/restart.sh`) and check `logs/area51.error.log` for token errors.

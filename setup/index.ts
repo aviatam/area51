@@ -27,8 +27,8 @@ const STEPS: Record<
   'cli-agent': () => import('./cli-agent.js'),
   registry: () => import('./registry.js'),
   'registry-reconcile': () => import('./registry-reconcile.js'),
-  // >>> nanoclaw:setup-steps
-  // <<< nanoclaw:setup-steps
+  // >>> area51:setup-steps
+  // <<< area51:setup-steps
 };
 
 async function main(): Promise<void> {

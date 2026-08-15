@@ -31,7 +31,7 @@ interface Recorded {
 // bodies are recorded only — their replace semantics are covered by
 // whatsapp.test.ts.
 async function run(inputs: Record<string, string>): Promise<Recorded> {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'nanoclaw-wa-flow-'));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'area51-wa-flow-'));
   fs.mkdirSync(path.join(root, 'src/channels'), { recursive: true });
   fs.writeFileSync(path.join(root, 'src/channels/index.ts'), '');
   const seq: Recorded['seq'] = [];

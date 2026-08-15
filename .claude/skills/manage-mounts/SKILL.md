@@ -5,12 +5,12 @@ description: Configure which host directories agent containers can access. View,
 
 # Manage Mounts
 
-Configure which host directories NanoClaw agent containers can access. The mount allowlist lives at `~/.config/nanoclaw/mount-allowlist.json`.
+Configure which host directories Area51 agent containers can access. The mount allowlist lives at `~/.config/area51/mount-allowlist.json`.
 
 ## Show Current Config
 
 ```bash
-cat ~/.config/nanoclaw/mount-allowlist.json 2>/dev/null || echo "No mount allowlist configured"
+cat ~/.config/area51/mount-allowlist.json 2>/dev/null || echo "No mount allowlist configured"
 ```
 
 Show the current config to the user in a readable format: which directories are allowed, and whether each is read-only or read-write.
@@ -50,5 +50,5 @@ The allowlist is read fresh when a container is spawned, so new mounts apply to 
 To apply the new config to a group that already has a running container, restart just that group:
 
 ```bash
-ncl groups restart --id <group-id>
+area51 groups restart --id <group-id>
 ```

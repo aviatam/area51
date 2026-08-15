@@ -8,14 +8,14 @@ installed.
 List the groups and inspect their configurations:
 
 ```bash
-ncl groups list
-ncl groups config get --id <group-id>
+area51 groups list
+area51 groups config get --id <group-id>
 ```
 
 For every group with a `tavily` MCP entry:
 
 ```bash
-ncl groups config remove-mcp-server --id <group-id> --name tavily
+area51 groups config remove-mcp-server --id <group-id> --name tavily
 ```
 
 ## 2. Remove the dependency guard
@@ -52,12 +52,12 @@ Rebuild the image when the manifest changed:
 Restart every affected group:
 
 ```bash
-ncl groups restart --id <group-id>
+area51 groups restart --id <group-id>
 ```
 
 Confirm the server is absent:
 
 ```bash
-ncl groups config get --id <group-id>
+area51 groups config get --id <group-id>
 test ! -e src/tavily-manifest.test.ts
 ```

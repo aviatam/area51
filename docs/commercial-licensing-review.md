@@ -6,18 +6,18 @@ This is an engineering licensing review, not legal advice.
 
 ## Summary
 
-Area51 can be used commercially if it keeps the required upstream notices. There is no need to remove NanoClaw or Incus licensing to commercialize it, and removing required notices would create avoidable license compliance risk.
+Area51 can be used commercially if it keeps the required upstream notices. There is no need to remove Area51 or Incus licensing to commercialize it, and removing required notices would create avoidable license compliance risk.
 
 ## Upstream Projects
 
-- NanoClaw: MIT license. Commercial use, modification, private use, distribution, sublicensing, and sale are allowed if the copyright and license notice are included with substantial copies.
+- Area51: MIT license. Commercial use, modification, private use, distribution, sublicensing, and sale are allowed if the copyright and license notice are included with substantial copies.
 - Incus: Apache-2.0 license. Commercial use, modification, distribution, patent grant, and private use are allowed if license, copyright, and NOTICE obligations are preserved.
 
 ## Area51 Integration Approach
 
-This fork currently does not vendor Incus source code. It generates Incus CLI/API operations from NanoClaw-side TypeScript. That is the cleanest commercial path:
+This fork currently does not vendor Incus source code. It generates Incus CLI/API operations from Area51-side TypeScript. That is the cleanest commercial path:
 
-- keep this fork under MIT or a commercial/private license while preserving upstream MIT notices for NanoClaw-derived files
+- keep this fork under MIT or a commercial/private license while preserving upstream MIT notices for Area51-derived files
 - keep Incus as an external runtime dependency
 - if Incus source is copied later, preserve Apache-2.0 headers/notices and add a NOTICE file if required by copied material
 
@@ -31,7 +31,7 @@ No GPL, LGPL, AGPL, SSPL, BUSL, or PolyForm license appeared in the installed de
 
 Do not strip:
 
-- the NanoClaw MIT license text
+- the Area51 MIT license text
 - Incus Apache-2.0 notices if Incus code is copied or redistributed
 - third-party package license files/notices in distributed bundles
 - copyright notices in copied source files

@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/nanoclaw-logo.png" alt="NanoClaw" width="400">
+  <img src="assets/area51-logo.png" alt="Area51" width="400">
 </p>
 
 <p align="center">
@@ -7,8 +7,8 @@
 </p>
 
 <p align="center">
-  <a href="https://nanoclaw.dev">nanoclaw.dev</a>&nbsp; • &nbsp;
-  <a href="https://docs.nanoclaw.dev">문서</a>&nbsp; • &nbsp;
+  <a href="https://area51.dev">area51.dev</a>&nbsp; • &nbsp;
+  <a href="https://docs.area51.dev">문서</a>&nbsp; • &nbsp;
   <a href="README.md">English</a>&nbsp; • &nbsp;
   <a href="README_zh.md">中文</a>&nbsp; • &nbsp;
   <a href="README_ja.md">日本語</a>&nbsp; • &nbsp;
@@ -18,34 +18,34 @@
 
 ---
 
-## NanoClaw를 만든 이유
+## Area51를 만든 이유
 
-[OpenClaw](https://github.com/openclaw/openclaw)는 인상적인 프로젝트지만, 제가 이해하지 못하는 복잡한 소프트웨어에 제 삶 전체에 대한 접근 권한을 줬다면 저는 잠을 이루지 못했을 것입니다. OpenClaw는 거의 50만 줄에 달하는 코드, 53개의 설정 파일, 70개 이상의 의존성을 가지고 있습니다. 보안은 진정한 OS 수준의 격리가 아니라 애플리케이션 수준(허용 목록, 페어링 코드)에 의존합니다. 모든 것이 메모리를 공유하는 하나의 Node 프로세스에서 실행됩니다.
+[older agent runtime](https://github.com/legacy-agent-runtime/legacy-agent-runtime)는 인상적인 프로젝트지만, 제가 이해하지 못하는 복잡한 소프트웨어에 제 삶 전체에 대한 접근 권한을 줬다면 저는 잠을 이루지 못했을 것입니다. older agent runtime는 거의 50만 줄에 달하는 코드, 53개의 설정 파일, 70개 이상의 의존성을 가지고 있습니다. 보안은 진정한 OS 수준의 격리가 아니라 애플리케이션 수준(허용 목록, 페어링 코드)에 의존합니다. 모든 것이 메모리를 공유하는 하나의 Node 프로세스에서 실행됩니다.
 
-NanoClaw는 그와 동일한 핵심 기능을 제공하지만, 이해할 수 있을 만큼 작은 코드베이스로 구현합니다. 하나의 프로세스와 몇 개의 파일뿐입니다. Claude 에이전트는 단순한 권한 검사 뒤가 아니라, 파일시스템이 격리된 각자의 Linux 컨테이너에서 실행됩니다.
+Area51는 그와 동일한 핵심 기능을 제공하지만, 이해할 수 있을 만큼 작은 코드베이스로 구현합니다. 하나의 프로세스와 몇 개의 파일뿐입니다. Claude 에이전트는 단순한 권한 검사 뒤가 아니라, 파일시스템이 격리된 각자의 Linux 컨테이너에서 실행됩니다.
 
 ## 빠른 시작
 
 ```bash
-git clone https://github.com/nanocoai/nanoclaw.git nanoclaw-v2
-cd nanoclaw-v2
-bash nanoclaw.sh
+git clone https://github.com/aviatam/area51.git area51-v2
+cd area51-v2
+bash area51.sh
 ```
 
-`nanoclaw.sh`는 갓 준비한 머신에서 시작해 메시지를 보낼 수 있는 이름 붙은 에이전트까지 안내합니다. 누락된 경우 Node, pnpm, Docker를 설치하고, Anthropic 자격 증명을 OneCLI에 등록하며, 에이전트 컨테이너를 빌드하고, 첫 채널(Telegram, Discord, WhatsApp 또는 로컬 CLI)을 페어링합니다. 어떤 단계가 실패하면 Claude Code가 자동으로 호출되어 원인을 진단하고 중단된 지점부터 재개합니다.
+`area51.sh`는 갓 준비한 머신에서 시작해 메시지를 보낼 수 있는 이름 붙은 에이전트까지 안내합니다. 누락된 경우 Node, pnpm, Docker를 설치하고, Anthropic 자격 증명을 OneCLI에 등록하며, 에이전트 컨테이너를 빌드하고, 첫 채널(Telegram, Discord, WhatsApp 또는 로컬 CLI)을 페어링합니다. 어떤 단계가 실패하면 Claude Code가 자동으로 호출되어 원인을 진단하고 중단된 지점부터 재개합니다.
 
 <details>
-<summary><strong>NanoClaw v1에서 마이그레이션하시나요?</strong></summary>
+<summary><strong>Area51 v1에서 마이그레이션하시나요?</strong></summary>
 
 기존 v1 설치 옆에 새로운 v2 체크아웃을 만들어 실행하세요:
 
 ```bash
-git clone https://github.com/nanocoai/nanoclaw.git nanoclaw-v2
-cd nanoclaw-v2
+git clone https://github.com/aviatam/area51.git area51-v2
+cd area51-v2
 bash migrate-v2.sh
 ```
 
-`migrate-v2.sh`는 v1 설치(형제 디렉터리, 또는 `NANOCLAW_V1_PATH=/path/to/nanoclaw`)를 찾아 상태를 v2 체크아웃으로 마이그레이션한 다음, 판단이 필요한 부분(소유자 시딩, 공유 메모리 마이그레이션, 포크 커스터마이징 재적용)을 마무리하기 위해 Claude Code로 `exec`합니다.
+`migrate-v2.sh`는 v1 설치(형제 디렉터리, 또는 `AREA51_V1_PATH=/path/to/area51`)를 찾아 상태를 v2 체크아웃으로 마이그레이션한 다음, 판단이 필요한 부분(소유자 시딩, 공유 메모리 마이그레이션, 포크 커스터마이징 재적용)을 마무리하기 위해 Claude Code로 `exec`합니다.
 
 이 스크립트는 Claude 세션 내부가 아니라 직접 실행하세요. 결정론적인 부분에서 Node/pnpm 부트스트랩, Docker, OneCLI, 컨테이너 빌드를 위해 대화형 프롬프트와 실제 셸 I/O가 필요합니다.
 
@@ -59,11 +59,11 @@ bash migrate-v2.sh
 
 ## 철학
 
-**이해할 수 있을 만큼 작게.** 하나의 프로세스, 몇 개의 소스 파일, 마이크로서비스 없음. NanoClaw 코드베이스 전체를 이해하고 싶다면 Claude Code에게 안내해 달라고 요청하기만 하면 됩니다.
+**이해할 수 있을 만큼 작게.** 하나의 프로세스, 몇 개의 소스 파일, 마이크로서비스 없음. Area51 코드베이스 전체를 이해하고 싶다면 Claude Code에게 안내해 달라고 요청하기만 하면 됩니다.
 
 **격리를 통한 보안.** 에이전트는 Linux 컨테이너에서 실행되며 명시적으로 마운트된 것만 볼 수 있습니다. 명령이 호스트가 아니라 컨테이너 안에서 실행되기 때문에 Bash 접근도 안전합니다.
 
-**개별 사용자를 위해 설계.** NanoClaw는 거대한 단일 프레임워크가 아니라, 각 사용자의 정확한 필요에 맞는 소프트웨어입니다. 비대한 소프트웨어가 되는 대신, NanoClaw는 맞춤형이 되도록 설계되었습니다. 직접 포크를 만들고 Claude Code가 여러분의 필요에 맞게 수정하도록 합니다.
+**개별 사용자를 위해 설계.** Area51는 거대한 단일 프레임워크가 아니라, 각 사용자의 정확한 필요에 맞는 소프트웨어입니다. 비대한 소프트웨어가 되는 대신, Area51는 맞춤형이 되도록 설계되었습니다. 직접 포크를 만들고 Claude Code가 여러분의 필요에 맞게 수정하도록 합니다.
 
 **커스터마이징 = 코드 변경.** 설정의 난립이 없습니다. 다른 동작을 원하시나요? 코드를 수정하세요. 코드베이스가 충분히 작아서 안전하게 변경할 수 있습니다.
 
@@ -71,7 +71,7 @@ bash migrate-v2.sh
 
 **기능보다 스킬.** 트렁크는 특정 채널 어댑터나 대체 에이전트 프로바이더가 아니라 레지스트리와 인프라를 제공합니다. 채널(Discord, Slack, Telegram, WhatsApp, …)은 오래 유지되는 `channels` 브랜치에, 대체 프로바이더(OpenCode, Ollama)는 `providers` 브랜치에 있습니다. `/add-telegram`, `/add-opencode` 등을 실행하면 스킬이 여러분이 필요로 하는 모듈만 정확히 포크로 복사합니다. 요청하지 않은 기능은 없습니다.
 
-**최고의 하니스, 최고의 모델.** NanoClaw는 Anthropic의 공식 Claude Agent SDK를 통해 Claude Code를 네이티브로 사용하므로, 최신 Claude 모델과 Claude Code의 전체 도구 세트를 누릴 수 있습니다. 여기에는 자신의 NanoClaw 포크를 직접 수정하고 확장하는 능력도 포함됩니다. 다른 프로바이더는 드롭인 옵션입니다. OpenAI의 Codex는 `/add-codex`(ChatGPT 구독 또는 API 키), OpenRouter·Google·DeepSeek 등은 OpenCode를 통한 `/add-opencode`, 로컬 오픈 웨이트 모델은 `/add-ollama-provider`로 추가합니다. 프로바이더는 에이전트 그룹별로 설정할 수 있습니다.
+**최고의 하니스, 최고의 모델.** Area51는 Anthropic의 공식 Claude Agent SDK를 통해 Claude Code를 네이티브로 사용하므로, 최신 Claude 모델과 Claude Code의 전체 도구 세트를 누릴 수 있습니다. 여기에는 자신의 Area51 포크를 직접 수정하고 확장하는 능력도 포함됩니다. 다른 프로바이더는 드롭인 옵션입니다. OpenAI의 Codex는 `/add-codex`(ChatGPT 구독 또는 API 키), OpenRouter·Google·DeepSeek 등은 OpenCode를 통한 `/add-opencode`, 로컬 오픈 웨이트 모델은 `/add-ollama-provider`로 추가합니다. 프로바이더는 에이전트 그룹별로 설정할 수 있습니다.
 
 ## 지원 기능
 
@@ -102,7 +102,7 @@ bash migrate-v2.sh
 
 ## 커스터마이징
 
-NanoClaw는 설정 파일을 사용하지 않습니다. 변경하려면 Claude Code에게 원하는 것을 말하기만 하면 됩니다:
+Area51는 설정 파일을 사용하지 않습니다. 변경하려면 Claude Code에게 원하는 것을 말하기만 하면 됩니다:
 
 - "트리거 단어를 @Bob으로 바꿔줘"
 - "앞으로는 응답을 더 짧고 직접적으로 하도록 기억해줘"
@@ -168,15 +168,15 @@ Docker는 크로스 플랫폼 지원(macOS, Linux, 그리고 WSL2 경유 Windows
 
 **Linux나 Windows에서 실행할 수 있나요?**
 
-네. Docker가 기본 런타임이며 macOS, Linux, Windows(WSL2 경유)에서 작동합니다. `bash nanoclaw.sh`를 실행하기만 하면 됩니다.
+네. Docker가 기본 런타임이며 macOS, Linux, Windows(WSL2 경유)에서 작동합니다. `bash area51.sh`를 실행하기만 하면 됩니다.
 
 **이것은 안전한가요?**
 
-에이전트는 애플리케이션 수준의 권한 검사 뒤가 아니라 컨테이너에서 실행됩니다. 명시적으로 마운트된 디렉터리만 접근할 수 있습니다. 자격 증명은 컨테이너에 들어가지 않습니다. 아웃바운드 API 요청은 [OneCLI의 Agent Vault](https://github.com/onecli/onecli)를 통해 라우팅되며, 프록시 수준에서 인증을 주입하고 속도 제한과 접근 정책을 지원합니다. 여전히 실행하는 것을 검토해야 하지만, 코드베이스가 충분히 작아서 실제로 검토할 수 있습니다. 전체 보안 모델은 [보안 문서](https://docs.nanoclaw.dev/concepts/security)를 참고하세요.
+에이전트는 애플리케이션 수준의 권한 검사 뒤가 아니라 컨테이너에서 실행됩니다. 명시적으로 마운트된 디렉터리만 접근할 수 있습니다. 자격 증명은 컨테이너에 들어가지 않습니다. 아웃바운드 API 요청은 [OneCLI의 Agent Vault](https://github.com/onecli/onecli)를 통해 라우팅되며, 프록시 수준에서 인증을 주입하고 속도 제한과 접근 정책을 지원합니다. 여전히 실행하는 것을 검토해야 하지만, 코드베이스가 충분히 작아서 실제로 검토할 수 있습니다. 전체 보안 모델은 [보안 문서](https://docs.area51.dev/concepts/security)를 참고하세요.
 
 **왜 설정 파일이 없나요?**
 
-설정의 난립을 원하지 않습니다. 모든 사용자는 일반적인 시스템을 설정하는 대신, 코드가 정확히 원하는 대로 동작하도록 NanoClaw를 커스터마이즈해야 합니다. 설정 파일을 선호한다면 Claude에게 추가해 달라고 할 수 있습니다.
+설정의 난립을 원하지 않습니다. 모든 사용자는 일반적인 시스템을 설정하는 대신, 코드가 정확히 원하는 대로 동작하도록 Area51를 커스터마이즈해야 합니다. 설정 파일을 선호한다면 Claude에게 추가해 달라고 할 수 있습니다.
 
 **서드파티나 오픈소스 모델을 사용할 수 있나요?**
 
@@ -191,19 +191,19 @@ ANTHROPIC_AUTH_TOKEN=your-token-here
 
 **문제를 어떻게 디버깅하나요?**
 
-Claude Code에게 물어보세요. "스케줄러가 왜 실행되지 않지?" "최근 로그에 뭐가 있지?" "이 메시지는 왜 응답을 받지 못했지?" 그것이 NanoClaw의 바탕에 깔린 AI 네이티브 접근 방식입니다.
+Claude Code에게 물어보세요. "스케줄러가 왜 실행되지 않지?" "최근 로그에 뭐가 있지?" "이 메시지는 왜 응답을 받지 못했지?" 그것이 Area51의 바탕에 깔린 AI 네이티브 접근 방식입니다.
 
 **설정이 왜 작동하지 않나요?**
 
-어떤 단계가 실패하면 `nanoclaw.sh`는 진단하고 재개하기 위해 Claude Code로 넘깁니다. 그래도 해결되지 않으면 `claude`를 실행한 뒤 `/debug`를 실행하세요. Claude가 다른 사용자에게도 영향을 줄 만한 문제를 발견하면, 관련 설정 단계나 스킬에 대한 PR을 열어주세요.
+어떤 단계가 실패하면 `area51.sh`는 진단하고 재개하기 위해 Claude Code로 넘깁니다. 그래도 해결되지 않으면 `claude`를 실행한 뒤 `/debug`를 실행하세요. Claude가 다른 사용자에게도 영향을 줄 만한 문제를 발견하면, 관련 설정 단계나 스킬에 대한 PR을 열어주세요.
 
-**NanoClaw를 어떻게 제거하나요?**
+**Area51를 어떻게 제거하나요?**
 
 ```bash
-bash nanoclaw.sh --uninstall
+bash area51.sh --uninstall
 ```
 
-모든 설치는 체크아웃별 ID로 태깅되므로, 제거 프로그램은 해당 사본에 속한 것만 제거합니다: 백그라운드 서비스, 컨테이너와 이미지, 앱 데이터와 로그, 에이전트 파일, 그리고 이 사본의 OneCLI 볼트 에이전트입니다. 공유되는 것 — OneCLI 앱과 여러분의 자격 증명, 머신의 다른 NanoClaw 사본 — 은 그대로 둡니다. 무엇을 발견했는지 정확히 보여주고 그룹별로 확인을 요청합니다. 여러분이 동의하기 전까지는 아무것도 삭제되지 않습니다. 변경 없이 미리 보려면 `--dry-run`을, 프롬프트를 건너뛰려면 `--yes`를 사용하세요. `.env`는 제거 전에 백업됩니다. 마무리하려면 체크아웃 폴더 자체를 삭제하세요.
+모든 설치는 체크아웃별 ID로 태깅되므로, 제거 프로그램은 해당 사본에 속한 것만 제거합니다: 백그라운드 서비스, 컨테이너와 이미지, 앱 데이터와 로그, 에이전트 파일, 그리고 이 사본의 OneCLI 볼트 에이전트입니다. 공유되는 것 — OneCLI 앱과 여러분의 자격 증명, 머신의 다른 Area51 사본 — 은 그대로 둡니다. 무엇을 발견했는지 정확히 보여주고 그룹별로 확인을 요청합니다. 여러분이 동의하기 전까지는 아무것도 삭제되지 않습니다. 변경 없이 미리 보려면 `--dry-run`을, 프롬프트를 건너뛰려면 `--yes`를 사용하세요. `.env`는 제거 전에 백업됩니다. 마무리하려면 체크아웃 폴더 자체를 삭제하세요.
 
 **어떤 변경이 코드베이스에 받아들여지나요?**
 
@@ -219,7 +219,7 @@ bash nanoclaw.sh --uninstall
 
 ## 변경 이력
 
-호환성을 깨는 변경 사항은 [CHANGELOG.md](CHANGELOG.md)를, 또는 문서 사이트의 [전체 릴리스 히스토리](https://docs.nanoclaw.dev/changelog)를 참고하세요.
+호환성을 깨는 변경 사항은 [CHANGELOG.md](CHANGELOG.md)를, 또는 문서 사이트의 [전체 릴리스 히스토리](https://docs.area51.dev/changelog)를 참고하세요.
 
 ## 라이선스
 

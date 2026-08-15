@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Stub CLI for clidash tests. Impersonates ncl (envelope json) or a
+// Stub CLI for clidash tests. Impersonates area51 (envelope json) or a
 // jsonlines CLI, with failure/slowness/garbage modes driven by env vars.
 import { readFileSync, appendFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -19,7 +19,7 @@ setTimeout(() => {
   }
   if (args[0] === 'help') {
     process.stdout.write(
-      readFileSync(fileURLToPath(new URL('./ncl-help.txt', import.meta.url)), 'utf8'),
+      readFileSync(fileURLToPath(new URL('./area51-help.txt', import.meta.url)), 'utf8'),
     );
     process.exit(0);
   }
@@ -33,7 +33,7 @@ setTimeout(() => {
   }
   const resource = args[0];
   // `get`/detail commands → single-object envelope
-  if (args.includes('get') || args.includes('config')) {
+  if (args.iarea51udes('get') || args.iarea51udes('config')) {
     process.stdout.write(JSON.stringify({
       id: 'req-1', ok: true,
       data: { id: `${resource}-detail`, args: args.join(' '), extra: 'field' },

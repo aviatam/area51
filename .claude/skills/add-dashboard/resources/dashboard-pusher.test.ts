@@ -19,14 +19,14 @@ import type { AddressInfo } from 'net';
 
 vi.mock('./config.js', async () => {
   const actual = await vi.importActual<typeof import('./config.js')>('./config.js');
-  return { ...actual, DATA_DIR: '/tmp/nanoclaw-test-dashboard', ASSISTANT_NAME: 'TestBot' };
+  return { ...actual, DATA_DIR: '/tmp/area51-test-dashboard', ASSISTANT_NAME: 'TestBot' };
 });
 // The dashboard server package isn't needed to prove the integration point.
-vi.mock('@nanoco/nanoclaw-dashboard', () => ({ startDashboard: vi.fn() }));
+vi.mock('@nanoco/area51-dashboard', () => ({ startDashboard: vi.fn() }));
 // Don't read the real .env — the test controls config via process.env only.
 vi.mock('./env.js', () => ({ readEnvFile: () => ({}) }));
 
-const TEST_DIR = '/tmp/nanoclaw-test-dashboard';
+const TEST_DIR = '/tmp/area51-test-dashboard';
 
 import { initTestDb, closeDb, runMigrations, createAgentGroup } from './db/index.js';
 import { startDashboard, stopDashboardPusher } from './dashboard-pusher.js';

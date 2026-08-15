@@ -68,7 +68,7 @@ describe('add-dashboard wiring in src/index.ts', () => {
     const importIdx = stmts.findIndex(isDynamicImportOfPusher);
     const callIdx = stmts.findIndex(isAwaitedStartDashboard);
     const migrateIdx = stmts.findIndex((s) => s.getText(sf).includes('runMigrations('));
-    const runningIdx = stmts.findIndex((s) => s.getText(sf).includes("log.info('NanoClaw running')"));
+    const runningIdx = stmts.findIndex((s) => s.getText(sf).includes("log.info('Area51 running')"));
 
     expect(importIdx, "dynamic import('./dashboard-pusher.js') must be a statement of main()").toBeGreaterThanOrEqual(0);
     expect(callIdx, 'await startDashboard() must be a statement of main()').toBeGreaterThanOrEqual(0);

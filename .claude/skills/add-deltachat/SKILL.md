@@ -97,14 +97,14 @@ The following are read from the process environment (not `.env`). To override th
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `DC_ACCOUNT_DIR` | `dc-account` | Directory for DeltaChat account data (IMAP state, keys, blobs) |
-| `DC_DISPLAY_NAME` | `NanoClaw` | Bot display name shown in DeltaChat |
+| `DC_DISPLAY_NAME` | `Area51` | Bot display name shown in DeltaChat |
 | `DC_AVATAR_PATH` | _(none)_ | Absolute path to avatar image; set at startup only |
 
 The `/set-avatar` command (send an image with that caption) is the easiest way to set the avatar at runtime without modifying the service file. Only users with `owner` or global `admin` role can use it.
 
 ### Restart
 
-Run from your NanoClaw project root:
+Run from your Area51 project root:
 
 ```bash
 source setup/lib/install-slug.sh
@@ -129,7 +129,7 @@ On first start the adapter configures the email account (IMAP/SMTP credentials, 
 After the service starts, the adapter logs the invite URL and writes a QR SVG:
 
 ```bash
-grep "invite link" logs/nanoclaw.log | tail -1
+grep "invite link" logs/area51.log | tail -1
 # url field contains the https://i.delta.chat/... invite link
 # also written to dc-account/invite-qr.svg (or $DC_ACCOUNT_DIR/invite-qr.svg)
 ```
@@ -166,13 +166,13 @@ pnpm exec tsx scripts/init-first-agent.ts \
 
 ### Groups
 
-Add the bot email to a DeltaChat group. When any member sends a message, the router creates a `messaging_groups` row with `is_group = 1`. Run `/manage-channels` to wire it to an agent group, or wire it directly with `ncl` — **the host service must be running** (`ncl` connects to it over a Unix socket):
+Add the bot email to a DeltaChat group. When any member sends a message, the router creates a `messaging_groups` row with `is_group = 1`. Run `/manage-channels` to wire it to an agent group, or wire it directly with `area51` — **the host service must be running** (`area51` connects to it over a Unix socket):
 
 ```bash
 # Engage mode/pattern default to the DeltaChat adapter's declared channel
 # defaults — for DeltaChat groups that's a name pattern (the platform has no
 # mention metadata), so the agent responds when addressed by name.
-ncl wirings create --messaging-group-id <mg-id> --agent-group-id <ag-id>
+area51 wirings create --messaging-group-id <mg-id> --agent-group-id <ag-id>
 ```
 
 ## Next Steps
@@ -218,7 +218,7 @@ Not supported: DeltaChat reactions, message editing/deletion, read receipts.
 ### Adapter not starting — credentials missing
 
 ```bash
-grep "Channel credentials missing" logs/nanoclaw.log | grep deltachat
+grep "Channel credentials missing" logs/area51.log | grep deltachat
 ```
 
 All six required vars (`DC_EMAIL`, `DC_PASSWORD`, `DC_IMAP_HOST`, `DC_IMAP_PORT`, `DC_SMTP_HOST`, `DC_SMTP_PORT`) must be present in `.env`.
@@ -226,7 +226,7 @@ All six required vars (`DC_EMAIL`, `DC_PASSWORD`, `DC_IMAP_HOST`, `DC_IMAP_PORT`
 ### Account configure fails
 
 ```bash
-grep "DeltaChat" logs/nanoclaw.log | tail -20
+grep "DeltaChat" logs/area51.log | tail -20
 ```
 
 Common causes:
@@ -240,8 +240,8 @@ Set `DC_SMTP_SECURITY=1` and `DC_SMTP_PORT=465` in `.env`, then restart.
 
 ### Messages not arriving
 
-1. Check the service is running and the adapter started: `grep "Channel adapter started.*deltachat" logs/nanoclaw.log`
-2. Check connectivity: `grep "DeltaChat: IO started" logs/nanoclaw.log`
+1. Check the service is running and the adapter started: `grep "Channel adapter started.*deltachat" logs/area51.log`
+2. Check connectivity: `grep "DeltaChat: IO started" logs/area51.log`
 3. Check the sender has been granted access — run `/init-first-agent` to create their user record and wire the chat
 4. Verify the messaging group is wired: `pnpm exec tsx scripts/q.ts data/v2.db "SELECT mg.platform_id, mga.agent_group_id FROM messaging_groups mg JOIN messaging_group_agents mga ON mg.id = mga.messaging_group_id WHERE mg.channel_type='deltachat'"`
 
@@ -257,7 +257,7 @@ systemctl --user restart "$(. setup/lib/install-slug.sh && systemd_unit)"
 The account is already configured — IO restarts automatically on service start. If the RPC subprocess is stuck, restart the service. Check for errors:
 
 ```bash
-grep "DeltaChat" logs/nanoclaw.error.log | tail -20
+grep "DeltaChat" logs/area51.error.log | tail -20
 ```
 
 ### Messages received but agent not responding

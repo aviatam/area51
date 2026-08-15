@@ -1,5 +1,5 @@
 /**
- * Regression test: `ncl messaging-groups create` must satisfy the NOT NULL
+ * Regression test: `area51 messaging-groups create` must satisfy the NOT NULL
  * `instance` column without an operator-supplied `--instance`. The column has
  * no CLI flag at the operator's altitude (the default instance IS the channel
  * type), so the generic CRUD insert defaults it to `channel_type` — matching
@@ -19,10 +19,10 @@ vi.mock('../../container-runner.js', () => ({
 
 vi.mock('../../config.js', async () => {
   const actual = await vi.importActual('../../config.js');
-  return { ...actual, DATA_DIR: '/tmp/nanoclaw-test-cli-msggroups' };
+  return { ...actual, DATA_DIR: '/tmp/area51-test-cli-msggroups' };
 });
 
-const TEST_DIR = '/tmp/nanoclaw-test-cli-msggroups';
+const TEST_DIR = '/tmp/area51-test-cli-msggroups';
 
 import type { ChannelDefaults } from '../../channels/adapter.js';
 import { registerChannelAdapter } from '../../channels/channel-registry.js';
@@ -32,7 +32,7 @@ import { dispatch } from '../dispatch.js';
 // Side-effect import: registers the `messaging-groups-create` command.
 import './messaging-groups.js';
 
-// Registration-tier declaration (no live adapter) — the environment `ncl`
+// Registration-tier declaration (no live adapter) — the environment `area51`
 // sees for offline instances and setup scripts.
 const declared: ChannelDefaults = {
   dm: { engageMode: 'pattern', engagePattern: '.', threads: false, unknownSenderPolicy: 'public' },

@@ -83,8 +83,8 @@ beforeEach(() => {
 
 afterEach(() => {
   setPickedProvider(undefined);
-  delete process.env.NANOCLAW_SKIP_CLAUDE_ASSIST;
-  delete process.env.NANOCLAW_SETUP_ASSIST_MODE;
+  delete process.env.AREA51_SKIP_CLAUDE_ASSIST;
+  delete process.env.AREA51_SETUP_ASSIST_MODE;
 });
 
 describe('offerClaudeOnFailure provider dispatch', () => {
@@ -151,8 +151,8 @@ describe('offerClaudeOnFailure provider dispatch', () => {
     expect(ce.confirmMessages).toEqual(['Want to debug this with Claude?']);
   });
 
-  it('NANOCLAW_SKIP_CLAUDE_ASSIST=1 silences everything, including provider hooks', async () => {
-    process.env.NANOCLAW_SKIP_CLAUDE_ASSIST = '1';
+  it('AREA51_SKIP_CLAUDE_ASSIST=1 silences everything, including provider hooks', async () => {
+    process.env.AREA51_SKIP_CLAUDE_ASSIST = '1';
     setPickedProvider('tp-launch');
     const ran = await offerClaudeOnFailure(CTX, '/tmp');
     expect(ran).toBe(false);
@@ -160,8 +160,8 @@ describe('offerClaudeOnFailure provider dispatch', () => {
     expect(ce.confirmMessages).toEqual([]);
   });
 
-  it('NANOCLAW_SETUP_ASSIST_MODE still routes a claude install to the non-interactive assist', async () => {
-    process.env.NANOCLAW_SETUP_ASSIST_MODE = 'true';
+  it('AREA51_SETUP_ASSIST_MODE still routes a claude install to the non-interactive assist', async () => {
+    process.env.AREA51_SETUP_ASSIST_MODE = 'true';
     await offerClaudeOnFailure(CTX, '/tmp');
     expect(ce.offerClaudeAssist).toHaveBeenCalledOnce();
   });

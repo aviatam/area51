@@ -1,5 +1,5 @@
 /**
- * Ollama MCP Server for NanoClaw
+ * Ollama MCP Server for Area51
  * Exposes local Ollama models (native Ollama REST API, /api/*) as tools for the
  * container agent. Uses host.docker.internal to reach the host's Ollama daemon
  * from inside the container.

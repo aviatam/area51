@@ -94,7 +94,7 @@ describe('unwrapList / find helpers', () => {
     expect(unwrapList({ data: { users: [{ id: '3' }] } })).toEqual([{ id: '3' }]);
   });
   it('finds a project by case-insensitive name', () => {
-    expect(findProjectByName([{ name: 'NanoClaw', id: 'p1' }], 'nanoclaw')).toEqual({ name: 'NanoClaw', id: 'p1' });
+    expect(findProjectByName([{ name: 'Area51', id: 'p1' }], 'area51')).toEqual({ name: 'Area51', id: 'p1' });
   });
   it('reads the current secret off a project payload', () => {
     expect(projectSecretOf({ id: 'p1', projectSecret: 'spk-abc' })).toBe('spk-abc');
@@ -270,10 +270,10 @@ describe('getImessageLine', () => {
 });
 
 describe('parseArgs', () => {
-  it('defaults to setup with the NanoClaw project name', () => {
+  it('defaults to setup with the Area51 project name', () => {
     const a = parseArgs([]);
     expect(a.command).toBe('setup');
-    expect(a.projectName).toBe('NanoClaw');
+    expect(a.projectName).toBe('Area51');
   });
   it('parses status + flags', () => {
     const a = parseArgs(['status']);
@@ -371,12 +371,12 @@ function makeMockFetch(
       // The dashboard returns the project's current secret on list responses.
       return json({
         projects: opts.existingProject
-          ? [{ id: 'proj-existing', name: 'NanoClaw', projectSecret: 'existing-secret-value' }]
+          ? [{ id: 'proj-existing', name: 'Area51', projectSecret: 'existing-secret-value' }]
           : [],
       });
     }
     if (pathname === '/api/projects' && method === 'POST') {
-      return json({ id: 'proj-created', name: 'NanoClaw' });
+      return json({ id: 'proj-created', name: 'Area51' });
     }
     if (/^\/api\/projects\/[^/]+\/regenerate-secret$/.test(pathname) && method === 'POST') {
       return json({ projectSecret: 'super-secret-value' });

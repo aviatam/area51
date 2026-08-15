@@ -2,7 +2,7 @@
  * add_mcp_server approval-card regression coverage.
  *
  * The approval card is the only thing an admin sees before approving a
- * request that lets an agent point NanoClaw at an arbitrary MCP server
+ * request that lets an agent point Area51 at an arbitrary MCP server
  * (command + args + env, executed on approve — see apply.ts). The card must
  * show every field that will actually be applied — JSON-encoded, invisibles
  * escaped, fenced, secret-shaped values redacted to a byte-count + sha256
@@ -40,7 +40,7 @@ vi.mock('../../container-runner.js', () => ({
 
 vi.mock('../../config.js', async () => {
   const actual = await vi.importActual('../../config.js');
-  return { ...actual, DATA_DIR: '/tmp/nanoclaw-test-mcp-approval' };
+  return { ...actual, DATA_DIR: '/tmp/area51-test-mcp-approval' };
 });
 
 vi.mock('../../session-manager.js', async () => {
@@ -52,7 +52,7 @@ vi.mock('../../webhook-server.js', () => ({
   registerWebhookAdapter: vi.fn(),
 }));
 
-const TEST_DIR = '/tmp/nanoclaw-test-mcp-approval';
+const TEST_DIR = '/tmp/area51-test-mcp-approval';
 const DM_CHANNEL = 'slack';
 const DM_PLATFORM = 'D-admin-1';
 

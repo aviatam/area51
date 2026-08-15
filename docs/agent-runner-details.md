@@ -1,4 +1,4 @@
-# NanoClaw Agent-Runner Details
+# Area51 Agent-Runner Details
 
 Implementation-level details for the agent-runner inside the container. See [architecture.md](architecture.md) for the high-level design.
 
@@ -6,7 +6,7 @@ Implementation-level details for the agent-runner inside the container. See [arc
 
 The agent-runner has two layers:
 
-1. **Agent-runner core** — owns the poll loop, message formatting, DB reads/writes, MCP tool implementations, routing, status management, media handling. This is NanoClaw-specific and shared across all providers.
+1. **Agent-runner core** — owns the poll loop, message formatting, DB reads/writes, MCP tool implementations, routing, status management, media handling. This is Area51-specific and shared across all providers.
 
 2. **Agent provider** — owns the SDK interaction. Takes formatted prompts, pushes them to the SDK, yields events back. Trunk ships the `claude` provider; additional providers (OpenCode, Codex, etc.) are installed by `/add-<provider>` skills from the `providers` branch.
 
@@ -192,7 +192,7 @@ SDK message (so the idle timer stays honest) and maps recognized messages to `Pr
 **Claude-specific behavior inside the provider:**
 - `MessageStream` for async iterable input (push-based follow-ups)
 - Resume via the SDK `resume` option keyed on the stored `continuation` (the SDK session ID) — no separate resume-at cursor
-- `TOOL_ALLOWLIST` (Bash, Read, Write, Edit, Glob, Grep, WebSearch, WebFetch, Task, Skill, …) extended at the call site with a `mcp__<server>__*` pattern per registered MCP server; `SDK_DISALLOWED_TOOLS` blocks SDK builtins that collide with NanoClaw's own scheduling/interaction model (CronCreate/Delete/List, ScheduleWakeup, AskUserQuestion, Enter/ExitPlanMode, Enter/ExitWorktree)
+- `TOOL_ALLOWLIST` (Bash, Read, Write, Edit, Glob, Grep, WebSearch, WebFetch, Task, Skill, …) extended at the call site with a `mcp__<server>__*` pattern per registered MCP server; `SDK_DISALLOWED_TOOLS` blocks SDK builtins that collide with Area51's own scheduling/interaction model (CronCreate/Delete/List, ScheduleWakeup, AskUserQuestion, Enter/ExitPlanMode, Enter/ExitWorktree)
 - **PreToolUse hook** records the current tool + its declared timeout to `container_state` (so the host sweep widens its stuck tolerance while a long Bash runs) and, as defense-in-depth, blocks any `SDK_DISALLOWED_TOOLS` call that slips through. It does **not** sanitize bash env vars — there is no such hook.
 - **PostToolUse / PostToolUseFailure** hooks clear the in-flight tool
 - **PreCompact** hook archives the transcript to `conversations/` before compaction
@@ -463,7 +463,7 @@ batches that way, but the Claude Agent SDK answered the wrapped shape with a syn
 "No response requested." stub instead of calling the API (#2555). Dropping the wrapper made
 the single-message path just the N=1 case of the same concatenation.
 
-**Command detection:** Messages starting with `/` are checked against a command list. Recognized commands bypass formatting and are passed raw to the provider (for Claude's slash command handling) or intercepted by the agent-runner (for NanoClaw-level commands like session reset).
+**Command detection:** Messages starting with `/` are checked against a command list. Recognized commands bypass formatting and are passed raw to the provider (for Claude's slash command handling) or intercepted by the agent-runner (for Area51-level commands like session reset).
 
 ### Routing
 
@@ -502,7 +502,7 @@ processing_ack: (no row) → processing → completed
 
 ### MCP Tools
 
-The agent-runner runs an MCP server (stdio) that exposes NanoClaw tools to the agent. The
+The agent-runner runs an MCP server (stdio) that exposes Area51 tools to the agent. The
 tool modules use the same two-DB connection layer as the rest of the runner
 (`container/agent-runner/src/db/connection.ts`): they read the host-written `inbound.db`
 at `/workspace/inbound.db` **read-only** (destinations, session routing, question
@@ -637,15 +637,15 @@ destination is of type `agent`. `resolveRouting` maps it to a `messages_out` row
 `channel_type: 'agent'` and `platform_id` set to the target agent group id; the host
 validates the send and routes it into the target session's `inbound.db`.
 
-#### ncl tasks
+#### area51 tasks
 
 Schedule, inspect, and modify one-shot or recurring tasks.
 
 ```bash
-ncl tasks create --prompt "..." --process-after "2026-01-15T09:00:00" --recurrence "0 9 * * *"
-ncl tasks list
-ncl tasks update <series_id> --prompt "..."
-ncl tasks cancel <series_id>
+area51 tasks create --prompt "..." --process-after "2026-01-15T09:00:00" --recurrence "0 9 * * *"
+area51 tasks list
+area51 tasks update <series_id> --prompt "..."
+area51 tasks cancel <series_id>
 ```
 
 Implementation: the host writes `messages_in` task rows into the agent group's system session (`thread_id = system:tasks`). The host sweep wakes that system-session container when a task is due. The task agent chooses its destination at fire time by emitting `<message to="name">...</message>` or using `send_message`.
@@ -760,7 +760,7 @@ oversized/aged transcript (so a cold container isn't killed reloading it), and
 
 The agent-runner receives configuration via:
 
-- **`container.json`:** The provider name, model, assistant name, MCP servers, and other NanoClaw config are read from `/workspace/agent/container.json` (materialized by the host from the `container_configs` table), not from environment variables. See `container/agent-runner/src/config.ts`.
+- **`container.json`:** The provider name, model, assistant name, MCP servers, and other Area51 config are read from `/workspace/agent/container.json` (materialized by the host from the `container_configs` table), not from environment variables. See `container/agent-runner/src/config.ts`.
 - **Environment variables:** provider-specific vars only (API keys, model overrides), `TZ`.
 - **Fixed mount paths:** Host-written `inbound.db` (read-only) at `/workspace/inbound.db` and container-owned `outbound.db` at `/workspace/outbound.db`. Agent group folder at `/workspace/agent/`. System prompt from `/workspace/agent/CLAUDE.md` and `/workspace/global/CLAUDE.md`.
 
@@ -779,7 +779,7 @@ function createProvider(name: ProviderName, config: ProviderConfig): AgentProvid
 }
 ```
 
-The provider name comes from the `provider` key in `/workspace/agent/container.json` (defaulting to `'claude'`), which the host materializes from the `container_configs` table — set it with `ncl groups config update --provider`. It is not an environment variable.
+The provider name comes from the `provider` key in `/workspace/agent/container.json` (defaulting to `'claude'`), which the host materializes from the `container_configs` table — set it with `area51 groups config update --provider`. It is not an environment variable.
 
 `ProviderConfig` contains provider-specific settings (API keys, model overrides, etc.) passed via environment variables — not via the interface. Each provider reads what it needs from `env`.
 

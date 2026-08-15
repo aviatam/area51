@@ -10,7 +10,7 @@
  * so existing skill text reads identically. Mutations run via
  * stmt.run() (single statement) or db.exec() (compound).
  *
- * Why this exists: setup/verify.ts:5 codifies that NanoClaw avoids
+ * Why this exists: setup/verify.ts:5 codifies that Area51 avoids
  * depending on the sqlite3 CLI binary; setup never installs or probes
  * for it. Skills that shell out to `sqlite3` therefore fail on hosts
  * where it isn't preinstalled (common on fresh Ubuntu — see #2191).

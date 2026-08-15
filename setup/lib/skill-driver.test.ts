@@ -56,7 +56,7 @@ Paste the token.
 
 ## Wire
 \`\`\`nc:run effect:wire
-ncl wire --token {{token}}
+area51 wire --token {{token}}
 \`\`\`
 `;
 
@@ -91,7 +91,7 @@ describe('thin skill driver', () => {
 
     expect(asked).toEqual([{ name: 'token', secret: true }]); // the prompt was driven through resolveInput, meta intact
     expect(told).toEqual(['Go create the app and copy the token.']); // operator relayed through the event
-    expect(ran).toContain('ncl wire --token T0KEN'); // wiring executed with the answer substituted in
+    expect(ran).toContain('area51 wire --token T0KEN'); // wiring executed with the answer substituted in
     expect(res.operatorMessages).toEqual(['Go create the app and copy the token.']);
   });
 
@@ -100,7 +100,7 @@ describe('thin skill driver', () => {
     const ran: string[] = [];
     const res = await runSkill(skill, { projectRoot: root, inputs: { token: 'FROM-INPUTS' }, exec: (c) => void ran.push(c) });
     expect(fullyApplied(res)).toBe(true);
-    expect(ran).toContain('ncl wire --token FROM-INPUTS');
+    expect(ran).toContain('area51 wire --token FROM-INPUTS');
   });
 
   it('emits step events through an injected onEvent — the wire run under its heading', async () => {
@@ -156,7 +156,7 @@ describe('thin skill driver', () => {
   it('hostExecStream runs a step and captures the terminal status block fields (for effect:step)', async () => {
     const root = mkdtempSync(join(tmpdir(), 'driver-step-'));
     const out = await hostExecStream(root)(
-      'echo show-this-to-the-operator; echo "=== NANOCLAW SETUP: PAIR ==="; echo "STATUS: success"; echo "PLATFORM_ID: telegram:42"; echo "=== END ==="',
+      'echo show-this-to-the-operator; echo "=== AREA51 SETUP: PAIR ==="; echo "STATUS: success"; echo "PLATFORM_ID: telegram:42"; echo "=== END ==="',
     );
     expect(out.ok).toBe(true);
     expect(out.fields.PLATFORM_ID).toBe('telegram:42');
@@ -168,7 +168,7 @@ describe('thin skill driver', () => {
     delete process.env.LOG_LEVEL; // simulate an operator who didn't set one
     try {
       const out = await hostExecStream(root)(
-        'echo "=== NANOCLAW SETUP: ENV ==="; echo "STATUS: success"; echo "LVL: $LOG_LEVEL"; echo "=== END ==="',
+        'echo "=== AREA51 SETUP: ENV ==="; echo "STATUS: success"; echo "LVL: $LOG_LEVEL"; echo "=== END ==="',
       );
       expect(out.fields.LVL).toBe('warn');
     } finally {

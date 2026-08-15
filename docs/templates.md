@@ -2,30 +2,30 @@
 
 A **template** is a reusable directory you stamp into a working agent group: it
 carries the agent's standing instructions, its MCP tool servers, its skills,
-and optional recurring tasks, but **no secrets and no provider**. Point `ncl`
+and optional recurring tasks, but **no secrets and no provider**. Point `area51`
 or the setup wizard at one and you get a configured agent in seconds; you
 choose the runtime/provider separately.
 
 Templates use the vendor-neutral
 [Agent Plugins 1.0.0](https://agent-plugins.org) directory format. The
 portable surface (skills, `mcp.json`) follows the spec exactly; everything
-NanoClaw-specific (persona, extra context, tasks, display name) rides in the
-spec's extension mechanism under the `ai.nanoco.nanoclaw` namespace. Two
+Area51-specific (persona, extra context, tasks, display name) rides in the
+spec's extension mechanism under the `ai.nanoco.area51` namespace. Two
 consequences:
 
-- **A NanoClaw template is a conformant plugin.** Dropped into another
+- **A Area51 template is a conformant plugin.** Dropped into another
   spec-compatible client (Codex, Cursor, VS Code, ...), its skills and MCP
-  servers load; the NanoClaw extras are ignored by rule.
+  servers load; the Area51 extras are ignored by rule.
 - **A conformant third-party plugin is a stampable template.** Only
   `plugin.json` is required, so a persona-less native plugin stamps as a new
-  agent group with its skills and MCP servers; the NanoClaw-only slots stay
+  agent group with its skills and MCP servers; the Area51-only slots stay
   empty and the group is named after the folder.
 
 Templates are purely additive and require no DB migration. **Templates
 are stamped only from a local directory**: `templates/` at the
 project root by default (committed but shipped empty), or whatever
-`NANOCLAW_TEMPLATES_DIR` points at (a local path only). The public registry
-([`nanocoai/nanoclaw-templates`](https://github.com/nanocoai/nanoclaw-templates))
+`AREA51_TEMPLATES_DIR` points at (a local path only). The public registry
+([`aviatam/area51-templates`](https://github.com/aviatam/area51-templates))
 is a copy source: setup can fetch a chosen template into that local directory,
 or you can populate it yourself.
 
@@ -34,14 +34,14 @@ or you can populate it yourself.
 > one fails with a migration error. Re-fetch the template from the registry,
 > or convert it: add `plugin.json`, rename `.mcp.json` to `mcp.json` (spec
 > `$schema` + a declared `type` per server), and move `context/` and `tasks/`
-> under `ai.nanoco.nanoclaw/`.
+> under `ai.nanoco.area51/`.
 
 ## Using a template
 
-**During installation:** run `bash nanoclaw.sh`. Before the sandbox build, setup
+**During installation:** run `bash area51.sh`. Before the sandbox build, setup
 offers a fresh agent, the public template library, or templates already in your
 local `templates/` directory. A library choice is copied locally first, then
-setup stamps the agent through the same `ncl groups create --template` command
+setup stamps the agent through the same `area51 groups create --template` command
 used below. The agent is created even when channel setup is skipped or cannot
 finish wiring yet. When a channel is ready, setup wires that existing agent and
 sends the welcome message. The selected provider remains separate from the
@@ -56,17 +56,17 @@ setup without it.
 
 Advanced setup can preset a local ref with **First-agent template**. The same
 setting is available as `--template-path sales/sdr` or
-`NANOCLAW_TEMPLATE_PATH=sales/sdr`. Existing installs do not see the template
+`AREA51_TEMPLATE_PATH=sales/sdr`. Existing installs do not see the template
 picker automatically, but an explicit template path is still installed.
 
 **Anytime, via the CLI:**
 
 ```bash
-ncl groups create --template sales/sdr --name "SDR Agent"
+area51 groups create --template sales/sdr --name "SDR Agent"
 ```
 
 This stamps the group but does **not** wire it to a channel. Run
-`/manage-channels` (or `ncl wirings create`) afterward, exactly as for a
+`/manage-channels` (or `area51 wirings create`) afterward, exactly as for a
 hand-built group.
 
 If the reader skipped or ignored anything (a non-conforming skill, an
@@ -77,22 +77,22 @@ silently stripped.
 ### The template ref
 
 `--template <ref>` is a path **relative to the local templates directory**
-(`templates/` by default, or `NANOCLAW_TEMPLATES_DIR`). Refs are multi-segment,
+(`templates/` by default, or `AREA51_TEMPLATES_DIR`). Refs are multi-segment,
 e.g. `sales/sdr` → `templates/sales/sdr`. The plugin root is the leaf folder;
 its manifest `name` is just `sdr`.
 
 For safety the ref must stay inside the templates directory: absolute paths, a
 leading `~`, and `../` escapes are rejected. There is no `--source`, no git URL,
-and no remote fetch at `ncl` time. Populate `templates/` first by hand or with
+and no remote fetch at `area51` time. Populate `templates/` first by hand or with
 setup's library picker, then stamp.
 
-`NANOCLAW_TEMPLATES_DIR` may point the library at another **local** directory; it
+`AREA51_TEMPLATES_DIR` may point the library at another **local** directory; it
 is never a URL and never changes at runtime.
 
 ## What's in a template
 
 The full authoring reference lives in the
-[templates repo README](https://github.com/nanocoai/nanoclaw-templates#anatomy-of-a-template).
+[templates repo README](https://github.com/aviatam/area51-templates#anatomy-of-a-template).
 The short version: only `plugin.json` is required; everything else is optional
 and defaults sensibly:
 
@@ -101,7 +101,7 @@ and defaults sensibly:
 ├── plugin.json                  # REQUIRED: Agent Plugins manifest ($schema + name; the discovery marker)
 ├── mcp.json                     # optional: stdio or streamable-http MCP servers, NO secrets
 ├── skills/<name>/               # optional: one folder per skill (SKILL.md + any references/), copied whole
-├── ai.nanoco.nanoclaw/          # optional: the NanoClaw extension dir (spec §8.2)
+├── ai.nanoco.area51/          # optional: the Area51 extension dir (spec §8.2)
 │   ├── context/
 │   │   ├── instructions.md      # the agent's standing persona
 │   │   └── additional_context/  # extra .md files, referenced from instructions.md by relative path
@@ -115,10 +115,10 @@ and defaults sensibly:
 | `plugin.json`                                          | Plugin identity: exact 1.0.0 `$schema`, spec-valid `name`, optional metadata and `extensions`               | **Yes**  |
 | `skills/<name>/`                                       | A skill, auto-triggered by its `description` (SKILL.md frontmatter needs `name` + `description`)            | No       |
 | `mcp.json` → `mcpServers`                              | MCP tool servers (validated, then written to container config)                                               | No       |
-| `ai.nanoco.nanoclaw/context/instructions.md`           | The agent's persona, prepended to its `CLAUDE.md`/`AGENTS.md` every spawn (system-prompt tier, any provider) | No       |
-| `ai.nanoco.nanoclaw/context/**/*.md` (others)          | Extra context, copied into the agent's workspace with the same layout relative to `instructions.md`          | No       |
-| `ai.nanoco.nanoclaw/tasks/*.md`                        | Recurring scheduled tasks, created paused pending user activation                                            | No       |
-| `extensions["ai.nanoco.nanoclaw"].agentName` (manifest) | Display name for the stamped group; defaults to the template folder leaf                                    | No       |
+| `ai.nanoco.area51/context/instructions.md`           | The agent's persona, prepended to its `CLAUDE.md`/`AGENTS.md` every spawn (system-prompt tier, any provider) | No       |
+| `ai.nanoco.area51/context/**/*.md` (others)          | Extra context, copied into the agent's workspace with the same layout relative to `instructions.md`          | No       |
+| `ai.nanoco.area51/tasks/*.md`                        | Recurring scheduled tasks, created paused pending user activation                                            | No       |
+| `extensions["ai.nanoco.area51"].agentName` (manifest) | Display name for the stamped group; defaults to the template folder leaf                                    | No       |
 
 Failure boundaries follow the spec: an invalid `plugin.json` (or a containment
 or size violation, below) rejects the whole template; a malformed `mcp.json`
@@ -128,11 +128,11 @@ that skill or server, always with a named report line.
 Notes:
 
 - **No provider, model, effort, or packages in a template.** Those are set on
-  the agent later via `ncl groups config update`. The runtime defaults to the
+  the agent later via `area51 groups config update`. The runtime defaults to the
   install's configured provider.
 - **The persona is optional**, to the loader and to the first-party registry
   alike (registry CI only rejects an `instructions.md` that exists but is
-  empty). Without one, the stamped agent uses NanoClaw's default project doc.
+  empty). Without one, the stamped agent uses Area51's default project doc.
   Keep `instructions.md` focused
   (under ~200 lines): it's always in the agent's prompt, and some providers
   cap that doc (Codex ~32 KB), so an over-long persona gets truncated. Put
@@ -165,21 +165,21 @@ container.
 
 ## Updating a stamped agent
 
-`ncl groups create --template` stamps a new agent only when no group carries
+`area51 groups create --template` stamps a new agent only when no group carries
 the plugin yet. When one already does, the same command becomes an in-place
 update of that agent (a "restamp"):
 
 ```bash
-ncl groups create --template <ref>          # dry run: show the update plan
-ncl groups create --template <ref> --yes    # apply it
-ncl groups restart --id <group-id>          # skill/MCP changes take effect
+area51 groups create --template <ref>          # dry run: show the update plan
+area51 groups create --template <ref> --yes    # apply it
+area51 groups restart --id <group-id>          # skill/MCP changes take effect
 ```
 
 With several groups stamped from the same plugin, pass `--id <group-id>` to
 pick the one to update. To deliberately stamp a second agent from a plugin
 that is already in use, pass `--new`.
 
-The plugin (including its `ai.nanoco.nanoclaw` extension) is the **source of
+The plugin (including its `ai.nanoco.area51` extension) is the **source of
 truth** for everything it stamps. Restamping resets those surfaces to the new
 template version and touches nothing else:
 
@@ -210,7 +210,7 @@ comparison baseline, so edits made directly inside it (host-side; the
 container mounts it read-only) are neither detected as customizations nor
 preserved.
 
-Because plugin-owned MCP servers are template content, `ncl groups config
+Because plugin-owned MCP servers are template content, `area51 groups config
 add-mcp-server` / `remove-mcp-server` and the agent's `add_mcp_server` tool
 refuse to edit them; update the plugin and restamp instead. Restamping only
 works against the same plugin name: to switch an agent to a different plugin,
@@ -221,7 +221,7 @@ create a new agent.
 Plugin content is **data on the host and code only in the container**. The
 host process copies and validates plugin files but never executes anything
 inside them; stdio servers, skill scripts, and task script gates all run in
-the agent container. At stamp time NanoClaw enforces:
+the agent container. At stamp time Area51 enforces:
 
 - **No symlinks, no special files.** The whole tree is walked with `lstat`;
   any symlink rejects the template outright (stricter than the spec, which a
@@ -237,7 +237,7 @@ the agent container. At stamp time NanoClaw enforces:
 
 ### Recurring tasks
 
-Each immediate Markdown file under `ai.nanoco.nanoclaw/tasks/` defines one
+Each immediate Markdown file under `ai.nanoco.area51/tasks/` defines one
 recurring task. The filename becomes its readable name, the frontmatter
 supplies its cron schedule, an optional script can decide whether to wake the
 agent, and the Markdown body is the prompt:
@@ -262,14 +262,14 @@ silently change behavior. Task files are reader input: they are copied with the
 plugin into `plugins/<name>/` but do not become live files in the agent
 workspace root.
 
-Template tasks use the same creation path as `ncl tasks create`, including cron
+Template tasks use the same creation path as `area51 tasks create`, including cron
 validation, the group timezone, first-run calculation, isolated task sessions,
 the run-log prompt, script behavior, and frequency limits. Ungated tasks are
 limited to four fires in the next 24 hours; tasks with a script gate may run more
 often. Templates do not expose the dangerous frequency override or one-time
 tasks.
 
-The script is passed unchanged to NanoClaw's normal task creation and execution
+The script is passed unchanged to Area51's normal task creation and execution
 path. See [Scheduled Tasks](scheduled-tasks.md#script-gates) for the script
 contract, testing workflow, frequency limit, and failure behavior. Avoid putting
 secrets directly in scripts; prefer runtime credential injection through OneCLI.
@@ -279,19 +279,19 @@ without user consent. Until the setup welcome flow offers activation, inspect
 and enable them with the existing task CLI:
 
 ```bash
-ncl tasks list --group <agent-group-id> --status paused
-ncl tasks resume <task-id>
+area51 tasks list --group <agent-group-id> --status paused
+area51 tasks resume <task-id>
 ```
 
-Resuming preserves NanoClaw's normal pause/resume semantics: if the stored next
+Resuming preserves Area51's normal pause/resume semantics: if the stored next
 run passed while paused, the task is eligible immediately.
 
 ### Referencing extra context files
 
-Extra `.md` files under `ai.nanoco.nanoclaw/context/` (by convention in an
+Extra `.md` files under `ai.nanoco.area51/context/` (by convention in an
 `additional_context/` subfolder) are copied into the agent's workspace
 preserving their position relative to `instructions.md` — a template file at
-`ai.nanoco.nanoclaw/context/additional_context/pricing.md` is readable by the
+`ai.nanoco.area51/context/additional_context/pricing.md` is readable by the
 agent as `additional_context/pricing.md`, the same relative path you'd use
 from `instructions.md` itself. Nothing is injected automatically: the agent
 only reads an extra file if `instructions.md` points to it, so reference every
@@ -392,29 +392,29 @@ plugin-stamped server are unsupported by design — the ownership guard refuses
 `add-mcp-server`/`remove-mcp-server` for plugin-owned names, so there is no
 after-the-fact edit path. Authentication belongs in the credentials proxy; if
 an endpoint truly needs a static header, the operator adds a *separately
-named*, user-owned server with `ncl groups config add-mcp-server --headers`.
+named*, user-owned server with `area51 groups config add-mcp-server --headers`.
 
 ### Approval-gating sensitive actions
 
 The credentials proxy can _hold_ a credentialed outbound request and require a
 human to approve it before it leaves the proxy: enforcement the agent can't talk
 around. This is matched on the outbound HTTP request (host + method + path),
-configured on the credentials proxy, and answered by NanoClaw (it DMs an approver). The host side is
+configured on the credentials proxy, and answered by Area51 (it DMs an approver). The host side is
 already wired; see
 [the credentialed-approval flow in CLAUDE.md](../CLAUDE.md#requiring-approval-for-credential-use)
-and the [`sales/sdr` template README](https://github.com/nanocoai/nanoclaw-templates/blob/main/sales/sdr/README.md)
+and the [`sales/sdr` template README](https://github.com/aviatam/area51-templates/blob/main/sales/sdr/README.md)
 for a worked example.
 
 ## Contributing a template
 
 Templates ship in the separate
-[`nanocoai/nanoclaw-templates`](https://github.com/nanocoai/nanoclaw-templates)
+[`aviatam/area51-templates`](https://github.com/aviatam/area51-templates)
 repo, not this one. To add one: fork that repo, drop a plugin directory at
 `<category>/<template>/` with at least `plugin.json` and (registry policy) a
-persona at `ai.nanoco.nanoclaw/context/instructions.md`, run that repo's
+persona at `ai.nanoco.area51/context/instructions.md`, run that repo's
 `node scripts/check-templates.mjs`, test it end to end (copy it under
 `templates/` and run
-`ncl groups create --template <category>/<template> --name Test`), confirm
-any predefined tasks appear under `ncl tasks list --status paused`, confirm no
+`area51 groups create --template <category>/<template> --name Test`), confirm
+any predefined tasks appear under `area51 tasks list --status paused`, confirm no
 secrets are committed, and open a PR. The repo's README has the full anatomy,
 category conventions, and checklist.

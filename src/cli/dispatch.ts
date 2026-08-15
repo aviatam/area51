@@ -46,8 +46,8 @@ export async function dispatch(
   // Fallback: if the full command isn't registered, find the LONGEST registered
   // command that is a dash-prefix of req.command; the remainder is the target ID,
   // kept intact (dashes and all). This lets clients join all positional args with
-  // dashes — e.g. `ncl groups get abc123` → "groups-get-abc123" → "groups-get" +
-  // id "abc123", and crucially `ncl tasks cancel task-374f-...-442` →
+  // dashes — e.g. `area51 groups get abc123` → "groups-get-abc123" → "groups-get" +
+  // id "abc123", and crucially `area51 tasks cancel task-374f-...-442` →
   // "tasks-cancel" + id "task-374f-...-442" (a dashed id is no longer shredded).
   // Trimming from the end (longest→shortest) means a multi-segment verb like
   // "groups-config-add-mcp-server" still matches before any shorter prefix.
@@ -154,7 +154,7 @@ export async function dispatch(
       action: 'cli_command',
       payload: { frame: { id: req.id, command: req.command, args: req.args }, callerContext: ctx },
       title: `CLI: ${req.command}`,
-      question: `Agent "${agentName}" wants to run:\n\`ncl ${req.command}${argSummary ? ' ' + argSummary : ''}\``,
+      question: `Agent "${agentName}" wants to run:\n\`area51 ${req.command}${argSummary ? ' ' + argSummary : ''}\``,
     });
 
     return err(req.id, 'approval-pending', 'Approval request sent to admin. You will be notified of the result.');
@@ -232,9 +232,9 @@ registerApprovalHandler('cli_command', async ({ payload, approval, notify }) => 
   if (response.ok) {
     const localized = localizeIsoTimestamps(response.data);
     const data = typeof localized === 'string' ? localized : JSON.stringify(localized, null, 2);
-    notify(`Your \`ncl ${frame.command}\` request was approved and executed.\n\n${data}`);
+    notify(`Your \`area51 ${frame.command}\` request was approved and executed.\n\n${data}`);
   } else {
-    notify(`Your \`ncl ${frame.command}\` request was approved but failed: ${response.error.message}`);
+    notify(`Your \`area51 ${frame.command}\` request was approved but failed: ${response.error.message}`);
   }
 });
 
@@ -292,7 +292,7 @@ function unknownCommandMessage(command: string): string {
     if (res) {
       return (
         `no command "${command}" — verbs for ${res.plural}: ${listVerbs(res).join(', ')}. ` +
-        `Run \`ncl ${res.plural} help <verb>\` for flags and examples.`
+        `Run \`area51 ${res.plural} help <verb>\` for flags and examples.`
       );
     }
   }
@@ -300,7 +300,7 @@ function unknownCommandMessage(command: string): string {
     .filter((c) => c.access !== 'hidden')
     .map((c) => c.name);
   const closest = closestName(command, names);
-  return `no command "${command}"${closest ? ` — did you mean "${closest}"?` : ''} Run \`ncl help\`.`;
+  return `no command "${command}"${closest ? ` — did you mean "${closest}"?` : ''} Run \`area51 help\`.`;
 }
 
 /** Closest name by edit distance, only when convincingly close (≤2 edits). */

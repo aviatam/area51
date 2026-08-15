@@ -10,7 +10,7 @@ import { backupEnv, executePlan, type ExecDeps } from './remove.js';
 let tempDir: string;
 
 beforeEach(() => {
-  tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'nanoclaw-remove-test-'));
+  tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'area51-remove-test-'));
 });
 
 afterEach(() => {
@@ -74,7 +74,7 @@ describe('executePlan', () => {
         kind: 'unload-service',
         flavor: 'launchd',
         unitPath: path.join(tempDir, 'svc.plist'),
-        unitName: 'com.nanoclaw-v2-test',
+        unitName: 'com.area51-v2-test',
       },
       { kind: 'delete-path', item: { what: 'Logs', where: dir, path: dir } },
     ];
@@ -92,7 +92,7 @@ describe('executePlan', () => {
   });
 
   it('leaves a system unit in place without root and notes the sudo command', () => {
-    const unitPath = path.join(tempDir, 'nanoclaw-v2-test.service');
+    const unitPath = path.join(tempDir, 'area51-v2-test.service');
     fs.writeFileSync(unitPath, '[Unit]');
     const calls: string[] = [];
     const recorder: RunCommand = (cmd) => {
@@ -106,7 +106,7 @@ describe('executePlan', () => {
           kind: 'unload-service',
           flavor: 'systemd-system',
           unitPath,
-          unitName: 'nanoclaw-v2-test',
+          unitName: 'area51-v2-test',
         },
       ],
       deps({ runCommand: recorder, isRoot: false }),
@@ -159,19 +159,19 @@ describe('executePlan', () => {
     };
 
     executePlan(
-      [{ kind: 'rm-containers', runtime: 'docker', labelFilter: 'nanoclaw-install=abcd1234' }],
+      [{ kind: 'rm-containers', runtime: 'docker', labelFilter: 'area51-install=abcd1234' }],
       deps({ runCommand: docker }),
     );
 
     expect(calls).toEqual([
-      ['docker', 'ps', '-aq', '--filter', 'label=nanoclaw-install=abcd1234'],
+      ['docker', 'ps', '-aq', '--filter', 'label=area51-install=abcd1234'],
       ['docker', 'rm', '-f', 'fresh1', 'fresh2'],
     ]);
   });
 
   it('notes a manual command when the container runtime is unavailable', () => {
     const { notes } = executePlan(
-      [{ kind: 'rm-containers', runtime: 'docker', labelFilter: 'nanoclaw-install=x' }],
+      [{ kind: 'rm-containers', runtime: 'docker', labelFilter: 'area51-install=x' }],
       deps({ runCommand: () => ({ status: null, stdout: '' }) }),
     );
     expect(notes.some((n) => n.includes('xargs -r docker rm -f'))).toBe(true);

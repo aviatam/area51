@@ -1,7 +1,7 @@
 /**
  * Pure renderers for command help. Single source for three surfaces that must
  * never disagree:
- *   - `ncl <resource> help [<verb>]` (commands/help.ts)
+ *   - `area51 <resource> help [<verb>]` (commands/help.ts)
  *   - `--help` on any command (dispatch interception)
  *   - the usage block appended to invalid-args errors (crud.ts validation)
  *
@@ -96,7 +96,7 @@ export function renderVerbHelp(res: ResourceDef, verb: string): string | undefin
   const needsId = generic === 'get' || generic === 'update' || generic === 'delete';
 
   const lines: string[] = [];
-  lines.push(`ncl ${res.plural} ${verb}${needsId ? ' <id>' : ''}${accessTag}`);
+  lines.push(`area51 ${res.plural} ${verb}${needsId ? ' <id>' : ''}${accessTag}`);
   lines.push('');
   lines.push(op ? op.description : genericSummary(res, generic!));
 

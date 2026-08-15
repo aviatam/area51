@@ -33,7 +33,7 @@ describe('guard conformance', () => {
     expect(dangling.map((s) => s.action)).toEqual([]);
   });
 
-  it('every mutating ncl command derives a guard that holds via cli_command', () => {
+  it('every mutating area51 command derives a guard that holds via cli_command', () => {
     const mutating = listCommands().filter((cmd) => cmd.access === 'approval');
     expect(mutating.length).toBeGreaterThan(0);
 

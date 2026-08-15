@@ -36,7 +36,7 @@ export interface AgentGateQuarantine {
 }
 
 export interface AgentGateReport {
-  schema: 'nanoclaw.agent_gate.v1';
+  schema: 'area51.agent_gate.v1';
   generated_at: string;
   group_path: string;
   passed: boolean;
@@ -209,7 +209,7 @@ export async function scanAgentGate(options: ScanAgentGateOptions): Promise<Agen
       detail: 'The gate could not find refund, PII, prompt-injection, approval, or tool-use scenarios to validate.',
       evidence: [groupDir],
       recommendation:
-        'Add scenario files under .nanoclaw/agent-gate/scenarios/ or .agentgym/ so failures map to a clear use case.',
+        'Add scenario files under .area51/agent-gate/scenarios/ or .agentgym/ so failures map to a clear use case.',
     });
   }
 
@@ -246,7 +246,7 @@ export async function scanAgentGate(options: ScanAgentGateOptions): Promise<Agen
   const passed = overall >= MINIMUM_OVERALL && highFindings === 0 && (!failOnWarnings || warningFindings === 0);
 
   return {
-    schema: 'nanoclaw.agent_gate.v1',
+    schema: 'area51.agent_gate.v1',
     generated_at: now.toISOString(),
     group_path: groupDir,
     passed,
@@ -336,7 +336,7 @@ function walkGroupFiles(groupDir: string): string[] {
       if (entry.isDirectory() && IGNORED_DIRS.has(entry.name)) continue;
       const absolute = path.join(dir, entry.name);
       const relative = path.relative(groupDir, absolute).replace(/\\/g, '/');
-      if (relative.startsWith('.nanoclaw/agent-gate/quarantine')) continue;
+      if (relative.startsWith('.area51/agent-gate/quarantine')) continue;
       if (entry.isDirectory()) {
         walk(absolute);
       } else if (entry.isFile()) {
@@ -370,7 +370,7 @@ function isScenarioFile(file: string): boolean {
   const lower = file.toLowerCase();
   const basename = path.basename(lower);
   return (
-    lower.startsWith('.nanoclaw/agent-gate/scenarios/') ||
+    lower.startsWith('.area51/agent-gate/scenarios/') ||
     lower.startsWith('.agentgym/') ||
     lower.includes('/scenarios/') ||
     basename.includes('prompt-injection') ||
@@ -521,7 +521,7 @@ function quarantineFindings(
   if (!options.enabled || highPackageFindings.length === 0) return { enabled: options.enabled, files: [] };
 
   const stamp = options.now.toISOString().replace(/[:.]/g, '-');
-  const root = path.resolve(options.root ?? path.join(groupDir, '.nanoclaw', 'agent-gate', 'quarantine'));
+  const root = path.resolve(options.root ?? path.join(groupDir, '.area51', 'agent-gate', 'quarantine'));
   const quarantineDir = path.join(root, stamp);
   fs.mkdirSync(quarantineDir, { recursive: true });
 

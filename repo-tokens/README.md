@@ -12,7 +12,7 @@ A GitHub Action that calculates the size of your codebase in terms of tokens and
 ## Usage
 
 ```yaml
-- uses: nanocoai/nanoclaw/repo-tokens@v1
+- uses: aviatam/area51/repo-tokens@v1
   with:
     include: 'src/**/*.ts'
     exclude: 'src/**/*.test.ts'
@@ -34,7 +34,7 @@ Repos using repo-tokens:
 
 | Repo | Badge |
 |------|-------|
-| [NanoClaw](https://github.com/nanocoai/NanoClaw) | ![tokens](https://raw.githubusercontent.com/nanocoai/NanoClaw/main/repo-tokens/badge.svg) |
+| [Area51](https://github.com/aviatam/area51) | ![tokens](https://raw.githubusercontent.com/aviatam/area51/main/repo-tokens/badge.svg) |
 
 ### Full workflow example
 
@@ -59,7 +59,7 @@ jobs:
         with:
           python-version: '3.12'
 
-      - uses: nanocoai/nanoclaw/repo-tokens@v1
+      - uses: aviatam/area51/repo-tokens@v1
         id: tokens
         with:
           include: 'src/**/*.ts'

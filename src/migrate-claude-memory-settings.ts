@@ -5,7 +5,7 @@ import { log } from './log.js';
 const PRE_COMPACT_COMMAND = 'bun /app/src/compact-instructions.ts';
 const LEGACY_MEMORY_SESSION_START_COMMAND = 'bun /app/src/memory-hook.ts';
 
-/** Reconcile existing Claude settings with NanoClaw's shared memory system. */
+/** Reconcile existing Claude settings with Area51's shared memory system. */
 export function migrateClaudeMemorySettings(settingsFile: string): boolean {
   try {
     const parsed: unknown = JSON.parse(fs.readFileSync(settingsFile, 'utf-8'));
@@ -33,7 +33,7 @@ export function migrateClaudeMemorySettings(settingsFile: string): boolean {
     const hooks = isRecord(parsed.hooks) ? parsed.hooks : {};
     const existingSessionStart = Array.isArray(hooks.SessionStart) ? hooks.SessionStart : [];
     const nextSessionStart = existingSessionStart
-      .map(removeLegacyNanoClawMemoryHook)
+      .map(removeLegacyArea51MemoryHook)
       .filter((entry) => entry !== undefined);
     if (JSON.stringify(nextSessionStart) !== JSON.stringify(existingSessionStart)) {
       if (nextSessionStart.length > 0) hooks.SessionStart = nextSessionStart;
@@ -64,7 +64,7 @@ export function migrateClaudeMemorySettings(settingsFile: string): boolean {
   }
 }
 
-function removeLegacyNanoClawMemoryHook(value: unknown): unknown {
+function removeLegacyArea51MemoryHook(value: unknown): unknown {
   if (!isRecord(value) || !Array.isArray(value.hooks)) return value;
   const remaining = value.hooks.filter((hook) => {
     if (!isRecord(hook)) return true;

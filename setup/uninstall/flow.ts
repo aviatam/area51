@@ -35,7 +35,7 @@ import { scanInstall, tilde, type Inventory } from './scan.js';
 const GROUPS = {
   service: {
     title: '1) App & background service',
-    desc: 'Runs NanoClaw in the background. Removing this stops the assistant. None of your data lives here.',
+    desc: 'Runs Area51 in the background. Removing this stops the assistant. None of your data lives here.',
     prompt: 'Delete the app & background service shown above?',
   },
   data: {
@@ -76,7 +76,7 @@ export async function runUninstallFlow(opts: {
   const projectRoot = process.cwd();
   const home = os.homedir();
 
-  p.intro(k.bold(`Uninstall NanoClaw`));
+  p.intro(k.bold(`Uninstall Area51`));
   // persistId: false — the emit must not create data/install-id, which would
   // both break --dry-run's "changes nothing" promise and resurrect a data/
   // row in the very inventory we are about to scan.
@@ -232,7 +232,7 @@ export async function runUninstallFlow(opts: {
     log: (line) => console.log(`  ${line}`),
   });
   for (const n of tailNotes) console.log(`  • ${n}`);
-  console.log(`\n✓ Done. NanoClaw copy ${inv.slug} has been uninstalled.`);
+  console.log(`\n✓ Done. Area51 copy ${inv.slug} has been uninstalled.`);
   process.exit(0);
 }
 
@@ -286,11 +286,11 @@ async function decideOnecli(
   if (orphans.length > 0) {
     if (yes) {
       p.log.warn(
-        `${orphans.length} other NanoClaw-style agent(s) in the vault are not linked to this copy;\n--yes does NOT delete them (they may belong to another copy).`,
+        `${orphans.length} other Area51-style agent(s) in the vault are not linked to this copy;\n--yes does NOT delete them (they may belong to another copy).`,
       );
     } else {
       p.log.warn(
-        `Found ${orphans.length} other NanoClaw-style agent(s) in the vault not linked to this copy —\nthey may belong to ANOTHER NanoClaw copy on this machine.`,
+        `Found ${orphans.length} other Area51-style agent(s) in the vault not linked to this copy —\nthey may belong to ANOTHER Area51 copy on this machine.`,
       );
       deleteOrphans = answered(
         await p.confirm({ message: 'Delete them too?', initialValue: false }),
@@ -321,12 +321,12 @@ function serviceRows(inv: Inventory, home: string): { what: string; where: strin
   if (s.launchdPlist) rows.push({ what: 'Background service', where: tilde(s.launchdPlist, home) });
   if (s.systemdUserUnit) rows.push({ what: 'Background service', where: tilde(s.systemdUserUnit, home) });
   if (s.systemdSystemUnit) rows.push({ what: 'Background service (system)', where: s.systemdSystemUnit });
-  if (s.pidFile) rows.push({ what: 'Running process', where: 'nanoclaw.pid' });
+  if (s.pidFile) rows.push({ what: 'Running process', where: 'area51.pid' });
   if (s.containerIds.length > 0) {
     rows.push({ what: 'Running containers', where: `${s.containerIds.length} container(s)` });
   }
   if (s.image) rows.push({ what: 'Container image', where: s.image });
-  if (s.nclSymlink) rows.push({ what: 'Command-line tool (ncl)', where: tilde(s.nclSymlink, home) });
+  if (s.area51Symlink) rows.push({ what: 'Command-line tool (area51)', where: tilde(s.area51Symlink, home) });
   return rows;
 }
 
@@ -356,9 +356,9 @@ function emptyGroupTitles(
 function printLeftAlone(notes: string[]): void {
   const lines = [
     '• OneCLI app, vault & credentials: ~/.local/share/onecli, ~/.local/bin/onecli',
-    '• Host-wide config: ~/.config/nanoclaw/ (mount/sender allowlists)',
+    '• Host-wide config: ~/.config/area51/ (mount/sender allowlists)',
     '• PATH line in ~/.bashrc and ~/.zshrc',
-    '• Other NanoClaw copies on this machine',
+    '• Other Area51 copies on this machine',
     ...notes.map((n) => `• ${n}`),
   ];
   note(lines.join('\n'), 'Left alone (shared / not ours)');

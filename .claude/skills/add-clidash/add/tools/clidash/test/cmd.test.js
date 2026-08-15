@@ -13,7 +13,7 @@ after(() => rmSync(tmp, { recursive: true, force: true }));
 function cli(extra = {}) {
   return {
     bin: process.execPath,
-    discover: { args: [STUB, 'help'], parser: 'ncl-help' },
+    discover: { args: [STUB, 'help'], parser: 'area51-help' },
     list: [STUB, '{resource}', 'list', '--json'],
     output: 'json',
     unwrap: 'data',
@@ -33,8 +33,8 @@ async function withServer(clis, fn, extra = {}) {
 }
 
 test('/api/cmd: runs an allowlisted command with {resource} + {id}', async () => {
-  await withServer({ ncl: cli() }, async (base) => {
-    const body = await (await fetch(`${base}/api/cmd/ncl/get?resource=sessions&id=sess-123`)).json();
+  await withServer({ area51: cli() }, async (base) => {
+    const body = await (await fetch(`${base}/api/cmd/area51/get?resource=sessions&id=sess-123`)).json();
     assert.equal(body.ok, true);
     assert.equal(body.data.id, 'sessions-detail');
     assert.match(body.data.args, /sessions get sess-123/);
@@ -42,16 +42,16 @@ test('/api/cmd: runs an allowlisted command with {resource} + {id}', async () =>
 });
 
 test('/api/cmd: config-get needs no resource', async () => {
-  await withServer({ ncl: cli() }, async (base) => {
-    const body = await (await fetch(`${base}/api/cmd/ncl/config-get?id=ag-1`)).json();
+  await withServer({ area51: cli() }, async (base) => {
+    const body = await (await fetch(`${base}/api/cmd/area51/config-get?id=ag-1`)).json();
     assert.equal(body.ok, true);
     assert.match(body.data.args, /groups config get --id ag-1/);
   });
 });
 
 test('/api/cmd: unknown command name → 404 (allowlist)', async () => {
-  await withServer({ ncl: cli() }, async (base) => {
-    const res = await fetch(`${base}/api/cmd/ncl/delete?resource=groups&id=ag-1`);
+  await withServer({ area51: cli() }, async (base) => {
+    const res = await fetch(`${base}/api/cmd/area51/delete?resource=groups&id=ag-1`);
     assert.equal(res.status, 404);
   });
 });
@@ -60,8 +60,8 @@ test('/api/cmd: a {resource} not in the discovered set is rejected without exec'
   const countFile = join(tmp, 'cmd-count.txt');
   const c = cli();
   c.env = { STUB_COUNT_FILE: countFile };
-  await withServer({ ncl: c }, async (base) => {
-    const res = await fetch(`${base}/api/cmd/ncl/get?resource=evil&id=x`);
+  await withServer({ area51: c }, async (base) => {
+    const res = await fetch(`${base}/api/cmd/area51/get?resource=evil&id=x`);
     assert.equal(res.status, 404);
     // only discovery ran, never a get for the bogus resource
     const calls = readFileSync(countFile, 'utf8').trim().split('\n');
@@ -70,14 +70,14 @@ test('/api/cmd: a {resource} not in the discovered set is rejected without exec'
 });
 
 test('/api/cmd: an id with illegal characters is rejected', async () => {
-  await withServer({ ncl: cli() }, async (base) => {
-    const res = await fetch(`${base}/api/cmd/ncl/get?resource=sessions&id=${encodeURIComponent('a b;rm -rf')}`);
+  await withServer({ area51: cli() }, async (base) => {
+    const res = await fetch(`${base}/api/cmd/area51/get?resource=sessions&id=${encodeURIComponent('a b;rm -rf')}`);
     assert.equal(res.status, 400);
   });
 });
 
 test('/api/cmd: unknown cli → 404', async () => {
-  await withServer({ ncl: cli() }, async (base) => {
+  await withServer({ area51: cli() }, async (base) => {
     assert.equal((await fetch(`${base}/api/cmd/nope/get?resource=sessions&id=x`)).status, 404);
   });
 });
@@ -85,7 +85,7 @@ test('/api/cmd: unknown cli → 404', async () => {
 test('/api/cmd: a cli without a commands map → 404', async () => {
   const c = cli();
   delete c.commands;
-  await withServer({ ncl: c }, async (base) => {
-    assert.equal((await fetch(`${base}/api/cmd/ncl/get?resource=sessions&id=x`)).status, 404);
+  await withServer({ area51: c }, async (base) => {
+    assert.equal((await fetch(`${base}/api/cmd/area51/get?resource=sessions&id=x`)).status, 404);
   });
 });

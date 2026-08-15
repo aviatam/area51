@@ -199,15 +199,15 @@ describe('json-merge directive', () => {
 
 describe('append at:<marker> attribute', () => {
   it('parses an optional at:<marker> alongside to:', () => {
-    const md = ['```nc:append to:setup/index.ts at:nanoclaw:setup-steps', "  codex: () => import('./codex.js'),", '```'].join('\n');
+    const md = ['```nc:append to:setup/index.ts at:area51:setup-steps', "  codex: () => import('./codex.js'),", '```'].join('\n');
     const [d] = parseDirectives(md);
     expect(d.kind).toBe('append');
     expect(d.attrs.to).toBe('setup/index.ts');
-    expect(d.attrs.at).toBe('nanoclaw:setup-steps');
+    expect(d.attrs.at).toBe('area51:setup-steps');
   });
 
   it('still validates an append that carries at: (to + a line are all it needs)', () => {
-    const md = ['```nc:append to:setup/index.ts at:nanoclaw:setup-steps', "  codex: () => import('./codex.js'),", '```'].join('\n');
+    const md = ['```nc:append to:setup/index.ts at:area51:setup-steps', "  codex: () => import('./codex.js'),", '```'].join('\n');
     expect(validate(parseDirectives(md))).toEqual([]);
   });
 });

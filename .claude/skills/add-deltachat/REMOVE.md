@@ -29,7 +29,7 @@ DC_SMTP_PORT
 
 ## 3. Rebuild and restart
 
-Run from your NanoClaw project root:
+Run from your Area51 project root:
 
 ```bash
 pnpm run build
@@ -65,7 +65,7 @@ pnpm remove @deltachat/stdio-rpc-server
 After removal, confirm the adapter is no longer starting:
 
 ```bash
-grep "deltachat" logs/nanoclaw.log | tail -5
+grep "deltachat" logs/area51.log | tail -5
 ```
 
 Expected: no `Channel adapter started` entry after the last restart.

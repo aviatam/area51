@@ -919,7 +919,7 @@ describe('--help interception', () => {
 
     expect(resp.ok).toBe(true);
     if (resp.ok) {
-      expect(resp.data).toContain('ncl groups test');
+      expect(resp.data).toContain('area51 groups test');
       expect(resp.data).toContain('--foo');
       expect(resp.data).toContain('(required)');
     }
@@ -955,7 +955,7 @@ describe('--help interception', () => {
 
     expect(resp.ok).toBe(true);
     if (resp.ok) {
-      expect(resp.data).toContain('ncl groups config update');
+      expect(resp.data).toContain('area51 groups config update');
       expect(resp.data).toContain('--model');
       // Not the bare registry description fallback:
       expect(resp.data).not.toBe('bare registry description (should not be the help answer)');
@@ -1000,7 +1000,7 @@ describe('unknown-command errors', () => {
     if (!resp.ok) {
       expect(resp.error.code).toBe('unknown-command');
       expect(resp.error.message).toContain('verbs for groups: list, get, restart');
-      expect(resp.error.message).toContain('ncl groups help');
+      expect(resp.error.message).toContain('area51 groups help');
     }
   });
 
@@ -1020,7 +1020,7 @@ describe('unknown-command errors', () => {
     expect(resp.ok).toBe(false);
     if (!resp.ok) {
       expect(resp.error.message).toContain('no command "zzz-qqq-vvv"');
-      expect(resp.error.message).toContain('ncl help');
+      expect(resp.error.message).toContain('area51 help');
       expect(resp.error.message).not.toContain('did you mean');
     }
   });

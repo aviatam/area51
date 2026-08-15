@@ -1,6 +1,6 @@
 # Branch and fork maintenance
 
-How the long-lived branches on `nanocoai/nanoclaw` relate to `main` and how to keep them in sync. This is the maintainer view: [skills-model.md](skills-model.md) explains the customization model itself, and [CONTRIBUTING.md](../CONTRIBUTING.md) covers contributing a channel or provider.
+How the long-lived branches on `aviatam/area51` relate to `main` and how to keep them in sync. This is the maintainer view: [skills-model.md](skills-model.md) explains the customization model itself, and [CONTRIBUTING.md](../CONTRIBUTING.md) covers contributing a channel or provider.
 
 ## Structure
 
@@ -8,7 +8,7 @@ How the long-lived branches on `nanocoai/nanoclaw` relate to `main` and how to k
 
 **Registry branches** (`channels`, `providers`) — long-lived branches carrying the code that channel and provider skills install. `channels` holds every channel adapter with its tests (`src/channels/telegram.ts`, `src/channels/telegram-registration.test.ts`, …); `providers` holds the alternative agent providers (OpenCode, Codex). The `/add-*` skills on `main` fetch files from these branches (`git show origin/channels:<path> > <path>`) — an additive copy into the user's clone, never a merge. (Not every provider needs branch code: `/add-ollama-provider` is configuration-only and redirects the built-in Claude path.)
 
-**Legacy mechanisms** — the channel fork repos (`nanoclaw-whatsapp`, `nanoclaw-telegram`, …) and the `skill/*` branches (`skill/compact`, `skill/apple-container`, …) are the pre-skills delivery model: applied code that users merged into their clones. They are frozen (no forward merges since spring 2026) and superseded by the registry branches and `/add-*` skills. Don't build on them and don't forward-merge them.
+**Legacy mechanisms** — the channel fork repos (`area51-whatsapp`, `area51-telegram`, …) and the `skill/*` branches (`skill/compact`, `skill/apple-container`, …) are the pre-skills delivery model: applied code that users merged into their clones. They are frozen (no forward merges since spring 2026) and superseded by the registry branches and `/add-*` skills. Don't build on them and don't forward-merge them.
 
 ## How users add capabilities
 
@@ -33,7 +33,7 @@ Fixes to existing adapters and providers land as PRs based directly on the regis
 ## Forward merge procedure
 
 ```bash
-# In your local nanoclaw checkout
+# In your local area51 checkout
 git checkout main && git pull
 
 git checkout -B channels origin/channels

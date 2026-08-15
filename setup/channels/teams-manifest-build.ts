@@ -5,8 +5,8 @@
  * external image deps) already lives in `setup/lib/teams-manifest.ts`; this just
  * maps a couple of CLI flags onto it and prints the resulting zip path.
  *
- * The short name comes from NANOCLAW_AGENT_NAME (falling back to "NanoClaw"), the
- * description is "<name> personal assistant powered by NanoClaw.", the website
+ * The short name comes from AREA51_AGENT_NAME (falling back to "Area51"), the
+ * description is "<name> personal assistant powered by Area51.", the website
  * URL is the operator's public base URL, and the output lands in data/teams/.
  *
  * `--rsc` adds the resource-specific-consent permissions (receive all channel /
@@ -28,7 +28,7 @@ const appId = flag('app-id');
 const url = flag('url');
 const outDir = flag('out') ?? 'data/teams';
 const rsc = process.argv.includes('--rsc');
-const shortName = process.env.NANOCLAW_AGENT_NAME?.trim() || 'NanoClaw';
+const shortName = process.env.AREA51_AGENT_NAME?.trim() || 'Area51';
 
 if (!appId || !url) {
   console.error(
@@ -40,7 +40,7 @@ if (!appId || !url) {
 const result = buildTeamsAppPackage({
   appId,
   shortName,
-  longDescription: `${shortName} personal assistant powered by NanoClaw.`,
+  longDescription: `${shortName} personal assistant powered by Area51.`,
   websiteUrl: url,
   outDir,
   rsc,

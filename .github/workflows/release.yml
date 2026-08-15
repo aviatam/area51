@@ -37,8 +37,8 @@ jobs:
           DISPATCH_REPOSITORY: ${{ github.repository }}
         run: |
           set -euo pipefail
-          if [ "$DISPATCH_REPOSITORY" != "nanocoai/nanoclaw" ]; then
-            echo "::error::Release runs only in nanocoai/nanoclaw; got $DISPATCH_REPOSITORY."
+          if [ "$DISPATCH_REPOSITORY" != "aviatam/area51" ]; then
+            echo "::error::Release runs only in aviatam/area51; got $DISPATCH_REPOSITORY."
             exit 1
           fi
           if [ "$DISPATCH_REF" != "refs/heads/main" ]; then

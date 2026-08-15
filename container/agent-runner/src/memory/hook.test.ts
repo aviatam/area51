@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
 import fs from 'fs';
 import path from 'path';
 
-const BASE = '/tmp/nanoclaw-memory-hook-test';
+const BASE = '/tmp/area51-memory-hook-test';
 
 function runHook(input: string): ReturnType<typeof Bun.spawnSync> {
   const inputFile = path.join(BASE, 'hook-input.json');

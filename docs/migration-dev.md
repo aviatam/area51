@@ -44,7 +44,7 @@ logs/migrate-steps/*.log             # Per-step raw output
 bash migrate-v2-reset.sh
 
 # Run migration with non-interactive channel selection
-NANOCLAW_CHANNELS="telegram" bash migrate-v2.sh
+AREA51_CHANNELS="telegram" bash migrate-v2.sh
 
 # Or run interactively (clack multiselect)
 bash migrate-v2.sh
@@ -106,8 +106,8 @@ python3 -m json.tool logs/setup-migration/handoff.json
 ### Common issues
 
 **Bot doesn't respond after switchover:**
-1. Check both services aren't running: `systemctl --user list-units 'nanoclaw*'`
-2. Check error log: `tail logs/nanoclaw.error.log`
+1. Check both services aren't running: `systemctl --user list-units 'area51*'`
+2. Check error log: `tail logs/area51.error.log`
 3. Check sender policy: `sqlite3 data/v2.db "SELECT unknown_sender_policy FROM messaging_groups"` — must be `public` before owner is seeded
 4. Check engage pattern: `sqlite3 data/v2.db "SELECT engage_mode, engage_pattern FROM messaging_group_agents"` — should be `pattern` / `.` for respond-to-everything
 
@@ -117,9 +117,9 @@ python3 -m json.tool logs/setup-migration/handoff.json
 3. The v1 session JSONL should be copied from `-workspace-group/` to `-workspace-agent/` (v2 container CWD is `/workspace/agent`)
 
 **Service switchover revert didn't work:**
-1. The v2 service name is `nanoclaw-v2-<hash>` — find it: `systemctl --user list-units 'nanoclaw*'`
+1. The v2 service name is `area51-v2-<hash>` — find it: `systemctl --user list-units 'area51*'`
 2. Manually stop: `systemctl --user stop <unit> && systemctl --user disable <unit>`
-3. Restart v1: `systemctl --user start nanoclaw`
+3. Restart v1: `systemctl --user start area51`
 
 ### Step logs
 

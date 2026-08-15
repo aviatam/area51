@@ -41,7 +41,7 @@ If the instance has no owner yet (`SELECT COUNT(*) FROM user_roles WHERE role='o
 Wiring defaults (engage mode/pattern, threading, `unknown_sender_policy`) resolve through **exactly two levels**:
 
 1. **Adapter declaration** — each channel adapter declares `ChannelDefaults` (separate DM and group contexts, plus a `mentions` capability) in its source file. The adapter copy is skill-installed and user-owned: to change a default install-wide, edit `src/channels/<channel>.ts` and restart. Declarations are never persisted to the DB.
-2. **Per-wiring/per-mg values chosen at creation** — every creation surface (`ncl wirings create` / `ncl messaging-groups create`, the `register` wizard step, the approval-card flow, `/init-first-agent`) fills omitted fields from the declaration and stores the result on the row. Pass explicit flags to override one wiring.
+2. **Per-wiring/per-mg values chosen at creation** — every creation surface (`area51 wirings create` / `area51 messaging-groups create`, the `register` wizard step, the approval-card flow, `/init-first-agent`) fills omitted fields from the declaration and stores the result on the row. Pass explicit flags to override one wiring.
 
 There is no third level: existing rows are never re-resolved, so editing a declaration only affects wirings created afterward. The one exception is the **`threads` column**, which stays live — `NULL` means "inherit the declaration at message time".
 
@@ -49,18 +49,18 @@ Channels with no declaration (stale adapter copies) fall back to the legacy beha
 
 ### Wiring via ncl
 
-`ncl` requires the **host service to be running** (it connects over a Unix socket):
+`area51` requires the **host service to be running** (it connects over a Unix socket):
 
 ```bash
-ncl messaging-groups create --channel-type <type> --platform-id "<id>" --name "<name>" [--is-group 1]
-ncl wirings create --messaging-group-id <mg-id> --agent-group-id <ag-id> [--session-mode <mode>]
+area51 messaging-groups create --channel-type <type> --platform-id "<id>" --name "<name>" [--is-group 1]
+area51 wirings create --messaging-group-id <mg-id> --agent-group-id <ag-id> [--session-mode <mode>]
 ```
 
-Omitted `engage_mode`/`engage_pattern`/`unknown_sender_policy` come from the adapter declaration for the right context (DM vs group). Run `ncl wirings help` / `ncl messaging-groups help` for the full flag list.
+Omitted `engage_mode`/`engage_pattern`/`unknown_sender_policy` come from the adapter declaration for the right context (DM vs group). Run `area51 wirings help` / `area51 messaging-groups help` for the full flag list.
 
 ### Threading override (`--threads`)
 
-`ncl wirings create/update ... --threads true|false` controls whether platform thread ids are honored for this wiring. `true` (in groups) means per-thread sessions and in-thread replies/typing/cards; `false` collapses to a flat session with top-level replies. Omitted = `NULL` = inherit the channel declaration. A wiring can *disable* threads on a threaded platform (Slack, Discord, GitHub), never enable them on a non-threaded one.
+`area51 wirings create/update ... --threads true|false` controls whether platform thread ids are honored for this wiring. `true` (in groups) means per-thread sessions and in-thread replies/typing/cards; `false` collapses to a flat session with top-level replies. Omitted = `NULL` = inherit the channel declaration. A wiring can *disable* threads on a threaded platform (Slack, Discord, GitHub), never enable them on a non-threaded one.
 
 Two consequences to warn the user about:
 
@@ -69,13 +69,13 @@ Two consequences to warn the user about:
 
 ### Mention capability
 
-Each declaration states which mention signal the adapter emits: `platform` (real platform mentions), `dm-only` (only DMs are flagged), or `never`. On a `mentions: 'never'` channel (Linear OAuth apps, WhatsApp personal-number mode, Emacs), `mention`/`mention-sticky` wirings are **inert — they can never engage** — and `ncl` rejects them at create/update with an error citing the declaration. For groups on those channels, use a name pattern instead:
+Each declaration states which mention signal the adapter emits: `platform` (real platform mentions), `dm-only` (only DMs are flagged), or `never`. On a `mentions: 'never'` channel (Linear OAuth apps, WhatsApp personal-number mode, Emacs), `mention`/`mention-sticky` wirings are **inert — they can never engage** — and `area51` rejects them at create/update with an error citing the declaration. For groups on those channels, use a name pattern instead:
 
 ```bash
-ncl wirings update <id> --engage-mode pattern --engage-pattern '(?i)^@?<Name>\b'
+area51 wirings update <id> --engage-mode pattern --engage-pattern '(?i)^@?<Name>\b'
 ```
 
-**Renaming an agent group does not update stored patterns.** Declared group patterns containing `{name}` are substituted with the agent group's name *at creation* and stored literally — after `ncl groups update <id> --name <NewName>`, audit that group's wirings for patterns still matching the old name and update them.
+**Renaming an agent group does not update stored patterns.** Declared group patterns containing `{name}` are substituted with the agent group's name *at creation* and stored literally — after `area51 groups update <id> --name <NewName>`, audit that group's wirings for patterns still matching the old name and update them.
 
 ## Wire New Channel
 
@@ -110,7 +110,7 @@ The `register` step creates the agent group (reusing it if the folder already ex
 
 Omitted engage/policy fields default from the channel adapter's declaration (see "Channel Defaults" above). Optional overrides: `--trigger "<regex>"` (explicit engage pattern), `--engage-mode <pattern|mention|mention-sticky>`, `--is-group <true|false>`, `--unknown-sender-policy <strict|request_approval|public>`. Don't pick a mention mode on a channel whose declaration says `mentions: 'never'` — it can never engage there.
 
-New agent groups are created on the instance default provider (`DEFAULT_AGENT_PROVIDER` in `.env`, or `claude` when unset). To run a group on a different provider, switch it after creation with `ncl groups config update --provider <name>` (e.g. `codex`).
+New agent groups are created on the instance default provider (`DEFAULT_AGENT_PROVIDER` in `.env`, or `claude` when unset). To run a group on a different provider, switch it after creation with `area51 groups config update --provider <name>` (e.g. `codex`).
 
 For separate agents, also ask for a folder name and optionally a different assistant name.
 

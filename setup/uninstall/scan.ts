@@ -1,7 +1,7 @@
 /**
  * Uninstall inventory scan — find every artifact this checkout created.
  *
- * Everything NanoClaw creates is tagged with the per-checkout install slug
+ * Everything Area51 creates is tagged with the per-checkout install slug
  * (sha1(projectRoot)[:8]), so several copies can coexist on one machine.
  * The scan reports ONLY things belonging to the given project root; shared
  * tools (the OneCLI app/vault, shell PATH lines, host-wide config) are
@@ -48,7 +48,7 @@ export interface ServiceInventory {
   pidFile?: string;
   containerIds: string[];
   image?: string;
-  nclSymlink?: string;
+  area51Symlink?: string;
 }
 
 export interface OnecliInventory {
@@ -99,8 +99,8 @@ export function scanInstall(deps: ScanDeps): Inventory {
     { rel: 'data', what: 'Database & conversations' },
     { rel: 'logs', what: 'Logs' },
     { rel: '.env', what: 'Secrets / API keys (.env)', where: 'backed up before removal' },
-    { rel: 'start-nanoclaw.sh', what: 'Start script', where: 'start-nanoclaw.sh' },
-    { rel: 'nanoclaw.pid', what: 'PID file', where: 'nanoclaw.pid' },
+    { rel: 'start-area51.sh', what: 'Start script', where: 'start-area51.sh' },
+    { rel: 'area51.pid', what: 'PID file', where: 'area51.pid' },
   ]);
 
   const runtime = existingItems(projectRoot, home, [
@@ -173,12 +173,12 @@ function scanService(
     const systemUnit = `/etc/systemd/system/${unit}.service`;
     if (fs.existsSync(userUnit)) service.systemdUserUnit = userUnit;
     if (fs.existsSync(systemUnit)) service.systemdSystemUnit = systemUnit;
-    const pidFile = path.join(projectRoot, 'nanoclaw.pid');
+    const pidFile = path.join(projectRoot, 'area51.pid');
     if (fs.existsSync(pidFile)) service.pidFile = pidFile;
   }
 
   // Container label matches what container-runner.ts stamps at spawn time.
-  const installLabel = `nanoclaw-install=${slug}`;
+  const installLabel = `area51-install=${slug}`;
   const image = `${getContainerImageBase(projectRoot)}:latest`;
   let runtimeOk = true;
   try {
@@ -215,7 +215,7 @@ function scanService(
     );
   }
 
-  const link = path.join(home, '.local', 'bin', 'ncl');
+  const link = path.join(home, '.local', 'bin', 'area51');
   let linkStat: fs.Stats | null = null;
   try {
     linkStat = fs.lstatSync(link);
@@ -227,11 +227,11 @@ function scanService(
     if (!path.isAbsolute(target)) {
       target = path.resolve(path.dirname(link), target);
     }
-    if (path.resolve(target) === path.join(projectRoot, 'bin', 'ncl')) {
-      service.nclSymlink = link;
+    if (path.resolve(target) === path.join(projectRoot, 'bin', 'area51')) {
+      service.area51Symlink = link;
     } else {
       notes.push(
-        `ncl command ${tilde(link, home)} points to another NanoClaw copy; left untouched.`,
+        `area51 command ${tilde(link, home)} points to another Area51 copy; left untouched.`,
       );
     }
   }

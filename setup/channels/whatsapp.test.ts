@@ -37,7 +37,7 @@ function bash(body: string[], vars: Record<string, string>, cwd: string): string
 
 describe('self-chat engage pattern fence', () => {
   const fence = runFence((d) => d.attrs.capture === 'engage_pattern');
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nanoclaw-engage-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'area51-engage-'));
   const patternFor = (name: string): string => bash(fence.body, { agent_name: name }, dir).trim();
 
   it('matches messages starting with @<name> and nothing else', () => {
@@ -76,7 +76,7 @@ describe('.env write fences (replace, not append)', () => {
   const env = (): string => fs.readFileSync(path.join(dir, '.env'), 'utf-8');
 
   beforeEach(() => {
-    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nanoclaw-env-'));
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'area51-env-'));
   });
 
   afterEach(() => {

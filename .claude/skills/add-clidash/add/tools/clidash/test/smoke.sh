@@ -15,7 +15,7 @@ check() {
 }
 
 check "/api/clis"             "$BASE/api/clis"             '"resources"'
-check "/api/r/ncl/sessions"   "$BASE/api/r/ncl/sessions"   '"ok":true'
-check "/api/view/ncl/overview" "$BASE/api/view/ncl/overview" '"ok":true'
+check "/api/r/area51/sessions"   "$BASE/api/r/area51/sessions"   '"ok":true'
+check "/api/view/area51/overview" "$BASE/api/view/area51/overview" '"ok":true'
 check "GET / (static UI)"     "$BASE/"                     'clidash'
 echo "smoke: all good"

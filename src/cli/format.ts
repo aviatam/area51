@@ -1,5 +1,5 @@
 /**
- * Output formatting for the `ncl` binary. Two modes:
+ * Output formatting for the `area51` binary. Two modes:
  *   - human (default): a small auto-table for arrays of flat records,
  *     JSON.stringify for everything else, plain "error: ..." line for !ok.
  *   - json: the response frame, pretty-printed.
@@ -16,14 +16,14 @@ export type FormatMode = 'human' | 'json';
 
 // A string is treated as a display timestamp only when the WHOLE value is a
 // UTC ISO instant; embedded occurrences inside longer strings may be machine
-// payloads and stay raw. Mirrored in container/agent-runner/src/cli/ncl.ts
+// payloads and stay raw. Mirrored in container/agent-runner/src/cli/area51.ts
 // (the two runtimes share no modules).
 const ISO_UTC_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?Z$/;
 
 /**
  * Human display shows local time; --json keeps the ISO machine contract.
  * The "YYYY-MM-DD HH:mm" stamp shape round-trips: parseZonedToUtc reads a
- * naive string as local wall-clock time, so a value copied from `ncl tasks
+ * naive string as local wall-clock time, so a value copied from `area51 tasks
  * get` output into `--process-after` means what it shows.
  */
 export function localizeIsoTimestamps(value: unknown): unknown {

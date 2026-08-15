@@ -5,7 +5,7 @@ description: Add Google Chat channel integration via Chat SDK.
 
 # Add Google Chat Channel
 
-Adds Google Chat support via the Chat SDK bridge. NanoClaw doesn't ship channels
+Adds Google Chat support via the Chat SDK bridge. Area51 doesn't ship channels
 in trunk — this skill copies the Google Chat adapter in from the `channels`
 branch.
 
@@ -84,7 +84,7 @@ until they're done.
 
 Capture the service account JSON, then write it. `prompt` only *asks* and binds
 the answer to a name; a separate directive consumes it — so the same prompt
-could feed `ncl` or the OneCLI vault instead of `.env` by swapping only the
+could feed `area51` or the OneCLI vault instead of `.env` by swapping only the
 consumer. Here it goes to `.env` (set-if-absent — a value you've already filled
 in is never overwritten) as a single-line string:
 
@@ -124,4 +124,4 @@ If you're in the middle of `/setup`, return to the setup flow now. Otherwise run
 
 **The app doesn't appear when adding it to a space.** Check the Chat API Configuration page: the app status must be live and its visibility must include your domain or user, and you must be adding it from the same Google Workspace the Cloud project belongs to.
 
-**Everything configured but still silent.** Run `pnpm exec vitest run src/channels/gchat-registration.test.ts` — red means the barrel import or the `@chat-adapter/gchat` install drifted, so re-run the Apply steps. If green, restart the service so it picks up the adapter and `.env`, then watch `logs/nanoclaw.log` for the inbound webhook hit.
+**Everything configured but still silent.** Run `pnpm exec vitest run src/channels/gchat-registration.test.ts` — red means the barrel import or the `@chat-adapter/gchat` install drifted, so re-run the Apply steps. If green, restart the service so it picks up the adapter and `.env`, then watch `logs/area51.log` for the inbound webhook hit.

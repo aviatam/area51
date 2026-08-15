@@ -254,7 +254,7 @@ export interface ApplyOptions {
   exec?: (cmd: string) => string | void | Promise<string | void>;
   // Streaming exec for `nc:run effect:step`: spawns a long-running, operator-
   // interactive step (a pairing code, a QR device-link) that emits
-  // `=== NANOCLAW SETUP: … ===` status blocks, renders them to the operator live,
+  // `=== AREA51 SETUP: … ===` status blocks, renders them to the operator live,
   // and resolves with the terminal block's fields (bound via capture:<var>=<FIELD>).
   // Absent ⇒ a step directive degrades to an agent (runs the step from the prose).
   execStream?: (cmd: string) => Promise<StepOutcome>;
@@ -361,7 +361,7 @@ export function referenceProse(md: string): string {
 // `upstream`. Generic mirror of channels-remote.sh: explicit override → the
 // first remote that actually has the branch → origin.
 function defaultResolveRemote(branch: string, root: string): string {
-  const override = process.env.NANOCLAW_CHANNELS_REMOTE;
+  const override = process.env.AREA51_CHANNELS_REMOTE;
   if (override) return override;
   const cap = (cmd: string): string => {
     try {
@@ -643,7 +643,7 @@ async function applyOne(
       }
       for (const cmd of d.body) {
         // Interpolate prompted {{vars}} the same way env-set does, so a run can
-        // call `ncl ... {{owner_email}}` to wire from collected input. A command
+        // call `area51 ... {{owner_email}}` to wire from collected input. A command
         // with no {{...}} (build/test) is returned unchanged; an unresolved var
         // throws → caught → deferred (the prompt hasn't been answered yet).
         const out = await exec(substitute(cmd, vars));

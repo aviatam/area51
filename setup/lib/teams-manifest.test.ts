@@ -59,7 +59,7 @@ function build(outDir: string) {
     appId: APP_ID,
     shortName: 'TestBot',
     longDescription: 'TestBot assistant for the manifest test.',
-    websiteUrl: 'https://nanoclaw.example.test',
+    websiteUrl: 'https://area51.example.test',
     outDir,
   });
 }
@@ -109,14 +109,14 @@ describe('buildTeamsAppPackage', () => {
     const manifest = JSON.parse(entries[0].data.toString('utf8'));
     expect(manifest.id).toBe(APP_ID);
     expect(manifest.bots[0].botId).toBe(APP_ID);
-    expect(manifest.validDomains).toEqual(['nanoclaw.example.test']);
+    expect(manifest.validDomains).toEqual(['area51.example.test']);
     expect(manifest.icons).toEqual({ outline: 'outline.png', color: 'color.png' });
   });
 
   it('leaves no template placeholder values in the rendered manifest', () => {
     const raw = entries[0].data.toString('utf8');
     expect(raw).not.toContain('00000000-0000-0000-0000-000000000000');
-    expect(raw).not.toContain('nanoclaw.invalid');
+    expect(raw).not.toContain('area51.invalid');
   });
 
   it('emits real PNGs for both icons', () => {
@@ -134,7 +134,7 @@ describe('buildTeamsAppPackage', () => {
       appId: APP_ID,
       shortName: 'TestBot',
       longDescription: 'TestBot assistant for the manifest test.',
-      websiteUrl: 'https://nanoclaw.example.test',
+      websiteUrl: 'https://area51.example.test',
       outDir: rscDir,
       rsc: true,
     });

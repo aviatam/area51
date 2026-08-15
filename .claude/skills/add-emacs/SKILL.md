@@ -1,6 +1,6 @@
 ---
 name: add-emacs
-description: Add Emacs as a channel. Opens an interactive chat buffer and org-mode integration so you can talk to NanoClaw from within Emacs (Doom, Spacemacs, or vanilla). Local HTTP bridge — no bot token or external service needed.
+description: Add Emacs as a channel. Opens an interactive chat buffer and org-mode integration so you can talk to Area51 from within Emacs (Doom, Spacemacs, or vanilla). Local HTTP bridge — no bot token or external service needed.
 ---
 
 # Add Emacs Channel
@@ -10,14 +10,14 @@ Adds Emacs support via a local HTTP bridge. Works with Doom Emacs, Spacemacs, an
 ## What you can do with this
 
 - **Ask while coding** — open the chat buffer (`C-c n c` / `SPC N c`), ask about a function or error without leaving Emacs
-- **Code review** — select a region and send it with `nanoclaw-org-send`; the response appears as a child heading inline in your org file
+- **Code review** — select a region and send it with `area51-org-send`; the response appears as a child heading inline in your org file
 - **Meeting notes** — send an org agenda entry; get a summary or action item list back as a child node
 - **Draft writing** — send org prose; receive revisions or continuations in place
 - **Research capture** — ask a question directly in your org notes; the answer lands exactly where you need it
 
 ## Install
 
-NanoClaw doesn't ship channels in trunk. This skill copies the Emacs adapter and the Lisp client in from the `channels` branch. Native HTTP bridge — no Chat SDK, no adapter package.
+Area51 doesn't ship channels in trunk. This skill copies the Emacs adapter and the Lisp client in from the `channels` branch. Native HTTP bridge — no Chat SDK, no adapter package.
 
 ### Pre-flight (idempotent)
 
@@ -26,7 +26,7 @@ Skip to **Enable** if all of these are already in place:
 - `src/channels/emacs.ts` exists
 - `src/channels/emacs.test.ts` exists
 - `src/channels/emacs-registration.test.ts` exists
-- `emacs/nanoclaw.el` exists
+- `emacs/area51.el` exists
 - `src/channels/index.ts` contains `import './emacs.js';`
 
 Otherwise continue. Every step below is safe to re-run.
@@ -44,7 +44,7 @@ mkdir -p emacs
 git show origin/channels:src/channels/emacs.ts                    > src/channels/emacs.ts
 git show origin/channels:src/channels/emacs.test.ts              > src/channels/emacs.test.ts
 git show origin/channels:src/channels/emacs-registration.test.ts > src/channels/emacs-registration.test.ts
-git show origin/channels:emacs/nanoclaw.el                        > emacs/nanoclaw.el
+git show origin/channels:emacs/area51.el                        > emacs/area51.el
 ```
 
 ### 3. Append the self-registration import
@@ -105,17 +105,17 @@ pnpm exec tsx setup/index.ts --step register -- \
 
 `agent-shared` puts Emacs messages in the same session as any other channel wired to the same agent group — so a conversation you started in Telegram continues in Emacs. Use `shared` to keep an independent Emacs thread with the same workspace, or a new `--folder` for a dedicated Emacs-only agent.
 
-Alternatively create the rows with `ncl` — **the host service must be running** (`ncl` connects to it over a Unix socket). Engage mode/pattern and `unknown_sender_policy` default to the Emacs adapter's declared channel defaults:
+Alternatively create the rows with `area51` — **the host service must be running** (`area51` connects to it over a Unix socket). Engage mode/pattern and `unknown_sender_policy` default to the Emacs adapter's declared channel defaults:
 
 ```bash
-ncl messaging-groups create --channel-type emacs --platform-id "default" --name "Emacs"
-ncl wirings create --messaging-group-id <mg-id-from-above> --agent-group-id <ag-id> \
+area51 messaging-groups create --channel-type emacs --platform-id "default" --name "Emacs"
+area51 wirings create --messaging-group-id <mg-id-from-above> --agent-group-id <ag-id> \
   --session-mode agent-shared
 ```
 
 ## Configure Emacs
 
-`nanoclaw.el` needs only Emacs 27.1+ builtins (`url`, `json`, `org`) — no package manager.
+`area51.el` needs only Emacs 27.1+ builtins (`url`, `json`, `org`) — no package manager.
 
 AskUserQuestion: Which Emacs distribution are you using?
 - **Doom Emacs** — `config.el` with `map!` keybindings
@@ -125,13 +125,13 @@ AskUserQuestion: Which Emacs distribution are you using?
 **Doom Emacs** — add to `~/.config/doom/config.el` (or `~/.doom.d/config.el`):
 
 ```elisp
-;; NanoClaw — personal AI assistant channel
-(load (expand-file-name "~/src/nanoclaw/emacs/nanoclaw.el"))
+;; Area51 — personal AI assistant channel
+(load (expand-file-name "~/src/area51/emacs/area51.el"))
 
 (map! :leader
-      :prefix ("N" . "NanoClaw")
-      :desc "Chat buffer"  "c" #'nanoclaw-chat
-      :desc "Send org"     "o" #'nanoclaw-org-send)
+      :prefix ("N" . "Area51")
+      :desc "Chat buffer"  "c" #'area51-chat
+      :desc "Send org"     "o" #'area51-org-send)
 ```
 
 Reload: `M-x doom/reload`
@@ -139,11 +139,11 @@ Reload: `M-x doom/reload`
 **Spacemacs** — add to `dotspacemacs/user-config` in `~/.spacemacs`:
 
 ```elisp
-;; NanoClaw — personal AI assistant channel
-(load-file "~/src/nanoclaw/emacs/nanoclaw.el")
+;; Area51 — personal AI assistant channel
+(load-file "~/src/area51/emacs/area51.el")
 
-(spacemacs/set-leader-keys "aNc" #'nanoclaw-chat)
-(spacemacs/set-leader-keys "aNo" #'nanoclaw-org-send)
+(spacemacs/set-leader-keys "aNc" #'area51-chat)
+(spacemacs/set-leader-keys "aNo" #'area51-org-send)
 ```
 
 Reload: `M-x dotspacemacs/sync-configuration-layers` or restart Emacs.
@@ -151,32 +151,32 @@ Reload: `M-x dotspacemacs/sync-configuration-layers` or restart Emacs.
 **Vanilla Emacs** — add to `~/.emacs.d/init.el`:
 
 ```elisp
-;; NanoClaw — personal AI assistant channel
-(load-file "~/src/nanoclaw/emacs/nanoclaw.el")
+;; Area51 — personal AI assistant channel
+(load-file "~/src/area51/emacs/area51.el")
 
-(global-set-key (kbd "C-c n c") #'nanoclaw-chat)
-(global-set-key (kbd "C-c n o") #'nanoclaw-org-send)
+(global-set-key (kbd "C-c n c") #'area51-chat)
+(global-set-key (kbd "C-c n o") #'area51-org-send)
 ```
 
 Reload: `M-x eval-buffer` or restart Emacs.
 
-Replace `~/src/nanoclaw/emacs/nanoclaw.el` with your actual NanoClaw checkout path.
+Replace `~/src/area51/emacs/area51.el` with your actual Area51 checkout path.
 
 If `EMACS_AUTH_TOKEN` is set, also add (any distribution):
 
 ```elisp
-(setq nanoclaw-auth-token "<your-token>")
+(setq area51-auth-token "<your-token>")
 ```
 
 If you changed `EMACS_CHANNEL_PORT` from the default:
 
 ```elisp
-(setq nanoclaw-port <your-port>)
+(setq area51-port <your-port>)
 ```
 
-## Restart NanoClaw
+## Restart Area51
 
-Run from your NanoClaw project root:
+Run from your Area51 project root:
 
 ```bash
 pnpm run build
@@ -211,7 +211,7 @@ Tell the user:
 
 ### Log line
 
-`tail -f logs/nanoclaw.log` should show `Emacs channel listening` at startup.
+`tail -f logs/area51.log` should show `Emacs channel listening` at startup.
 
 ## Channel Info
 
@@ -224,8 +224,8 @@ Tell the user:
 
 ### Features
 
-- Interactive chat buffer (`nanoclaw-chat`) with markdown → org-mode rendering
-- Org integration (`nanoclaw-org-send`) — sends the current subtree or region; reply lands as a child heading
+- Interactive chat buffer (`area51-chat`) with markdown → org-mode rendering
+- Org integration (`area51-org-send`) — sends the current subtree or region; reply lands as a child heading
 - Optional bearer-token auth for the local endpoint
 - Single-user: the adapter exposes exactly one messaging group per host
 
@@ -239,16 +239,16 @@ Not applicable (design): multi-user channels, threads, cold DM initiation, typin
 Error: listen EADDRINUSE: address already in use :::8766
 ```
 
-Either a stale NanoClaw is running or another app has the port. Kill stale process or change port:
+Either a stale Area51 is running or another app has the port. Kill stale process or change port:
 
 ```bash
 lsof -ti :8766 | xargs kill -9
-# or set EMACS_CHANNEL_PORT in .env and mirror in Emacs config (nanoclaw-port)
+# or set EMACS_CHANNEL_PORT in .env and mirror in Emacs config (area51-port)
 ```
 
 ### Adapter not starting
 
-If `grep "Emacs channel listening" logs/nanoclaw.log` returns nothing, check that `EMACS_ENABLED=true` is in `.env` and that the adapter import is present:
+If `grep "Emacs channel listening" logs/area51.log` returns nothing, check that `EMACS_ENABLED=true` is in `.env` and that the adapter import is present:
 
 ```bash
 grep -q '^EMACS_ENABLED=true' .env && echo "enabled" || echo "not enabled"
@@ -257,31 +257,31 @@ grep -q "import './emacs.js'" src/channels/index.ts && echo "imported" || echo "
 
 ### No response from agent
 
-1. NanoClaw running: `launchctl list | grep "$(. setup/lib/install-slug.sh && launchd_label)"` (macOS) / `systemctl --user status "$(. setup/lib/install-slug.sh && systemd_unit)"` (Linux)
+1. Area51 running: `launchctl list | grep "$(. setup/lib/install-slug.sh && launchd_label)"` (macOS) / `systemctl --user status "$(. setup/lib/install-slug.sh && systemd_unit)"` (Linux)
 2. Messaging group wired: `pnpm exec tsx scripts/q.ts data/v2.db "SELECT mg.platform_id, ag.folder FROM messaging_groups mg JOIN messaging_group_agents mga ON mg.id = mga.messaging_group_id JOIN agent_groups ag ON ag.id = mga.agent_group_id WHERE mg.channel_type = 'emacs'"`
-3. Logs show inbound: `grep 'channel_type=emacs\|Emacs' logs/nanoclaw.log | tail -20`
+3. Logs show inbound: `grep 'channel_type=emacs\|Emacs' logs/area51.log | tail -20`
 
 If no messaging group row exists, run the `register` command above.
 
 ### Auth token mismatch (401 Unauthorized)
 
 ```elisp
-M-x describe-variable RET nanoclaw-auth-token RET
+M-x describe-variable RET area51-auth-token RET
 ```
 
 Must match `EMACS_AUTH_TOKEN` in `.env`. If you didn't set one server-side, clear it in Emacs too:
 
 ```elisp
-(setq nanoclaw-auth-token nil)
+(setq area51-auth-token nil)
 ```
 
-### nanoclaw.el not loading
+### area51.el not loading
 
 ```bash
-ls ~/src/nanoclaw/emacs/nanoclaw.el
+ls ~/src/area51/emacs/area51.el
 ```
 
-If NanoClaw is cloned elsewhere, update the `load`/`load-file` path in your Emacs config.
+If Area51 is cloned elsewhere, update the `load`/`load-file` path in your Emacs config.
 
 ## Agent Formatting
 

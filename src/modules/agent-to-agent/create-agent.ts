@@ -143,7 +143,7 @@ async function performCreateAgent(
   // can't reach (e.g. a codex-only install where claude isn't authenticated).
   // Passing it explicitly to initGroupFilesystem pins the child's scaffold and
   // stamps its config row in one step (a NULL parent resolves to claude). The
-  // operator can still flip a child later with `ncl groups config update
+  // operator can still flip a child later with `area51 groups config update
   // --provider`.
   const parentProvider = getContainerConfig(sourceGroup.id)?.provider ?? 'claude';
   initGroupFilesystem(newGroup, { instructions: instructions ?? undefined, provider: parentProvider });

@@ -1,7 +1,7 @@
 /**
  * In-place plugin update for an already-stamped agent group.
  *
- * The plugin (including its NanoClaw extension) is the source of truth for
+ * The plugin (including its Area51 extension) is the source of truth for
  * every surface it stamps: plugin files, the skills overlay, plugin-owned MCP
  * servers, persona, context extras, and tasks. Restamping resets those to the
  * new template version. Everything else — memory, workspace files the plugin
@@ -58,7 +58,7 @@ export interface RestampResult {
 
 /**
  * Agent groups that carry this template's plugin — a stamped manifest on disk
- * is the marker. `ncl groups create --template` uses this to decide between
+ * is the marker. `area51 groups create --template` uses this to decide between
  * stamping a fresh agent and updating the one already stamped. Reads only the
  * manifest (the full walk/caps/lint pass runs in the stamp it gates, not in
  * this probe).
@@ -420,7 +420,7 @@ export function restampAgentFromTemplate(ref: string, agentGroupId: string, opts
   const anyChange = changes.some((c) => c.action !== 'unchanged' && c.action !== 'skip');
   const note = opts.apply
     ? anyChange
-      ? `Restamp applied. Run \`ncl groups restart --id ${group.id}\` for skill and MCP changes to take effect.`
+      ? `Restamp applied. Run \`area51 groups restart --id ${group.id}\` for skill and MCP changes to take effect.`
       : 'Nothing to apply — the group already matches the template.'
     : 'DRY RUN — nothing was changed. Re-run with --yes to apply.';
   return { group, plugin: tpl.name, applied: opts.apply, changes, report: tpl.report, note };

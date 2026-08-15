@@ -1,7 +1,7 @@
 /**
  * v2 Channel Adapter interface.
  *
- * Channel adapters bridge NanoClaw with messaging platforms (Discord, Slack, etc.).
+ * Channel adapters bridge Area51 with messaging platforms (Discord, Slack, etc.).
  * Two patterns: native adapters (implement directly) or Chat SDK bridge (wrap a Chat SDK adapter).
  */
 
@@ -79,7 +79,7 @@ export interface InboundMessage {
    * and forwards `message.isMention` from `onSubscribedMessage`. Use this
    * in the router instead of agent-name regex matching, which breaks on
    * platforms where the mention text is the bot's platform username (e.g.
-   * Telegram's `@nanoclaw_v2_refactr_1_bot`) rather than the agent_group
+   * Telegram's `@area51_v2_refactr_1_bot`) rather than the agent_group
    * display name (e.g. `@Andy`).
    *
    * Adapters that don't set it (native / legacy) leave it undefined — the
@@ -248,7 +248,7 @@ export interface ChannelRegistration {
   /**
    * Same declaration as ChannelAdapter.defaults, resolvable WITHOUT
    * instantiating the adapter — offline creation paths (setup/register.ts,
-   * scripts/init-first-agent.ts, ncl against a host where the factory
+   * scripts/init-first-agent.ts, area51 against a host where the factory
    * returned null for missing creds) read it from the registry. Channel
    * modules pass the same const here and to the adapter/bridge.
    */

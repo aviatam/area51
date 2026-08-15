@@ -10,7 +10,7 @@ interface Area51DemoArgs {
 
 register<Area51DemoArgs, Area51DemoReport>({
   name: 'area51-demo',
-  description: 'Run the Area51 NanoClaw + Incus security demo and write verification artifacts.',
+  description: 'Run the Area51 Area51 + Incus security demo and write verification artifacts.',
   access: 'open',
   hostOnly: true,
   parseArgs: (raw) => {

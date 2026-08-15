@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/nanoclaw-logo.png" alt="NanoClaw" width="400">
+  <img src="assets/area51-logo.png" alt="Area51" width="400">
 </p>
 
 <p align="center">
@@ -7,8 +7,8 @@
 </p>
 
 <p align="center">
-  <a href="https://nanoclaw.dev">nanoclaw.dev</a>&nbsp; • &nbsp;
-  <a href="https://docs.nanoclaw.dev">文档</a>&nbsp; • &nbsp;
+  <a href="https://area51.dev">area51.dev</a>&nbsp; • &nbsp;
+  <a href="https://docs.area51.dev">文档</a>&nbsp; • &nbsp;
   <a href="README.md">English</a>&nbsp; • &nbsp;
   <a href="README_ja.md">日本語</a>&nbsp; • &nbsp;
   <a href="README_ko.md">한국어</a>&nbsp; • &nbsp;
@@ -18,29 +18,29 @@
 
 ---
 
-## 我为什么创建 NanoClaw
+## 我为什么创建 Area51
 
-[OpenClaw](https://github.com/openclaw/openclaw) 是一个令人印象深刻的项目，但我无法安心使用一个我不了解、却能访问我个人隐私的复杂软件。OpenClaw 有近 50 万行代码、53 个配置文件和 70+ 个依赖项。其安全性是应用级别的（白名单、配对码），而非真正的操作系统级隔离。所有东西都在一个共享内存的 Node 进程中运行。
+[older agent runtime](https://github.com/legacy-agent-runtime/legacy-agent-runtime) 是一个令人印象深刻的项目，但我无法安心使用一个我不了解、却能访问我个人隐私的复杂软件。older agent runtime 有近 50 万行代码、53 个配置文件和 70+ 个依赖项。其安全性是应用级别的（白名单、配对码），而非真正的操作系统级隔离。所有东西都在一个共享内存的 Node 进程中运行。
 
-NanoClaw 用一个您能轻松理解的代码库提供了同样的核心功能：一个进程，少数几个文件。Claude 智能体运行在具有文件系统隔离的独立 Linux 容器中，而不是仅靠权限检查。
+Area51 用一个您能轻松理解的代码库提供了同样的核心功能：一个进程，少数几个文件。Claude 智能体运行在具有文件系统隔离的独立 Linux 容器中，而不是仅靠权限检查。
 
 ## 快速开始
 
 ```bash
-git clone https://github.com/nanocoai/nanoclaw.git nanoclaw-v2
-cd nanoclaw-v2
-bash nanoclaw.sh
+git clone https://github.com/aviatam/area51.git area51-v2
+cd area51-v2
+bash area51.sh
 ```
 
-`nanoclaw.sh` 会把您从一台全新机器一直带到一个可以直接发消息的命名智能体。它会在缺失时安装 Node、pnpm 和 Docker，向 OneCLI 注册您的 Anthropic 凭据，构建智能体容器，并配对您的第一个渠道（Telegram、Discord、WhatsApp 或本地 CLI）。如果某一步失败，会自动调用 Claude Code 进行诊断并从中断处继续。
+`area51.sh` 会把您从一台全新机器一直带到一个可以直接发消息的命名智能体。它会在缺失时安装 Node、pnpm 和 Docker，向 OneCLI 注册您的 Anthropic 凭据，构建智能体容器，并配对您的第一个渠道（Telegram、Discord、WhatsApp 或本地 CLI）。如果某一步失败，会自动调用 Claude Code 进行诊断并从中断处继续。
 
 ## 设计哲学
 
-**小到可以理解。** 单一进程，少量源文件，无微服务。如果您想了解完整的 NanoClaw 代码库，直接让 Claude Code 给您讲一遍就行。
+**小到可以理解。** 单一进程，少量源文件，无微服务。如果您想了解完整的 Area51 代码库，直接让 Claude Code 给您讲一遍就行。
 
 **通过隔离实现安全。** 智能体运行在 Linux 容器中，只能看到明确挂载的内容。Bash 访问是安全的，因为命令在容器内执行，而不是在您的宿主机上。
 
-**为个人用户打造。** NanoClaw 不是一个单体框架，而是能精确匹配每个用户需求的软件。它被设计成量身定制的，而不是臃肿膨胀。您创建自己的 fork，让 Claude Code 按您的需求修改它。
+**为个人用户打造。** Area51 不是一个单体框架，而是能精确匹配每个用户需求的软件。它被设计成量身定制的，而不是臃肿膨胀。您创建自己的 fork，让 Claude Code 按您的需求修改它。
 
 **定制 = 修改代码。** 没有配置膨胀。想要不同的行为？改代码。代码库小到改动是安全的。
 
@@ -48,7 +48,7 @@ bash nanoclaw.sh
 
 **技能优于功能。** 主干只发布注册表和基础设施，不包含具体的渠道适配器或替代智能体提供者。各个渠道（Discord、Slack、Telegram、WhatsApp……）放在长期存在的 `channels` 分支上；替代提供者（OpenCode、Ollama）放在 `providers` 分支上。您运行 `/add-telegram`、`/add-opencode` 等，技能会把您所需要的模块精确地复制到您的 fork 里。不会出现您没要求的功能。
 
-**最强的 harness，最强的模型。** NanoClaw 通过 Anthropic 官方的 Claude Agent SDK 原生使用 Claude Code，所以您能用上最新的 Claude 模型以及 Claude Code 的完整工具集——包括修改和扩展自己的 NanoClaw fork 的能力。其他提供者是可插拔选项：`/add-codex` 对应 OpenAI 的 Codex（ChatGPT 订阅或 API key），`/add-opencode` 通过 OpenCode 接入 OpenRouter、Google、DeepSeek 等，`/add-ollama-provider` 用于本地开源权重模型。提供者可按智能体组单独配置。
+**最强的 harness，最强的模型。** Area51 通过 Anthropic 官方的 Claude Agent SDK 原生使用 Claude Code，所以您能用上最新的 Claude 模型以及 Claude Code 的完整工具集——包括修改和扩展自己的 Area51 fork 的能力。其他提供者是可插拔选项：`/add-codex` 对应 OpenAI 的 Codex（ChatGPT 订阅或 API key），`/add-opencode` 通过 OpenCode 接入 OpenRouter、Google、DeepSeek 等，`/add-ollama-provider` 用于本地开源权重模型。提供者可按智能体组单独配置。
 
 ## 功能支持
 
@@ -79,7 +79,7 @@ bash nanoclaw.sh
 
 ## 定制
 
-NanoClaw 不用配置文件。想改就直接告诉 Claude Code：
+Area51 不用配置文件。想改就直接告诉 Claude Code：
 
 - "把触发词改成 @Bob"
 - "以后回答请更简短、更直接"
@@ -145,15 +145,15 @@ Docker 提供跨平台支持（macOS、Linux、Windows via WSL2）和成熟的�
 
 **我可以在 Linux 或 Windows 上运行吗？**
 
-可以。Docker 是默认运行时，可在 macOS、Linux 以及 Windows（通过 WSL2）上工作。运行 `bash nanoclaw.sh` 就行。
+可以。Docker 是默认运行时，可在 macOS、Linux 以及 Windows（通过 WSL2）上工作。运行 `bash area51.sh` 就行。
 
 **这个项目安全吗？**
 
-智能体运行在容器里，而不是躲在应用级权限检查之后。它们只能访问明确挂载的目录。凭据不会进入容器——出站 API 请求通过 [OneCLI 的 Agent Vault](https://github.com/onecli/onecli) 在代理层注入认证，并支持速率限制和访问策略。您仍然应该审查自己要运行的代码，但代码库小到您真的能做到。完整的安全模型见 [安全文档](https://docs.nanoclaw.dev/concepts/security)。
+智能体运行在容器里，而不是躲在应用级权限检查之后。它们只能访问明确挂载的目录。凭据不会进入容器——出站 API 请求通过 [OneCLI 的 Agent Vault](https://github.com/onecli/onecli) 在代理层注入认证，并支持速率限制和访问策略。您仍然应该审查自己要运行的代码，但代码库小到您真的能做到。完整的安全模型见 [安全文档](https://docs.area51.dev/concepts/security)。
 
 **为什么没有配置文件？**
 
-我们不想让配置泛滥。每位用户都应该定制 NanoClaw，让代码精确地做他们想要的事，而不是去配置一个通用系统。如果您更喜欢有配置文件，可以让 Claude 给您加。
+我们不想让配置泛滥。每位用户都应该定制 Area51，让代码精确地做他们想要的事，而不是去配置一个通用系统。如果您更喜欢有配置文件，可以让 Claude 给您加。
 
 **我可以使用第三方或开源模型吗？**
 
@@ -168,11 +168,11 @@ ANTHROPIC_AUTH_TOKEN=your-token-here
 
 **我该如何调试问题？**
 
-问 Claude Code。"为什么计划任务没运行？""最近的日志里有什么？""为什么这条消息没有得到回复？"这就是 NanoClaw 底层的 AI 原生方式。
+问 Claude Code。"为什么计划任务没运行？""最近的日志里有什么？""为什么这条消息没有得到回复？"这就是 Area51 底层的 AI 原生方式。
 
 **为什么安装对我不成功？**
 
-如果某一步失败，`nanoclaw.sh` 会把控制权交给 Claude Code 进行诊断并从中断处继续。如果还是没解决，运行 `claude`，然后 `/debug`。如果 Claude 发现一个可能影响其他用户的问题，请对相关的安装步骤或技能提 PR。
+如果某一步失败，`area51.sh` 会把控制权交给 Claude Code 进行诊断并从中断处继续。如果还是没解决，运行 `claude`，然后 `/debug`。如果 Claude 发现一个可能影响其他用户的问题，请对相关的安装步骤或技能提 PR。
 
 **什么样的更改会被接受进代码库？**
 
@@ -188,7 +188,7 @@ ANTHROPIC_AUTH_TOKEN=your-token-here
 
 ## 更新日志
 
-破坏性变更见 [CHANGELOG.md](CHANGELOG.md)，完整发布历史见文档站的 [full release history](https://docs.nanoclaw.dev/changelog)。
+破坏性变更见 [CHANGELOG.md](CHANGELOG.md)，完整发布历史见文档站的 [full release history](https://docs.area51.dev/changelog)。
 
 ## 许可证
 

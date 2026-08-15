@@ -2,12 +2,12 @@ import fs from 'fs';
 import path from 'path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const TEST_ROOT = '/tmp/nanoclaw-claude-md-compose-test';
+const TEST_ROOT = '/tmp/area51-claude-md-compose-test';
 const GROUPS_DIR = path.join(TEST_ROOT, 'groups');
 
 vi.mock('./config.js', async (importOriginal) => ({
   ...(await importOriginal<typeof import('./config.js')>()),
-  GROUPS_DIR: '/tmp/nanoclaw-claude-md-compose-test/groups',
+  GROUPS_DIR: '/tmp/area51-claude-md-compose-test/groups',
 }));
 
 vi.mock('./log.js', () => ({
@@ -92,9 +92,9 @@ describe('composeGroupClaudeMd persona prepend', () => {
   });
 });
 
-describe('composeGroupClaudeMd scheduling instructions (ncl tasks reach-in)', () => {
+describe('composeGroupClaudeMd scheduling instructions (area51 tasks reach-in)', () => {
   // Red-on-delete guard for the `scheduling`/`cli` exclusion at the
-  // module-fragment loop: the agent is taught `ncl tasks` iff it has ncl.
+  // module-fragment loop: the agent is taught `area51 tasks` iff it has ncl.
   it('imports module-scheduling.md at the default cli_scope', () => {
     const ag = group('ag-sched', 'sched-group');
     seed(ag);

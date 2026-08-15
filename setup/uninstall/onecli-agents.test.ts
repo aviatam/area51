@@ -55,7 +55,7 @@ describe('readAgentGroupIds', () => {
   let tempDir: string;
 
   beforeEach(() => {
-    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'nanoclaw-uninstall-test-'));
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'area51-uninstall-test-'));
   });
 
   afterEach(() => {

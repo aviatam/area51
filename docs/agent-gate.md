@@ -1,23 +1,23 @@
 # Agent Gate
 
-`agent-gate` is a host-side readiness scan for real NanoClaw agent groups. It is meant for preflight checks, CI gates, and demos that need to show the actual agent project, not a synthetic storyboard.
+`agent-gate` is a host-side readiness scan for real Area51 agent groups. It is meant for preflight checks, CI gates, and demos that need to show the actual agent project, not a synthetic storyboard.
 
 Run it against an agent group:
 
 ```sh
-ncl agent-gate scan --group support-agent
+area51 agent-gate scan --group support-agent
 ```
 
 Run it against any local folder:
 
 ```sh
-ncl agent-gate scan --path ./groups/support-agent
+area51 agent-gate scan --path ./groups/support-agent
 ```
 
 Write a machine-readable report and fail CI if the gate fails:
 
 ```sh
-ncl agent-gate scan --group support-agent --json-path reports/agent-gate.json --ci
+area51 agent-gate scan --group support-agent --json-path reports/agent-gate.json --ci
 ```
 
 ## What It Checks
@@ -33,7 +33,7 @@ The scan inspects the group folder and reports an overall fitness index plus fiv
 By default the gate requires `ANTHROPIC_API_KEY` in the host environment. Override that when testing another provider:
 
 ```sh
-ncl agent-gate scan --group support-agent --required-secrets OPENAI_API_KEY
+area51 agent-gate scan --group support-agent --required-secrets OPENAI_API_KEY
 ```
 
 The report never includes secret values. It only records whether each required secret is configured.
@@ -43,7 +43,7 @@ The report never includes secret values. It only records whether each required s
 When the gate detects a known compromised npm package such as `event-stream@3.3.6`, `flatmap-stream@0.1.1`, or compromised `ua-parser-js` releases, it fails the security pillar and copies evidence into:
 
 ```text
-groups/<agent>/.nanoclaw/agent-gate/quarantine/<timestamp>/
+groups/<agent>/.area51/agent-gate/quarantine/<timestamp>/
 ```
 
 The quarantine folder contains the relevant package manifests, lockfiles, `container.json` when present, and `findings.json`.
@@ -51,7 +51,7 @@ The quarantine folder contains the relevant package manifests, lockfiles, `conta
 Disable quarantine only for dry read-only scans:
 
 ```sh
-ncl agent-gate scan --group support-agent --quarantine false
+area51 agent-gate scan --group support-agent --quarantine false
 ```
 
 ## Scenario Files
@@ -59,7 +59,7 @@ ncl agent-gate scan --group support-agent --quarantine false
 For a clear failure demo, add concrete use-case scenarios under:
 
 ```text
-groups/<agent>/.nanoclaw/agent-gate/scenarios/
+groups/<agent>/.area51/agent-gate/scenarios/
 ```
 
 Example:

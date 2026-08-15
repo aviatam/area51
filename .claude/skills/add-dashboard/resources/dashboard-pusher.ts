@@ -1,5 +1,5 @@
 /**
- * Dashboard pusher — collects NanoClaw state and POSTs a JSON
+ * Dashboard pusher — collects Area51 state and POSTs a JSON
  * snapshot to the dashboard's /api/ingest endpoint every interval.
  */
 import fs from 'fs';
@@ -73,7 +73,7 @@ export async function startDashboard(): Promise<void> {
     log.info('Dashboard disabled (no DASHBOARD_SECRET)');
     return;
   }
-  const { startDashboard: startServer } = await import('@nanoco/nanoclaw-dashboard');
+  const { startDashboard: startServer } = await import('@nanoco/area51-dashboard');
   startServer({ port, secret });
   startDashboardPusher({ port, secret, intervalMs: 60000 });
 }
@@ -100,7 +100,7 @@ function postJson(config: PusherConfig, urlPath: string, data: unknown): void {
 const ANSI_RE = /\x1b\[[0-9;]*m/g;
 
 function startLogTail(config: PusherConfig): void {
-  const logFile = path.resolve(process.cwd(), 'logs', 'nanoclaw.log');
+  const logFile = path.resolve(process.cwd(), 'logs', 'area51.log');
   if (!fs.existsSync(logFile)) return;
 
   // Send last 200 lines as backfill

@@ -28,7 +28,7 @@ Two invariants follow, and both are non-negotiable:
 - `key:value` tokens are attributes.
 - The body's meaning is per-kind.
 
-`prompt` only *acquires* a value and binds it to a name; a separate directive *applies* it, referenced as `{{name}}`. That keeps "ask the human" decoupled from "what you do with the answer" (env, `ncl`, the OneCLI vault, a file).
+`prompt` only *acquires* a value and binds it to a name; a separate directive *applies* it, referenced as `{{name}}`. That keeps "ask the human" decoupled from "what you do with the answer" (env, `area51`, the OneCLI vault, a file).
 
 ## The eight kinds
 
@@ -58,9 +58,9 @@ Body: shell command(s), with `{{vars}}` substituted in. **Idempotency: the comma
 | `test` | Verification run (e.g. the registration test) |
 | `fetch` | Network read that resolves data (e.g. an API call resolving an id) |
 | `external` | Invokes an external helper/tool outside the tree |
-| `wire` | Runs `ncl …` to wire collected input. No undo — the rows it creates are user runtime data, not reversed on skill remove |
-| `restart` | Restarts the service so following `ncl` runs reach it. A caller that owns the restart (a rebuild, or a setup that restarts once) skips it via `ApplyOptions.skipEffects` |
-| `step` | A long-running, operator-interactive step (a pairing code, a QR device-link) run through the streaming exec: its `=== NANOCLAW SETUP: … ===` status blocks render to the operator live. Degrades to an agent when no streaming exec is wired |
+| `wire` | Runs `area51 …` to wire collected input. No undo — the rows it creates are user runtime data, not reversed on skill remove |
+| `restart` | Restarts the service so following `area51` runs reach it. A caller that owns the restart (a rebuild, or a setup that restarts once) skips it via `ApplyOptions.skipEffects` |
+| `step` | A long-running, operator-interactive step (a pairing code, a QR device-link) run through the streaming exec: its `=== AREA51 SETUP: … ===` status blocks render to the operator live. Degrades to an agent when no streaming exec is wired |
 | `check` | A shell **predicate** (a precondition gate): mutates nothing — no journal, no capture. Zero exit passes silently; non-zero bounces to an agent (degrade, not crash) and, via the run-health gate, blocks the dangerous side effects that follow it (a restart, a pairing/QR step, a wire). An unresolved `{{var}}` defers |
 
 `capture:` binds command output into vars (the twin of `prompt`):

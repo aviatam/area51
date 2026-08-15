@@ -21,9 +21,9 @@ export { EGRESS_NETWORK };
 export class EgressLockdownError extends Error {
   constructor(reason: string) {
     super(
-      `Egress lockdown is on (NANOCLAW_EGRESS_LOCKDOWN=true) but ${reason}. ` +
+      `Egress lockdown is on (AREA51_EGRESS_LOCKDOWN=true) but ${reason}. ` +
         `Refusing to spawn with open egress. Start the OneCLI gateway container ` +
-        `"${ONECLI_GATEWAY_CONTAINER}", or set NANOCLAW_EGRESS_LOCKDOWN=false to opt out.`,
+        `"${ONECLI_GATEWAY_CONTAINER}", or set AREA51_EGRESS_LOCKDOWN=false to opt out.`,
     );
     this.name = 'EgressLockdownError';
   }

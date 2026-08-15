@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { formatArea51DemoReport, runArea51Demo } from './area51-demo.js';
 
 describe('runArea51Demo', () => {
-  it('creates a working fail-closed NanoClaw + Incus demo', async () => {
+  it('creates a working fail-closed Area51 + Incus demo', async () => {
     const outputDir = fs.mkdtempSync(path.join(os.tmpdir(), 'area51-demo-test-'));
 
     const report = await runArea51Demo({

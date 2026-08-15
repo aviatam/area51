@@ -1,5 +1,5 @@
 /**
- * Programmatic wiring via ncl — the verbs a converted channel skill calls from
+ * Programmatic wiring via area51 — the verbs a converted channel skill calls from
  * `nc:run effect:wire` (so wiring is "collect input + ncl", no nc:wire directive).
  *
  * Covers the three behaviours those skills rely on:
@@ -31,7 +31,7 @@ vi.mock('../../container-runner.js', () => ({
 
 vi.mock('../../config.js', async () => {
   const actual = await vi.importActual('../../config.js');
-  return { ...actual, DATA_DIR: '/tmp/nanoclaw-test-cli-programmatic-wiring' };
+  return { ...actual, DATA_DIR: '/tmp/area51-test-cli-programmatic-wiring' };
 });
 
 // groups-create calls initGroupFilesystem, which scaffolds under the real
@@ -50,7 +50,7 @@ vi.mock('../../group-init.js', async () => {
 // sessions run in this test, but the module must not open on-disk DB files.
 vi.mock('../../modules/agent-to-agent/write-destinations.js', () => ({ writeDestinations: vi.fn() }));
 
-const TEST_DIR = '/tmp/nanoclaw-test-cli-programmatic-wiring';
+const TEST_DIR = '/tmp/area51-test-cli-programmatic-wiring';
 
 import { initTestDb, closeDb, runMigrations, createAgentGroup, getDb } from '../../db/index.js';
 import { dispatch } from '../dispatch.js';

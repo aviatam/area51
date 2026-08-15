@@ -264,12 +264,12 @@ registerResource({
           ensureAgentDestinationForWiring(values as unknown as MessagingGroupAgent);
         })();
 
-        // postCommit parity — live-refresh with `ncl destinations add`: the
+        // postCommit parity — live-refresh with `area51 destinations add`: the
         // transaction above only wrote the central `agent_destinations` row.
         // Any container already running for this agent keeps serving its stale
         // session projection, so it would drop replies to this chat as
         // "unknown destination" until the next spawn (the exact symptom
-        // operators hit running `ncl wirings create` against a live instance —
+        // operators hit running `area51 wirings create` against a live instance —
         // it needed a group restart). Project the new destination into live
         // sessions now so the fix takes effect without a restart. Runs after
         // commit because it writes to session `inbound.db` files (outside the

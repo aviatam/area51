@@ -7,7 +7,7 @@ description: Add Signal channel integration via signal-cli device-link. Native a
 
 Adds Signal support via a native adapter that speaks JSON-RPC to a
 [signal-cli](https://github.com/AsamK/signal-cli) daemon — no Chat SDK bridge,
-only Node.js builtins. NanoClaw links to Signal as a *secondary device* on your
+only Node.js builtins. Area51 links to Signal as a *secondary device* on your
 existing phone: no new number, no bot API. Your assistant sends and receives as
 the number on the phone that scans the link.
 
@@ -15,7 +15,7 @@ the number on the phone that scans the link.
 
 ### 1. Install signal-cli
 
-NanoClaw talks to Signal through signal-cli, which has no bot API of its own.
+Area51 talks to Signal through signal-cli, which has no bot API of its own.
 Install it if it isn't on PATH yet — Homebrew on macOS, the native release binary
 on Linux (neither needs Java). If it's already installed this is a no-op:
 
@@ -79,7 +79,7 @@ Signal account is verified manually once the service runs.
 This is the whole credential step. signal-cli opens a device-link handshake,
 prints a `sgnl://linkdevice…` URL, and renders it as a scannable QR. You scan it
 once from the phone that already runs Signal; that phone's number becomes the
-account NanoClaw sends and receives as — no number is registered.
+account Area51 sends and receives as — no number is registered.
 
 The device-link runs signal-cli, so it must be reachable first — on `PATH`, or at
 `$SIGNAL_CLI_PATH`. If step 1's install didn't land, the link step has nothing to
@@ -92,7 +92,7 @@ command -v signal-cli >/dev/null 2>&1 || [ -x "$SIGNAL_CLI_PATH" ]
 Tell the user:
 
 ```nc:operator
-Link NanoClaw to your Signal account:
+Link Area51 to your Signal account:
 1. On the phone that runs Signal, open Signal → Settings → Linked Devices → Link New Device.
 2. Scan the QR code shown below — or open the `sgnl://linkdevice…` link printed under it on that phone.
 3. Wait for confirmation. The linking URL expires after ~3 minutes; re-run this step for a fresh one.
@@ -143,11 +143,11 @@ Pass the `id` to `/init-first-agent` or `/manage-channels` to wire it to an agen
 
 ### Groups
 
-Add the Signal number to a group from your phone, send any message, then wire the resulting row the same way. Each group gets its own session with the default `shared` mode (one session per agent + messaging group). Create the wiring with `ncl` — **the host service must be running** (`ncl` connects to it over a Unix socket):
+Add the Signal number to a group from your phone, send any message, then wire the resulting row the same way. Each group gets its own session with the default `shared` mode (one session per agent + messaging group). Create the wiring with `area51` — **the host service must be running** (`area51` connects to it over a Unix socket):
 
 ```bash
 # Engage mode/pattern default to the Signal adapter's declared channel defaults
-ncl wirings create --messaging-group-id mg-GROUPID --agent-group-id ag-AGENTID
+area51 wirings create --messaging-group-id mg-GROUPID --agent-group-id ag-AGENTID
 ```
 
 ### Grant user access
@@ -155,9 +155,9 @@ ncl wirings create --messaging-group-id mg-GROUPID --agent-group-id ag-AGENTID
 New Signal users (including the owner's Signal identity) are silently dropped with `not_member` until granted access. After the user's first message appears in `messaging_groups` (host service running):
 
 ```bash
-ncl users create --id "signal:UUID" --kind signal --display-name "<name>"
-ncl roles grant --user "signal:UUID" --role owner
-ncl members add --user "signal:UUID" --group ag-AGENTID
+area51 users create --id "signal:UUID" --kind signal --display-name "<name>"
+area51 roles grant --user "signal:UUID" --role owner
+area51 members add --user "signal:UUID" --group ag-AGENTID
 ```
 
 Find the UUID from `messaging_groups.platform_id` or the `users` table.
@@ -196,7 +196,7 @@ Not supported yet: outbound file attachments (logged and dropped), edit/delete m
 
 The device-link above joins Signal as a *secondary device* on an existing number.
 If you'd rather give the assistant its own number, register a dedicated SIM or
-VoIP number that NanoClaw owns entirely. This path takes a captcha, an SMS (or
+VoIP number that Area51 owns entirely. This path takes a captcha, an SMS (or
 voice) verification, and an optional profile name.
 
 > **VoIP numbers:** Signal requires SMS verification before voice. Some VoIP providers are blocked even for voice calls. If registration fails with an auth error, try a different provider or a physical SIM.
@@ -238,9 +238,9 @@ No output = success.
 
 **Step 5: Set profile name (optional)**
 
-> ⚠ Stop NanoClaw before running signal-cli commands — the daemon holds an exclusive lock on its data directory while running.
+> ⚠ Stop Area51 before running signal-cli commands — the daemon holds an exclusive lock on its data directory while running.
 
-Run from your NanoClaw project root:
+Run from your Area51 project root:
 
 ```bash
 source setup/lib/install-slug.sh
@@ -261,7 +261,7 @@ Once registered, set `SIGNAL_ACCOUNT` to this number (as under **Persist the acc
 
 ## Optional configuration
 
-These `.env` keys tune how NanoClaw talks to the signal-cli daemon. All are
+These `.env` keys tune how Area51 talks to the signal-cli daemon. All are
 optional — the defaults work for the device-link flow above.
 
 ```bash
@@ -272,7 +272,7 @@ SIGNAL_TCP_PORT=7583
 # Path to the signal-cli binary (default: resolved on PATH)
 SIGNAL_CLI_PATH=/usr/local/bin/signal-cli
 
-# Whether NanoClaw manages the daemon lifecycle (default: true).
+# Whether Area51 manages the daemon lifecycle (default: true).
 # Set to false if you run signal-cli daemon externally.
 SIGNAL_MANAGE_DAEMON=true
 
@@ -287,7 +287,7 @@ SIGNAL_DATA_DIR=~/.local/share/signal-cli
 ### Daemon not reachable
 
 ```bash
-grep "Signal" logs/nanoclaw.log | tail
+grep "Signal" logs/area51.log | tail
 ```
 
 If you see `Signal daemon failed to start. Is signal-cli installed and your account linked?`:
@@ -298,10 +298,10 @@ If you see `Signal daemon not reachable at 127.0.0.1:7583` and `SIGNAL_MANAGE_DA
 
 ### Bot not responding
 
-1. Channel initialized: `grep "Signal channel connected" logs/nanoclaw.log | tail -1`
+1. Channel initialized: `grep "Signal channel connected" logs/area51.log | tail -1`
 2. Channel wired: `pnpm exec tsx scripts/q.ts data/v2.db "SELECT mg.platform_id, mg.name FROM messaging_groups mg JOIN messaging_group_agents mga ON mg.id = mga.messaging_group_id WHERE mg.channel_type='signal'"`
 3. Service running: `launchctl print gui/$(id -u)/"$(. setup/lib/install-slug.sh && launchd_label)"` (macOS) / `systemctl --user status "$(. setup/lib/install-slug.sh && systemd_unit)"` (Linux)
-4. **Check for duplicate service instances** — if `logs/nanoclaw.error.log` shows `No adapter for channel type channelType="signal"` despite the adapter starting, two NanoClaw processes are racing. See the `/debug` skill section "No adapter for channel type / Messages silently lost" for the full fix.
+4. **Check for duplicate service instances** — if `logs/area51.error.log` shows `No adapter for channel type channelType="signal"` despite the adapter starting, two Area51 processes are racing. See the `/debug` skill section "No adapter for channel type / Messages silently lost" for the full fix.
 
 ### Messages delivered but never arrive (null platformMsgId)
 
@@ -325,7 +325,7 @@ You must request SMS first, wait ~60 seconds, then request voice. Both steps can
 
 ### Config file in use / daemon lock
 
-signal-cli holds an exclusive lock on its data directory while the daemon is running. Stop NanoClaw before running any `signal-cli` commands directly, then restart afterward.
+signal-cli holds an exclusive lock on its data directory while the daemon is running. Stop Area51 before running any `signal-cli` commands directly, then restart afterward.
 
 ### Group replies going to DM instead of group
 

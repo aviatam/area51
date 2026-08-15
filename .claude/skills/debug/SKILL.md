@@ -3,7 +3,7 @@ name: debug
 description: Debug container agent issues. Use when things aren't working, container fails, authentication problems, or to understand how the container system works. Covers logs, session DBs, mounts, and common issues.
 ---
 
-# NanoClaw Container Debugging
+# Area51 Container Debugging
 
 This guide covers debugging the containerized agent execution system.
 
@@ -37,13 +37,13 @@ src/container-runner.ts                    container/agent-runner/src/
 
 | Log | Location | Content |
 |-----|----------|---------|
-| **Host errors** | `logs/nanoclaw.error.log` | Delivery failures, crash-loop backoff, warnings — check this first |
-| **Host app log** | `logs/nanoclaw.log` | Full routing chain: inbound routing, container spawn/exit, delivery |
+| **Host errors** | `logs/area51.error.log` | Delivery failures, crash-loop backoff, warnings — check this first |
+| **Host app log** | `logs/area51.log` | Full routing chain: inbound routing, container spawn/exit, delivery |
 | **Setup logs** | `logs/setup.log`, `logs/setup-steps/*.log` | Per-step install output (bootstrap, container, onecli, mounts, service) |
 | **Session inbound** | `data/v2-sessions/<group>/<session>/inbound.db` (`messages_in`) | Did the message reach the container? |
 | **Session outbound** | `data/v2-sessions/<group>/<session>/outbound.db` (`messages_out`) | Did the agent produce a reply? |
 
-Containers run with `--rm`, so the container's own filesystem is gone after it exits. The host streams container **stderr** into `logs/nanoclaw.log` at debug level, tagged with `container=<group folder>`; raise the log level (below) to see it. If the agent silently failed inside an exited container, there is no persistent in-container log — reconstruct from the session DBs and the host log.
+Containers run with `--rm`, so the container's own filesystem is gone after it exits. The host streams container **stderr** into `logs/area51.log` at debug level, tagged with `container=<group folder>`; raise the log level (below) to see it. If the agent silently failed inside an exited container, there is no persistent in-container log — reconstruct from the session DBs and the host log.
 
 ## Enabling Debug Logging
 
@@ -71,7 +71,7 @@ The two session DBs are where the message flow lives. Use the in-tree query wrap
 pnpm exec tsx scripts/q.ts data/v2.db "SELECT id, agent_group_id, messaging_group_id, status, container_status, last_active FROM sessions"
 
 # Or via the admin CLI
-ncl sessions list
+area51 sessions list
 
 # Did the message reach the container? (inbound.db, host writes / container reads)
 pnpm exec tsx scripts/q.ts data/v2-sessions/<group>/<session>/inbound.db \
@@ -87,58 +87,58 @@ pnpm exec tsx scripts/q.ts data/v2-sessions/<group>/<session>/outbound.db \
 ```
 
 Reading the flow:
-- `messages_in` has the message but no matching `messages_out` → the container never produced a reply (check `processing_ack`, then `logs/nanoclaw.log` for spawn/exit and container stderr).
+- `messages_in` has the message but no matching `messages_out` → the container never produced a reply (check `processing_ack`, then `logs/area51.log` for spawn/exit and container stderr).
 - `messages_out` has a reply but the user never received it → a delivery problem (see issue 1 below).
-- `messages_in` is empty → routing never reached this session (check the router log lines and the central wiring with `ncl wirings list`).
+- `messages_in` is empty → routing never reached this session (check the router log lines and the central wiring with `area51 wirings list`).
 
 ## Common Issues
 
 ### 1. "No adapter for channel type" / Messages silently lost (null platform_message_id)
 
-**Symptom:** The bot stops replying. `logs/nanoclaw.error.log` shows repeated:
+**Symptom:** The bot stops replying. `logs/area51.error.log` shows repeated:
 ```
 WARN No adapter for channel type channelType="telegram"
 WARN No adapter for channel type channelType="signal"
 ```
 The main log shows "Message delivered" entries with `platformMsgId=undefined` — meaning the delivery poll ran, found no adapter, and marked the message delivered without sending it.
 
-**Root cause: two NanoClaw service instances running simultaneously.**
+**Root cause: two Area51 service instances running simultaneously.**
 
 When a second service instance is active with a stale binary, it has no channel adapters registered. Its delivery poll races the working instance and wins — marking outbound messages delivered without ever sending them.
 
 **Diagnosis:**
 ```bash
 # Check for duplicate running instances
-ps aux | grep 'nanoclaw/dist/index.js' | grep -v grep
+ps aux | grep 'area51/dist/index.js' | grep -v grep
 
 # Check which services are active (Linux)
-systemctl --user list-units 'nanoclaw*' --all
+systemctl --user list-units 'area51*' --all
 
 # Confirm channel adapters registered by the current process
-grep "Channel adapter started" logs/nanoclaw.log | tail -10
+grep "Channel adapter started" logs/area51.log | tail -10
 ```
 
 **Fix:**
 1. Identify which service has the correct binary and EnvironmentFile (the one whose log shows the expected channels — e.g. `signal`, `telegram`, `cli` — all started).
 2. Stop and disable the stale duplicate service:
    ```bash
-   systemctl --user stop nanoclaw.service   # or whichever is the old one
-   systemctl --user disable nanoclaw.service
+   systemctl --user stop area51.service   # or whichever is the old one
+   systemctl --user disable area51.service
    ```
 3. If the remaining service unit is missing `EnvironmentFile`, add it:
    ```bash
    # Edit the service unit — add this line under [Service]:
-   # EnvironmentFile=/home/[user]/nanoclaw/.env
+   # EnvironmentFile=/home/[user]/area51/.env
    systemctl --user daemon-reload
-   systemctl --user restart nanoclaw-v2-<id>.service
+   systemctl --user restart area51-v2-<id>.service
    ```
-4. Verify only one instance runs: `ps aux | grep nanoclaw/dist/index.js | grep -v grep`
+4. Verify only one instance runs: `ps aux | grep area51/dist/index.js | grep -v grep`
 
 Messages marked delivered with a null `platform_message_id` are not automatically retried. Ask the user to resend.
 
 ### 2. Container exits immediately / agent produces no reply
 
-A spawned container that exits without writing to `outbound.db` shows up in `logs/nanoclaw.log` as a `Container exited` line with a non-zero `code`, often preceded by streamed `container=<folder>` stderr (at debug level).
+A spawned container that exits without writing to `outbound.db` shows up in `logs/area51.log` as a `Container exited` line with a non-zero `code`, often preceded by streamed `container=<folder>` stderr (at debug level).
 
 **Authentication errors:** secrets are injected per request by the OneCLI gateway — none are passed in env vars or chat context. A `401` from an API whose credential is in the vault usually means the agent is in `selective` secret mode and that secret was never assigned:
 ```bash
@@ -151,7 +151,7 @@ If the gateway itself is unreachable, the container runner refuses to spawn (`On
 
 ### 3. Mount Issues
 
-Session and group folders are bind-mounted into the container. To see the resolved mounts for a spawn, run with `LOG_LEVEL=debug` and read the spawn command in `logs/nanoclaw.log`, or grep the mount targets directly:
+Session and group folders are bind-mounted into the container. To see the resolved mounts for a spawn, run with `LOG_LEVEL=debug` and read the spawn command in `logs/area51.log`, or grep the mount targets directly:
 
 ```bash
 grep -n "containerPath" src/container-runner.ts
@@ -168,7 +168,7 @@ Expected mount targets inside the container:
 
 To inspect what a fresh container sees:
 ```bash
-docker run --rm --entrypoint /bin/bash nanoclaw-agent:latest -c 'whoami; ls -la /workspace/ /app/'
+docker run --rm --entrypoint /bin/bash area51-agent:latest -c 'whoami; ls -la /workspace/ /app/'
 ```
 All of `/workspace/` and `/app/` should be owned by `node`. Use `:ro` on a `-v` mount for read-only.
 
@@ -181,12 +181,12 @@ stat -f '%Sm' data/v2-sessions/<group>/<session>/.heartbeat   # macOS
 stat -c '%y'  data/v2-sessions/<group>/<session>/.heartbeat   # Linux
 ```
 
-## Container CLI (`ncl`) inside a session
+## Container CLI (`area51`) inside a session
 
-The agent reaches the central DB from inside the container via `ncl`, which uses the session DB transport (`container/agent-runner/src/cli/ncl.ts`). On the host, `ncl` connects over a Unix socket (`src/cli/socket-server.ts`). If `ncl` calls fail from inside a container, check the agent group's `cli_scope` in its container config:
+The agent reaches the central DB from inside the container via `area51`, which uses the session DB transport (`container/agent-runner/src/cli/area51.ts`). On the host, `area51` connects over a Unix socket (`src/cli/socket-server.ts`). If `area51` calls fail from inside a container, check the agent group's `cli_scope` in its container config:
 
 ```bash
-ncl groups config get --id <group-id>   # look at cli_scope: disabled | group | global
+area51 groups config get --id <group-id>   # look at cli_scope: disabled | group | global
 ```
 
 `disabled` rejects every `cli_request`; `group` scopes the agent to its own group's `groups`/`sessions`/`destinations`/`members`; `global` is unrestricted.
@@ -195,13 +195,13 @@ ncl groups config get --id <group-id>   # look at cli_scope: disabled | group | 
 
 ```bash
 # Restart all containers for an agent group
-ncl groups restart --id <group-id>
+area51 groups restart --id <group-id>
 
 # Restart and rebuild the image first (after package/Dockerfile changes)
-ncl groups restart --id <group-id> --rebuild
+area51 groups restart --id <group-id> --rebuild
 
 # Restart and wake immediately with a message
-ncl groups restart --id <group-id> --message "on_wake test"
+area51 groups restart --id <group-id> --message "on_wake test"
 ```
 
 Without `--message`, the container comes back on the next user message. From inside a container, `--id` is auto-filled and only the calling session restarts.
@@ -212,10 +212,10 @@ The container's entry point is `exec bun run /app/src/index.ts`; it talks only t
 
 ```bash
 # Interactive shell in the image
-docker run --rm -it --entrypoint /bin/bash nanoclaw-agent:latest
+docker run --rm -it --entrypoint /bin/bash area51-agent:latest
 
 # Check the image contents
-docker run --rm --entrypoint /bin/bash nanoclaw-agent:latest -c '
+docker run --rm --entrypoint /bin/bash area51-agent:latest -c '
   node --version
   bun --version
   ls /app/src/
@@ -262,7 +262,7 @@ Conversation continuity lives in the container-owned `session_state` table in `o
 
 ```bash
 # Inspect first
-ncl sessions get <session-id>
+area51 sessions get <session-id>
 
 # Remove a single session's folder (host re-provisions both DBs on next message)
 rm -rf data/v2-sessions/<group>/<session>/
@@ -271,13 +271,13 @@ rm -rf data/v2-sessions/<group>/<session>/
 ## Quick Diagnostic Script
 
 ```bash
-echo "=== Checking NanoClaw v2 Setup ==="
+echo "=== Checking Area51 v2 Setup ==="
 
 echo -e "\n1. Container runtime running?"
 docker info &>/dev/null && echo "OK" || echo "NOT RUNNING - start Docker Desktop (macOS) or sudo systemctl start docker (Linux)"
 
 echo -e "\n2. Agent image exists?"
-docker run --rm --entrypoint /bin/echo nanoclaw-agent:latest "OK" 2>/dev/null || echo "MISSING - run ./container/build.sh"
+docker run --rm --entrypoint /bin/echo area51-agent:latest "OK" 2>/dev/null || echo "MISSING - run ./container/build.sh"
 
 echo -e "\n3. OneCLI gateway reachable?"
 curl -fsS http://127.0.0.1:10254/ >/dev/null 2>&1 && echo "OK" || echo "CHECK - gateway not responding on 127.0.0.1:10254"
@@ -289,9 +289,9 @@ echo -e "\n5. Mount targets in container-runner?"
 grep -q "containerPath: '/workspace'" src/container-runner.ts && echo "OK" || echo "CHECK - session mount target changed"
 
 echo -e "\n6. Single host instance running?"
-N=$(ps aux | grep 'nanoclaw/dist/index.js' | grep -vc grep)
+N=$(ps aux | grep 'area51/dist/index.js' | grep -vc grep)
 [ "$N" -le 1 ] && echo "OK ($N)" || echo "DUPLICATE - $N instances; stop the stale one (see issue 1)"
 
 echo -e "\n7. Recent host errors?"
-tail -n 5 logs/nanoclaw.error.log 2>/dev/null || echo "No error log yet"
+tail -n 5 logs/area51.error.log 2>/dev/null || echo "No error log yet"
 ```

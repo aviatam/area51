@@ -1,11 +1,11 @@
 ---
 name: add-imessage
-description: Add iMessage to NanoClaw — one channel, two backends. Local (this Mac's chat.db via the Chat SDK bridge; macOS + Full Disk Access) or Hosted iMessage (via photon.codes — native spectrum-ts with a device-login wizard; any OS, no Mac relay). Triggers on "add imessage", "connect imessage", "add photon", "imessage via photon", "native imessage".
+description: Add iMessage to Area51 — one channel, two backends. Local (this Mac's chat.db via the Chat SDK bridge; macOS + Full Disk Access) or Hosted iMessage (via photon.codes — native spectrum-ts with a device-login wizard; any OS, no Mac relay). Triggers on "add imessage", "connect imessage", "add photon", "imessage via photon", "native imessage".
 ---
 
 # Add iMessage
 
-NanoClaw talks to iMessage through a single **`imessage`** channel with two
+Area51 talks to iMessage through a single **`imessage`** channel with two
 pluggable backends:
 
 - **Local (this Mac)** — the Chat SDK bridge over `chat-adapter-imessage`,
@@ -17,7 +17,7 @@ pluggable backends:
   device-login flow provisions everything for you.
 
 Both register the same `imessage` channel type; only one runs per install.
-NanoClaw doesn't ship channels in trunk — this skill copies the unified
+Area51 doesn't ship channels in trunk — this skill copies the unified
 `imessage` adapter in from the `channels` branch. Full reference:
 [docs/imessage.md](docs.md).
 
@@ -84,7 +84,7 @@ spectrum-ts@11.0.0
 ```
 
 > Pin exactly. `spectrum-ts` ships breaking majors (v11 is what the adapter
-> targets); don't `@latest`. NanoClaw's pnpm gate (`minimumReleaseAge`) requires
+> targets); don't `@latest`. Area51's pnpm gate (`minimumReleaseAge`) requires
 > a version ≥3 days old — both pins clear it. A fresher pin needs human sign-off
 > before a `minimumReleaseAgeExclude` entry (CLAUDE.md → Supply Chain Security).
 
@@ -199,7 +199,7 @@ bash setup/lib/restart.sh
 ```
 
 For the hosted backend, confirm the connection came up:
-`grep "Photon channel connected" logs/nanoclaw.log | tail -1`.
+`grep "Photon channel connected" logs/area51.log | tail -1`.
 
 ## Resolve your iMessage handle
 
@@ -301,8 +301,8 @@ conversation.
 `pnpm exec vitest run src/channels/imessage-registration.test.ts` — red means
 the barrel import or the package install drifted, so re-run the Apply steps.
 If green, confirm the backend connected (hosted:
-`grep "Photon channel connected" logs/nanoclaw.log`), restart the service
-(`bash setup/lib/restart.sh`), then check `logs/nanoclaw.error.log`.
+`grep "Photon channel connected" logs/area51.log`), restart the service
+(`bash setup/lib/restart.sh`), then check `logs/area51.error.log`.
 
 More in [docs/imessage.md](docs.md).
 

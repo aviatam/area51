@@ -1,5 +1,5 @@
 /**
- * Regression test for #2465 — approval-path `ncl destinations add/remove`
+ * Regression test for #2465 — approval-path `area51 destinations add/remove`
  * must hydrate every active session's `inbound.db` `destinations` table,
  * not just the central `agent_destinations` row.
  *
@@ -20,10 +20,10 @@ vi.mock('../../container-runner.js', () => ({
 
 vi.mock('../../config.js', async () => {
   const actual = await vi.importActual('../../config.js');
-  return { ...actual, DATA_DIR: '/tmp/nanoclaw-test-cli-destinations' };
+  return { ...actual, DATA_DIR: '/tmp/area51-test-cli-destinations' };
 });
 
-const TEST_DIR = '/tmp/nanoclaw-test-cli-destinations';
+const TEST_DIR = '/tmp/area51-test-cli-destinations';
 
 import { initTestDb, closeDb, runMigrations, createAgentGroup } from '../../db/index.js';
 import { createSession } from '../../db/sessions.js';

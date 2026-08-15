@@ -5,7 +5,7 @@ base — three to ten minutes, no account, no request to any service. **That sta
 stays fully supported.**
 
 Alternatively an install can **fetch a prebuilt, hardened image** instead. It is retagged to
-exactly the name the build would have written (`nanoclaw-agent-v2-<slug>:latest`), so nothing
+exactly the name the build would have written (`area51-agent-v2-<slug>:latest`), so nothing
 downstream can tell the two apart: the host spawns the same tag either way, and derived per-group
 builds still work offline.
 
@@ -19,8 +19,8 @@ the reason it exists: the software the agent *uses* is worth patching too. Chrom
 of millions of lines you did not write and do not track.
 
 Fetching ours needs no configuration — the image reference ships in `versions.json` and the
-account service is built in. Sign in and setup does the rest. It needs a free NanoClaw account;
-see [With a NanoClaw account](#with-a-nanoclaw-account) for what that involves and what it
+account service is built in. Sign in and setup does the rest. It needs a free Area51 account;
+see [With a Area51 account](#with-a-area51-account) for what that involves and what it
 records.
 
 It is roughly an 800 MB download, served from `us-east-1` with no CDN in front of it, so how long
@@ -31,8 +31,8 @@ for it — and `./container/build.sh build` is always there.
 
 The same path works against **any registry this machine can already `docker login` to** — a
 corporate Harbor, an internal mirror you populate yourself, a vendor registry you hold
-credentials for, even a `docker save`/`docker load` image. Set `NANOCLAW_HARDENED_IMAGE=true` and
-`NANOCLAW_AGENT_IMAGE_REF`; authentication is then whatever docker already holds, and no account
+credentials for, even a `docker save`/`docker load` image. Set `AREA51_HARDENED_IMAGE=true` and
+`AREA51_AGENT_IMAGE_REF`; authentication is then whatever docker already holds, and no account
 is involved.
 
 ## What it buys
@@ -52,7 +52,7 @@ your own checkout at every spawn, and the container starts with `--entrypoint ba
 the image's entrypoint. The code your agent runs is the code in your checkout — unsigned, and
 reviewed by nobody but you.
 
-Containment is runtime configuration you own. `NANOCLAW_EGRESS_LOCKDOWN=true`, the mount
+Containment is runtime configuration you own. `AREA51_EGRESS_LOCKDOWN=true`, the mount
 allowlist, and per-group resource limits all do more here than any image can.
 
 ## What changes
@@ -88,15 +88,15 @@ All optional, all read from `.env` or the environment.
 
 | Variable | What it does |
 |---|---|
-| `NANOCLAW_HARDENED_IMAGE` | `true` makes this install pull instead of build. The sign-in sets it for you. |
-| `NANOCLAW_AGENT_IMAGE_REF` | The image to pull, ideally `repo@sha256:…`. Overrides the `agent-image` pin in `versions.json`. |
-| `NANOCLAW_REGISTRY_API` | Base URL of the account service. Defaults to ours; set it only to point at a different one. |
-| `NANOCLAW_REGISTRY_ENROLL_CODE` | Redeem an enrolment code without a browser. For CI. |
-| `NANOCLAW_REGISTRY_TOKEN` | Adopt an existing account token directly. |
-| `NANOCLAW_ALLOW_UNLABELED_IMAGE` | Accept an image with no agent-runner lock label — needed for a `docker save`/`load` or third-party image. |
+| `AREA51_HARDENED_IMAGE` | `true` makes this install pull instead of build. The sign-in sets it for you. |
+| `AREA51_AGENT_IMAGE_REF` | The image to pull, ideally `repo@sha256:…`. Overrides the `agent-image` pin in `versions.json`. |
+| `AREA51_REGISTRY_API` | Base URL of the account service. Defaults to ours; set it only to point at a different one. |
+| `AREA51_REGISTRY_ENROLL_CODE` | Redeem an enrolment code without a browser. For CI. |
+| `AREA51_REGISTRY_TOKEN` | Adopt an existing account token directly. |
+| `AREA51_ALLOW_UNLABELED_IMAGE` | Accept an image with no agent-runner lock label — needed for a `docker save`/`load` or third-party image. |
 
 If you point this at your own registry you need none of these beyond
-`NANOCLAW_HARDENED_IMAGE` and a reference: authentication is whatever
+`AREA51_HARDENED_IMAGE` and a reference: authentication is whatever
 `docker login` already holds, and there is no account involved.
 
 ## Architecture
@@ -143,7 +143,7 @@ pnpm exec tsx setup/index.ts --step registry
 Echo rebuilds Chromium, Node, Bun, pnpm, git, and the base packages from scratch with only the
 essentials, then patches what remains. This improves patch currency and provenance for the
 sandbox components; it does not change the agent code mounted from your checkout or replace
-NanoClaw's runtime isolation controls.
+Area51's runtime isolation controls.
 
 ### Fix
 
@@ -182,10 +182,10 @@ A group that previously ran `install_packages` is pinned to its own derived imag
 spawning it. The pull path clears those pins, so such a group loses its extra packages and
 returns to the shared image.
 
-## With a NanoClaw account
+## With a Area51 account
 
 The hosted registry is gated, so fetching *our* image needs a free account. This is the only
-part of NanoClaw that involves an account or reports anything identifiable.
+part of Area51 that involves an account or reports anything identifiable.
 
 ```bash
 bash setup/registry-login.sh          # opens your browser
@@ -208,7 +208,7 @@ files, or API keys. Nothing calls home once the image is local; the host runs a 
 no notion of a registry. We also cannot tell whether you ever *run* the image, only that you
 acquired one.
 
-The credential lives at `~/.config/nanoclaw/`, mode `0600`, and can do exactly one thing: ask for
+The credential lives at `~/.config/area51/`, mode `0600`, and can do exactly one thing: ask for
 a short-lived, pull-only credential for one repository. `--logout` revokes it server-side and
 removes the docker credential helper.
 
@@ -224,8 +224,8 @@ account-takeover bugs happen — and there is no way to merge them today. Pick o
 | Setup never offers the pull option | The option needs a Claude install and an `agent-image` pin in `versions.json`. Existing installs can follow [the migration above](#existing-installs-switch-to-the-hardened-image). |
 | Pull fails: lockfile mismatch | The image was built against a different `container/agent-runner/bun.lock`. Refresh the pin or build locally. |
 | Pull fails: architecture mismatch | The reference names one architecture and it isn't this daemon's. Use a multi-arch index, or the reference for this architecture. |
-| "No agent-image reference for linux/…" | The pin is per-platform and has no entry for this machine. Build locally, or set `NANOCLAW_AGENT_IMAGE_REF`. |
+| "No agent-image reference for linux/…" | The pin is per-platform and has no entry for this machine. Build locally, or set `AREA51_AGENT_IMAGE_REF`. |
 | Pull fails: auth | `--status` shows whether the credential helper is wired; `--force` re-runs sign-in. |
 | Signed in, but `--status` says "build here" | Re-run sign-in with `--force`. |
 | Sign-in code expired | It lives 5 minutes. Run it again. |
-| "No NanoClaw registry at &lt;url&gt;" | `NANOCLAW_REGISTRY_API` is unset or wrong. The default host resolves but is not a registry, so this is a configuration error, not an outage. |
+| "No Area51 registry at &lt;url&gt;" | `AREA51_REGISTRY_API` is unset or wrong. The default host resolves but is not a registry, so this is a configuration error, not an outage. |

@@ -1,6 +1,6 @@
 // Message-activity reader for clidash.
 //
-// ncl has no `messages` resource — message data lives in the per-session SQLite
+// area51 has no `messages` resource — message data lives in the per-session SQLite
 // DBs (`data/v2-sessions/<group>/<session>/{inbound,outbound}.db`). We read them
 // read-only with Node's built-in `node:sqlite` (no new dependency) and aggregate
 // per-session in/out totals + a daily time-series for charting.
@@ -14,7 +14,7 @@ import { DatabaseSync } from 'node:sqlite';
 // so date-bucketing and max("last") work regardless of which a row used.
 function normTs(ts) {
   if (typeof ts !== 'string' || ts.length < 10) return null;
-  if (ts.includes('T')) return ts; // already ISO
+  if (ts.iarea51udes('T')) return ts; // already ISO
   return `${ts.replace(' ', 'T')}Z`;
 }
 

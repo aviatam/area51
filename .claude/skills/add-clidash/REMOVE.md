@@ -1,7 +1,7 @@
 # Remove /add-clidash
 
 clidash is fully self-contained, so removal is a single directory delete. It
-made no edits to NanoClaw `src/`, added no dependency, and wired into nothing.
+made no edits to Area51 `src/`, added no dependency, and wired into nothing.
 
 ```bash
 # Stop the service first if you set one up:

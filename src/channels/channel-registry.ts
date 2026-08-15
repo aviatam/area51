@@ -179,12 +179,12 @@ export function getChannelDefaults(key: string, channelType?: string): ChannelDe
 
 /**
  * True iff getChannelDefaults would resolve from an actual declaration (tiers
- * 1-4) rather than fallbackChannelDefaults. Manual creation surfaces (`ncl`)
+ * 1-4) rather than fallbackChannelDefaults. Manual creation surfaces (`area51`)
  * gate declaration-derived defaults on this: for stale (undeclared) adapters
  * they keep the legacy static schema defaults — engage_mode 'mention',
  * unknown_sender_policy 'strict' — so a trunk update alone changes nothing.
  * The faithful fallback exists for the ROUTER's auto-create/runtime paths,
- * whose historical behavior it reproduces; it is not what `ncl` did.
+ * whose historical behavior it reproduces; it is not what `area51` did.
  */
 export function hasDeclaredChannelDefaults(key: string, channelType?: string): boolean {
   return lookupDeclaredDefaults(key, channelType).decl !== undefined;

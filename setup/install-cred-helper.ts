@@ -1,9 +1,9 @@
 /**
- * Installs `docker-credential-nanoclaw` and points docker at it for exactly one
+ * Installs `docker-credential-area51` and points docker at it for exactly one
  * registry.
  *
  * The helper is a standalone script, not a repo module: docker execs it from an
- * arbitrary cwd, and uninstalling NanoClaw deletes this checkout while the
+ * arbitrary cwd, and uninstalling Area51 deletes this checkout while the
  * helper stays on PATH. So installing means copying the source out of the tree
  * and stamping an absolute shebang onto the copy — `#!/usr/bin/env node` would
  * resolve through whatever nvm/asdf shim happens to be in the spawning
@@ -25,7 +25,7 @@ import { readAgentImagePin, registryAuthPath } from './lib/registry-state.js';
 import { emitStatus } from './status.js';
 
 /** Docker resolves `credHelpers[host] = "<name>"` to `docker-credential-<name>` on PATH. */
-export const CRED_HELPER_NAME = 'nanoclaw';
+export const CRED_HELPER_NAME = 'area51';
 export const HELPER_BINARY_NAME = `docker-credential-${CRED_HELPER_NAME}`;
 
 /**
@@ -33,7 +33,7 @@ export const HELPER_BINARY_NAME = `docker-credential-${CRED_HELPER_NAME}`;
  * verifies the installed binary prints it, so drift fails at install time
  * rather than silently making uninstall refuse to clean up.
  */
-const HELPER_MARKER = 'nanoclaw-docker-credential-helper';
+const HELPER_MARKER = 'area51-docker-credential-helper';
 
 /** Preferred first; `~/.local/bin` is the unprivileged fallback, as in setup/onecli.ts. */
 const BIN_DIRS = ['/usr/local/bin', path.join(os.homedir(), '.local', 'bin')];
@@ -100,7 +100,7 @@ export function resolveRegistryHost(explicit?: string): string {
     explicit,
     readRecordedRegistry(),
     registryFromRef(readAgentImagePin()),
-    process.env.NANOCLAW_REGISTRY_HOST,
+    process.env.AREA51_REGISTRY_HOST,
   ];
   const host = candidates.find((c) => c && c.trim())?.trim();
   if (!host) {

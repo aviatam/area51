@@ -116,7 +116,7 @@ export interface EngageValues {
 
 /**
  * Cross-column validation against the channel's declaration. Shared by every
- * wiring-creation surface (`ncl wirings` create/update, the setup wizard's
+ * wiring-creation surface (`area51 wirings` create/update, the setup wizard's
  * register step) so a partial update or an explicit flag can't produce a
  * combination create would reject. May mutate `w.engage_mode`: the
  * mention-sticky→mention coercion when the effective thread policy is off —

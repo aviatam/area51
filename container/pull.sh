@@ -1,18 +1,18 @@
 #!/bin/bash
-# Acquire the NanoClaw agent container image from a registry instead of building
+# Acquire the Area51 agent container image from a registry instead of building
 # it here, then retag it to this install's local slug tag.
 #
 # The retag is the whole mechanism: nothing in src/ learns a registry exists. The
-# host spawns `nanoclaw-agent-v2-<slug>:latest` exactly as it does after
+# host spawns `area51-agent-v2-<slug>:latest` exactly as it does after
 # ./container/build.sh, and derived per-group images keep building with no network.
 #
 # Settings — caller's env wins, then ../.env, matching build.sh:
 #
-#   NANOCLAW_AGENT_IMAGE_REF        What to acquire. Pin by digest so the bytes
+#   AREA51_AGENT_IMAGE_REF        What to acquire. Pin by digest so the bytes
 #                                   landing under the local tag are the ones you
 #                                   chose. Falls back to the `agent-image` pin in
 #                                   versions.json; refuses to guess without one.
-#   NANOCLAW_ALLOW_UNLABELED_IMAGE  Accept an image with no agent-runner lock
+#   AREA51_ALLOW_UNLABELED_IMAGE  Accept an image with no agent-runner lock
 #                                   label. Off by default — see the lock check.
 #
 # setup/lib/registry-state.ts mirrors that precedence; keep the two in lockstep.
@@ -126,9 +126,9 @@ lock_sha256() {
 HOST_ARCH="$(host_arch)"
 HOST_PLATFORM="linux/${HOST_ARCH}"
 
-REF="${NANOCLAW_AGENT_IMAGE_REF:-}"
+REF="${AREA51_AGENT_IMAGE_REF:-}"
 if [ -z "$REF" ]; then
-    REF="$(read_env_setting NANOCLAW_AGENT_IMAGE_REF)"
+    REF="$(read_env_setting AREA51_AGENT_IMAGE_REF)"
 fi
 if [ -z "$REF" ]; then
     # A single reference covers a multi-arch index digest — docker resolves that
@@ -145,27 +145,27 @@ if [ -z "$REF" ]; then
             echo "" >&2
             echo "The pin ships per-architecture references and none is for this" >&2
             echo "daemon. Build locally with \`./container/build.sh build\`, or set" >&2
-            echo "NANOCLAW_AGENT_IMAGE_REF to a reference for this architecture." >&2
+            echo "AREA51_AGENT_IMAGE_REF to a reference for this architecture." >&2
             exit 1
         fi
     fi
 fi
-ALLOW_UNLABELED="${NANOCLAW_ALLOW_UNLABELED_IMAGE:-}"
+ALLOW_UNLABELED="${AREA51_ALLOW_UNLABELED_IMAGE:-}"
 if [ -z "$ALLOW_UNLABELED" ]; then
-    ALLOW_UNLABELED="$(read_env_setting NANOCLAW_ALLOW_UNLABELED_IMAGE)"
+    ALLOW_UNLABELED="$(read_env_setting AREA51_ALLOW_UNLABELED_IMAGE)"
 fi
 
 if [ -z "$REF" ]; then
     echo "No image reference configured — nothing to acquire." >&2
     echo "" >&2
-    echo "Point NANOCLAW_AGENT_IMAGE_REF at the image, in the environment or in" >&2
+    echo "Point AREA51_AGENT_IMAGE_REF at the image, in the environment or in" >&2
     echo ".env, and make sure this machine can already reach it (\`docker login" >&2
     echo "<registry>\` if it needs credentials):" >&2
     echo "" >&2
-    echo "  NANOCLAW_AGENT_IMAGE_REF=registry.example.com/nanoclaw/agent@sha256:<digest>" >&2
+    echo "  AREA51_AGENT_IMAGE_REF=registry.example.com/area51/agent@sha256:<digest>" >&2
     echo "" >&2
     echo "A committed \"agent-image\" pin in versions.json serves the same purpose." >&2
-    echo "Or drop NANOCLAW_HARDENED_IMAGE from .env to go back to local builds." >&2
+    echo "Or drop AREA51_HARDENED_IMAGE from .env to go back to local builds." >&2
     exit 2
 fi
 
@@ -182,13 +182,13 @@ esac
 # locally-present, registry-qualified ref with the registry unreachable fails
 # outright, while `docker image inspect` on it succeeds. Without this, registry
 # reachability becomes a hard dependency of every ./container/build.sh caller:
-# ~15 /add-* skills, /update-nanoclaw and migrate-v2.sh.
+# ~15 /add-* skills, /update-area51 and migrate-v2.sh.
 if ${CONTAINER_RUNTIME} image inspect "$REF" >/dev/null 2>&1; then
     echo "Already present locally: ${REF}"
 else
     echo "Pulling ${REF}..."
-    # The pull nonce. `docker-credential-nanoclaw` refuses to mint unless
-    # NANOCLAW_PULL_NONCE is set AND matches a 0600 file it can see, written
+    # The pull nonce. `docker-credential-area51` refuses to mint unless
+    # AREA51_PULL_NONCE is set AND matches a 0600 file it can see, written
     # less than five minutes ago — so the credential is only obtainable for the
     # duration of a pull this script is actually running. It is not a boundary
     # against a same-uid attacker (that process can read both the variable and
@@ -199,17 +199,17 @@ else
     #
     # Installs pulling from a registry they already `docker login`ed to never
     # reach the helper, and are unaffected.
-    NONCE_DIR="${HOME}/.config/nanoclaw"
+    NONCE_DIR="${HOME}/.config/area51"
     NONCE_FILE="${NONCE_DIR}/.pull-nonce"
     if mkdir -p "$NONCE_DIR" 2>/dev/null; then
         chmod 700 "$NONCE_DIR" 2>/dev/null || true
-        NANOCLAW_PULL_NONCE="$(head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n')"
+        AREA51_PULL_NONCE="$(head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n')"
         # umask so the file is never briefly world-readable between create and chmod.
-        if (umask 177; printf '%s' "$NANOCLAW_PULL_NONCE" > "$NONCE_FILE") 2>/dev/null; then
-            export NANOCLAW_PULL_NONCE
+        if (umask 177; printf '%s' "$AREA51_PULL_NONCE" > "$NONCE_FILE") 2>/dev/null; then
+            export AREA51_PULL_NONCE
             # Client-asserted, recorded by the broker as a hint only.
-            NANOCLAW_PULL_REF="$REF"
-            export NANOCLAW_PULL_REF
+            AREA51_PULL_REF="$REF"
+            export AREA51_PULL_REF
             trap 'rm -f "$NONCE_FILE"' EXIT
         else
             echo "Warning: couldn't write ${NONCE_FILE}; a gated pull will be refused by the credential helper." >&2
@@ -249,7 +249,7 @@ fi
 # with a checkout whose lockfile moved and the agent dies on a missing module
 # inside a `--rm` container whose logs are discarded. Hard failure here, where
 # the operator is watching, beats silence at 3am.
-IMAGE_LOCK="$(${CONTAINER_RUNTIME} image inspect --format '{{index .Config.Labels "dev.nanoclaw.agent-runner-lock-sha256"}}' "$REF")"
+IMAGE_LOCK="$(${CONTAINER_RUNTIME} image inspect --format '{{index .Config.Labels "dev.area51.agent-runner-lock-sha256"}}' "$REF")"
 if [ "$IMAGE_LOCK" = "<no value>" ]; then
     IMAGE_LOCK=""
 fi
@@ -259,10 +259,10 @@ if [ -z "$LOCAL_LOCK" ]; then
     echo "Warning: couldn't hash container/agent-runner/bun.lock — skipping the lock check."
 elif [ -z "$IMAGE_LOCK" ]; then
     if [ "$ALLOW_UNLABELED" = "true" ]; then
-        echo "Warning: ${REF} carries no agent-runner lock label; accepted via NANOCLAW_ALLOW_UNLABELED_IMAGE."
+        echo "Warning: ${REF} carries no agent-runner lock label; accepted via AREA51_ALLOW_UNLABELED_IMAGE."
     else
         echo "" >&2
-        echo "${REF} carries no dev.nanoclaw.agent-runner-lock-sha256 label." >&2
+        echo "${REF} carries no dev.area51.agent-runner-lock-sha256 label." >&2
         echo "" >&2
         echo "Without it there is no way to tell whether the image's baked" >&2
         echo "/app/node_modules matches this checkout's agent-runner lockfile, and a" >&2
@@ -270,7 +270,7 @@ elif [ -z "$IMAGE_LOCK" ]; then
         echo "are discarded." >&2
         echo "" >&2
         echo "Either use an image built from this Dockerfile (which stamps the label)," >&2
-        echo "or accept the risk deliberately with NANOCLAW_ALLOW_UNLABELED_IMAGE=true." >&2
+        echo "or accept the risk deliberately with AREA51_ALLOW_UNLABELED_IMAGE=true." >&2
         exit 1
     fi
 elif [ "$IMAGE_LOCK" != "$LOCAL_LOCK" ]; then

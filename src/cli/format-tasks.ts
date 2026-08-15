@@ -1,5 +1,5 @@
 /**
- * Compact aligned-table renderer for `ncl tasks list` (human mode only).
+ * Compact aligned-table renderer for `area51 tasks list` (human mode only).
  *
  * A task series is a recurring job; each fire is a run. This surfaces the run history
  * the raw row hides — run count, last/next fire, schedule — as an aligned table.
@@ -64,7 +64,7 @@ function clip(s: string | null | undefined, n: number): string {
 export function formatTasksTable(rows: TaskListRow[], now: number = Date.now()): string {
   if (!rows.length) return 'No tasks.';
   const body = rows.map((r) => [
-    r.series_id, // full id, copy-pasteable into `ncl tasks get --id <…>`
+    r.series_id, // full id, copy-pasteable into `area51 tasks get --id <…>`
     r.schedule || 'once',
     String(r.runs ?? 0),
     String(r.failed_runs ?? 0),

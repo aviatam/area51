@@ -13,7 +13,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('./config.js', async () => {
   const actual = await vi.importActual<typeof import('./config.js')>('./config.js');
-  return { ...actual, DATA_DIR: '/tmp/nanoclaw-test-write-outbound' };
+  return { ...actual, DATA_DIR: '/tmp/area51-test-write-outbound' };
 });
 
 import {
@@ -28,7 +28,7 @@ import { initTestDb, closeDb, runMigrations, createAgentGroup } from './db/index
 import { createSession } from './db/sessions.js';
 import type { Session } from './types.js';
 
-const TEST_DIR = '/tmp/nanoclaw-test-write-outbound';
+const TEST_DIR = '/tmp/area51-test-write-outbound';
 const AG = 'ag-test';
 const SESS = 'sess-test';
 

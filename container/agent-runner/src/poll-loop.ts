@@ -739,7 +739,7 @@ function escapePromptXml(value: string): string {
 
 /**
  * Task runs: the final text is the automatic run summary. Explicit
- * `ncl tasks append-log` calls are additive mid-run notes. Written as a
+ * `area51 tasks append-log` calls are additive mid-run notes. Written as a
  * `task_log` outbound row; the host appends it to the series' tasks/<id>.md
  * with its usual timestamp stamp. Never delivered to anyone.
  */

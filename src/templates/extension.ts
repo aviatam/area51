@@ -1,12 +1,12 @@
 /**
- * The NanoClaw side-channel of a plugin — everything that is not portable
+ * The Area51 side-channel of a plugin — everything that is not portable
  * Agent Plugins surface lives behind this one module boundary:
  *
- *   - the `ai.nanoco.nanoclaw/` extension directory (persona, context extras,
+ *   - the `ai.nanoco.area51/` extension directory (persona, context extras,
  *     scheduled tasks), the spec's §8.2 mechanism for client-specific files
- *   - the `extensions["ai.nanoco.nanoclaw"]` manifest key (agentName)
+ *   - the `extensions["ai.nanoco.area51"]` manifest key (agentName)
  *
- * Everything here is optional: a plain conformant plugin with no NanoClaw
+ * Everything here is optional: a plain conformant plugin with no Area51
  * extension stamps fine (skills + MCP, folder-derived name, no persona, no
  * tasks). If the spec ever absorbs one of these fields, promoting it is a
  * code move out of this file, not a rewrite.
@@ -16,7 +16,7 @@ import path from 'path';
 
 import { readTasks, type TemplateTask } from './tasks.js';
 
-export const NANOCLAW_EXTENSION_NS = 'ai.nanoco.nanoclaw';
+export const AREA51_EXTENSION_NS = 'ai.nanoco.area51';
 
 export interface NanoclawExtension {
   /** Display name for the stamped agent group; folder-leaf fallback applies when absent. */
@@ -40,34 +40,34 @@ export function readNanoclawExtension(
   const report: string[] = [];
 
   let agentName: string | undefined;
-  const ours = manifestExtensions[NANOCLAW_EXTENSION_NS];
+  const ours = manifestExtensions[AREA51_EXTENSION_NS];
   if (ours !== undefined) {
     if (!isPlainObject(ours)) {
-      report.push(`plugin.json: extensions["${NANOCLAW_EXTENSION_NS}"] is not an object; ignored`);
+      report.push(`plugin.json: extensions["${AREA51_EXTENSION_NS}"] is not an object; ignored`);
     } else {
       const value = ours.agentName;
       if (value !== undefined) {
         if (typeof value === 'string' && value.trim()) agentName = value.trim();
         else
           report.push(
-            `plugin.json: extensions["${NANOCLAW_EXTENSION_NS}"].agentName must be a nonempty string; ignored`,
+            `plugin.json: extensions["${AREA51_EXTENSION_NS}"].agentName must be a nonempty string; ignored`,
           );
       }
       for (const key of Object.keys(ours)) {
         if (key !== 'agentName') {
-          report.push(`plugin.json: extensions["${NANOCLAW_EXTENSION_NS}"].${key} is not recognized; ignored`);
+          report.push(`plugin.json: extensions["${AREA51_EXTENSION_NS}"].${key} is not recognized; ignored`);
         }
       }
     }
   }
 
-  const extDir = path.join(pluginDir, NANOCLAW_EXTENSION_NS);
+  const extDir = path.join(pluginDir, AREA51_EXTENSION_NS);
   const contextDir = path.join(extDir, 'context');
   const instructionsFile = path.join(contextDir, 'instructions.md');
   let instructions: string | undefined;
   if (fs.existsSync(instructionsFile)) {
     if (!fs.lstatSync(instructionsFile).isFile()) {
-      throw new Error(`${NANOCLAW_EXTENSION_NS}/context/instructions.md must be a regular file`);
+      throw new Error(`${AREA51_EXTENSION_NS}/context/instructions.md must be a regular file`);
     }
     instructions = fs.readFileSync(instructionsFile, 'utf-8').trimEnd();
   }
@@ -76,7 +76,7 @@ export function readNanoclawExtension(
     ...(agentName === undefined ? {} : { agentName }),
     ...(instructions === undefined ? {} : { instructions }),
     contextExtras: readContextExtras(contextDir),
-    tasks: readTasks(path.join(extDir, 'tasks'), `${NANOCLAW_EXTENSION_NS}/tasks`),
+    tasks: readTasks(path.join(extDir, 'tasks'), `${AREA51_EXTENSION_NS}/tasks`),
     report,
   };
 }

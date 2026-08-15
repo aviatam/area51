@@ -4,7 +4,7 @@
  *
  * The decision is today's behavior verbatim: from the container
  * path, self-modification is held unconditionally for the agent group's
- * admin chain. (The equivalent host-side mutations — `ncl groups config
+ * admin chain. (The equivalent host-side mutations — `area51 groups config
  * add-package` etc. — are separate catalog actions derived from the command
  * registry.)
  */

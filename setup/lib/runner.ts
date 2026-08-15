@@ -2,7 +2,7 @@
  * Step runner + abort helpers for setup:auto.
  *
  * Responsibilities:
- *   - Stream-parse setup-step status blocks (`=== NANOCLAW SETUP: … ===`)
+ *   - Stream-parse setup-step status blocks (`=== AREA51 SETUP: … ===`)
  *   - Spawn children with output tee'd to a per-step raw log (level 3)
  *   - Wrap each run in a clack spinner with live elapsed time (level 1)
  *   - Append a structured entry to the progression log (level 2) via
@@ -50,7 +50,7 @@ export type SpinnerLabels = {
 };
 
 /**
- * Streaming parser for `=== NANOCLAW SETUP: TYPE ===` blocks. Emits each
+ * Streaming parser for `=== AREA51 SETUP: TYPE ===` blocks. Emits each
  * block as it closes so the UI can react mid-stream (e.g. render a pairing
  * code card as soon as pair-telegram emits it, rather than after the step
  * has finished).
@@ -75,7 +75,7 @@ export class StatusStream {
   }
 
   private processLine(line: string): void {
-    const start = line.match(/^=== NANOCLAW SETUP: (\S+) ===/);
+    const start = line.match(/^=== AREA51 SETUP: (\S+) ===/);
     if (start) {
       this.current = { type: start[1], fields: {} };
       return;
@@ -107,7 +107,7 @@ export class StatusStream {
  * status-block control lines) so callers can render a rolling tail. Status
  * block lines are still parsed by the `StatusStream` — they're just
  * excluded from the line feed so they don't fill the user-facing window
- * with `=== NANOCLAW SETUP: …` noise.
+ * with `=== AREA51 SETUP: …` noise.
  */
 export function spawnStep(
   stepName: string,
@@ -136,7 +136,7 @@ export function spawnStep(
       while ((idx = lineBuf.indexOf('\n')) !== -1) {
         const line = lineBuf.slice(0, idx).replace(/\r/g, '');
         lineBuf = lineBuf.slice(idx + 1);
-        if (line.startsWith('=== NANOCLAW SETUP:')) continue;
+        if (line.startsWith('=== AREA51 SETUP:')) continue;
         if (line.startsWith('=== END ===')) continue;
         if (line.trim()) onLine(line);
       }
@@ -357,7 +357,7 @@ async function runUnderSpinner<
 
 export function dumpTranscriptOnFailure(transcript: string): void {
   const lines = transcript.split('\n').filter((l) => {
-    if (l.startsWith('=== NANOCLAW SETUP:')) return false;
+    if (l.startsWith('=== AREA51 SETUP:')) return false;
     if (l.startsWith('=== END ===')) return false;
     return true;
   });
@@ -395,7 +395,7 @@ export async function fail(
 
   // If the user just ran a Claude-suggested fix, offer to resume the flow
   // at the step that failed instead of aborting. We re-exec via spawnSync
-  // and pass NANOCLAW_SKIP with every step that already completed so the
+  // and pass AREA51_SKIP with every step that already completed so the
   // child skips them and picks up where we left off.
   if (ranFix) {
     const retry = ensureAnswer(
@@ -405,7 +405,7 @@ export async function fail(
       }),
     );
     if (retry) {
-      const existingSkip = (process.env.NANOCLAW_SKIP ?? '')
+      const existingSkip = (process.env.AREA51_SKIP ?? '')
         .split(',')
         .map((s) => s.trim())
         .filter(Boolean);
@@ -415,7 +415,7 @@ export async function fail(
       p.log.step(brandBody(`Retrying from ${stepName}…`));
       const result = spawnSync('pnpm', ['--silent', 'run', 'setup:auto'], {
         stdio: 'inherit',
-        env: { ...process.env, NANOCLAW_SKIP: skipList },
+        env: { ...process.env, AREA51_SKIP: skipList },
       });
       process.exit(result.status ?? 0);
     }

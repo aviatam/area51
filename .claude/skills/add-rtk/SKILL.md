@@ -15,7 +15,7 @@ Install [rtk](https://github.com/rtk-ai/rtk) — a CLI proxy delivering 60–90%
 
 ## Integration tests
 
-This skill has **no in-tree integration test** by design. Its only functional reach-ins are runtime operator actions — the host-only `ncl groups config add-mount` (Step 3) and the `settings.json` `PreToolUse` hook write (Step 4) — neither of which leaves a line in the source tree whose deletion a test could catch. There are no package dependencies or Dockerfile edits to guard either. Conformance is idempotent apply + `REMOVE.md`; the mount and hook are verified at runtime (see Verify).
+This skill has **no in-tree integration test** by design. Its only functional reach-ins are runtime operator actions — the host-only `area51 groups config add-mount` (Step 3) and the `settings.json` `PreToolUse` hook write (Step 4) — neither of which leaves a line in the source tree whose deletion a test could catch. There are no package dependencies or Dockerfile edits to guard either. Conformance is idempotent apply + `REMOVE.md`; the mount and hook are verified at runtime (see Verify).
 
 ## Step 1 — Install rtk on the host
 
@@ -40,7 +40,7 @@ chmod +x ~/.local/bin/rtk   # if needed
 ## Step 2 — Identify the target agent group
 
 ```bash
-ncl groups list
+area51 groups list
 ```
 
 Note the group ID (e.g. `ag-1776342942165-ptgddd`). Repeat Steps 3–5 for each group.
@@ -50,7 +50,7 @@ Note the group ID (e.g. `ag-1776342942165-ptgddd`). Repeat Steps 3–5 for each 
 Mount the host rtk binary read-only into the container with the host-only `add-mount` verb. It is idempotent — re-running skips the entry if it is already present:
 
 ```bash
-ncl groups config add-mount --id <group-id> \
+area51 groups config add-mount --id <group-id> \
   --host ~/.local/bin/rtk \
   --container /usr/local/bin/rtk \
   --ro
@@ -58,12 +58,12 @@ ncl groups config add-mount --id <group-id> \
 
 This verb is operator-only and runs host-side (via `/setup`, `/customize`, or `/manage-mounts`); it is rejected from inside a container.
 
-The host root (`~/.local/bin`) must also be in the external mount allowlist at `~/.config/nanoclaw/mount-allowlist.json` for the mount to take effect at spawn. Add it there if it isn't already.
+The host root (`~/.local/bin`) must also be in the external mount allowlist at `~/.config/area51/mount-allowlist.json` for the mount to take effect at spawn. Add it there if it isn't already.
 
 Verify:
 
 ```bash
-ncl groups config get --id <group-id>
+area51 groups config get --id <group-id>
 # Look for the /usr/local/bin/rtk mount
 ```
 
@@ -91,7 +91,7 @@ jq '.hooks.PreToolUse = ((.hooks.PreToolUse // [])
 ## Step 5 — Restart the container
 
 ```bash
-ncl groups restart --id <group-id>
+area51 groups restart --id <group-id>
 ```
 
 ## Verify
@@ -115,9 +115,9 @@ Then ask the agent to run `git status` or any other supported command. rtk inter
 Mount wasn't applied or container wasn't restarted:
 
 ```bash
-ncl groups config get --id <group-id>
+area51 groups config get --id <group-id>
 # Look for the /usr/local/bin/rtk mount
-ncl groups restart --id <group-id>
+area51 groups restart --id <group-id>
 ```
 
 ### Hook not firing

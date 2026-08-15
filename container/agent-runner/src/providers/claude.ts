@@ -65,20 +65,20 @@ export function classifyRateLimitEvent(
   };
 }
 
-// Deferred SDK builtins that either sidestep nanoclaw's own scheduling or
+// Deferred SDK builtins that either sidestep area51's own scheduling or
 // don't fit our async message-passing model (they're designed for Claude
 // Code's interactive UI and would hang here).
 //
 // - CronCreate / CronDelete / CronList / ScheduleWakeup: we have durable
-//   scheduling via `ncl tasks`.
+//   scheduling via `area51 tasks`.
 // - AskUserQuestion: SDK returns a placeholder instead of blocking on a
-//   real answer — we have mcp__nanoclaw__ask_user_question that persists
+//   real answer — we have mcp__area51__ask_user_question that persists
 //   the question and blocks on the real reply.
 // - SendMessage: addresses Claude Code's own in-session subagents, which are
-//   unrelated to NanoClaw agent groups — but the name reads as the obvious
+//   unrelated to Area51 agent groups — but the name reads as the obvious
 //   way to message another agent, so an agent that just called
-//   mcp__nanoclaw__create_agent reaches for it and gets "No agent named 'x'
-//   is currently addressable". mcp__nanoclaw__send_message is the real
+//   mcp__area51__create_agent reaches for it and gets "No agent named 'x'
+//   is currently addressable". mcp__area51__send_message is the real
 //   agent-to-agent path (it resolves the destination map in inbound.db).
 // - EnterPlanMode / ExitPlanMode / EnterWorktree / ExitWorktree: Claude
 //   Code UI affordances; in a headless container they'd appear stuck.
@@ -101,7 +101,7 @@ export const SDK_DISALLOWED_TOOLS = [
   'ReportFindings',
 ];
 
-// Tool allowlist for NanoClaw agent containers. MCP-tool entries are derived
+// Tool allowlist for Area51 agent containers. MCP-tool entries are derived
 // at the call site from the registered `mcpServers` map so that any server
 // added via `add_mcp_server` (or wired in container.json directly) is
 // reachable to the agent — without this, the SDK's allowedTools filter
@@ -240,7 +240,7 @@ const preToolUseHook: HookCallback = async (input) => {
   if (SDK_DISALLOWED_TOOLS.includes(toolName)) {
     return {
       decision: 'block',
-      stopReason: `Tool '${toolName}' is not available in this environment — use the nanoclaw equivalent.`,
+      stopReason: `Tool '${toolName}' is not available in this environment — use the area51 equivalent.`,
     } as unknown as ReturnType<HookCallback>;
   }
   // Bash exposes its timeout via the tool_input.timeout field (ms). Any other
@@ -307,7 +307,7 @@ function archiveTranscriptFile(
           .slice(0, 50)
       : `conversation-${new Date().getHours().toString().padStart(2, '0')}${new Date().getMinutes().toString().padStart(2, '0')}`;
 
-    const conversationsDir = process.env.NANOCLAW_CONVERSATIONS_DIR || '/workspace/agent/conversations';
+    const conversationsDir = process.env.AREA51_CONVERSATIONS_DIR || '/workspace/agent/conversations';
     fs.mkdirSync(conversationsDir, { recursive: true });
     // Local calendar date — the fallback `name` above already uses local
     // hours, and the agent navigates conversations/ by these date prefixes.

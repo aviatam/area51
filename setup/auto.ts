@@ -7,14 +7,14 @@
  * `setup/lib/theme.ts`; Telegram's full flow in `setup/channels/telegram.ts`.
  *
  * Config via env:
- *   NANOCLAW_DISPLAY_NAME  how the agents address the operator — skips the
+ *   AREA51_DISPLAY_NAME  how the agents address the operator — skips the
  *                          prompt. Defaults to $USER.
- *   NANOCLAW_AGENT_NAME    messaging-channel agent name (consumed by the
+ *   AREA51_AGENT_NAME    messaging-channel agent name (consumed by the
  *                          channel flow). The CLI scratch agent is always
  *                          "Terminal Agent".
- *   NANOCLAW_AGENT_PROVIDER preselect the setup provider and skip the picker
+ *   AREA51_AGENT_PROVIDER preselect the setup provider and skip the picker
  *                          (for packaged flows). Example: claude.
- *   NANOCLAW_SKIP          comma-separated step names to skip
+ *   AREA51_SKIP          comma-separated step names to skip
  *                          (environment|container|onecli|auth|mounts|
  *                           service|cli-agent|timezone|channel|
  *                           verify|first-chat)
@@ -108,7 +108,7 @@ async function main(): Promise<void> {
 
   // Parse CLI flags first — `--help` short-circuits before we render anything,
   // and flag values get folded into process.env so existing step code reading
-  // NANOCLAW_* sees them unchanged.
+  // AREA51_* sees them unchanged.
   const flagResult = parseFlags(process.argv.slice(2));
   if (flagResult.help) {
     printHelp();
@@ -142,7 +142,7 @@ async function main(): Promise<void> {
   // work begins. Default lands on standard so Enter is the happy path.
   // On sg re-exec, the user already chose — skip straight to standard.
   let startChoice: 'default' | 'advanced' = 'default';
-  if (process.env.NANOCLAW_REEXEC_SG !== '1') {
+  if (process.env.AREA51_REEXEC_SG !== '1') {
     startChoice = ensureAnswer(
       await brightSelect<'default' | 'advanced'>({
         message: 'How would you like to begin?',
@@ -161,7 +161,7 @@ async function main(): Promise<void> {
   }
 
   const skip = new Set(
-    (process.env.NANOCLAW_SKIP ?? '')
+    (process.env.AREA51_SKIP ?? '')
       .split(',')
       .map((s) => s.trim())
       .filter(Boolean),
@@ -169,13 +169,13 @@ async function main(): Promise<void> {
 
   // Offer removal when setup lands on an existing install. Skipped on every
   // resume path — both the fail() retry and the sg-docker re-exec pass
-  // NANOCLAW_SKIP (and the latter sets NANOCLAW_REEXEC_SG) — so the prompt
+  // AREA51_SKIP (and the latter sets AREA51_REEXEC_SG) — so the prompt
   // appears at most once per fresh run.
-  const isResume = process.env.NANOCLAW_REEXEC_SG === '1' || skip.size > 0;
+  const isResume = process.env.AREA51_REEXEC_SG === '1' || skip.size > 0;
   if (!isResume && detectExistingInstall(process.cwd())) {
     const action = ensureAnswer(
       await brightSelect<'keep' | 'uninstall'>({
-        message: 'NanoClaw is already installed in this folder. What would you like to do?',
+        message: 'Area51 is already installed in this folder. What would you like to do?',
         options: [
           {
             value: 'keep',
@@ -184,7 +184,7 @@ async function main(): Promise<void> {
           },
           {
             value: 'uninstall',
-            label: 'Uninstall NanoClaw & exit',
+            label: 'Uninstall Area51 & exit',
             hint: 'removes service, data, and agent files — asks before each step',
           },
         ],
@@ -218,10 +218,10 @@ async function main(): Promise<void> {
   // partial install whose registered groups silently gate the picker off on
   // rerun, and the pick is lost.
   let savedPickBridged = false;
-  if (!process.env.NANOCLAW_TEMPLATE_PATH?.trim()) {
-    const savedPick = readEnvKey('NANOCLAW_TEMPLATE_PATH')?.trim();
+  if (!process.env.AREA51_TEMPLATE_PATH?.trim()) {
+    const savedPick = readEnvKey('AREA51_TEMPLATE_PATH')?.trim();
     if (savedPick) {
-      process.env.NANOCLAW_TEMPLATE_PATH = savedPick;
+      process.env.AREA51_TEMPLATE_PATH = savedPick;
       savedPickBridged = true;
     }
   }
@@ -229,7 +229,7 @@ async function main(): Promise<void> {
   // explicit --template-path is always honoured.
   if (
     !isResume &&
-    (process.env.NANOCLAW_TEMPLATE_PATH?.trim() || !detectRegisteredGroups(process.cwd()))
+    (process.env.AREA51_TEMPLATE_PATH?.trim() || !detectRegisteredGroups(process.cwd()))
   ) {
     await runTemplateSetup(savedPickBridged);
   }
@@ -304,7 +304,7 @@ async function main(): Promise<void> {
       ),
     );
 
-    const remoteHost = process.env.NANOCLAW_ONECLI_API_HOST?.trim();
+    const remoteHost = process.env.AREA51_ONECLI_API_HOST?.trim();
 
     if (remoteHost) {
       // Advanced-settings override: user has already named a remote vault,
@@ -358,7 +358,7 @@ async function main(): Promise<void> {
               },
               {
                 value: 'fresh',
-                label: 'Install a fresh instance for NanoClaw',
+                label: 'Install a fresh instance for Area51',
                 hint: 'reinstalls onecli; other apps may need to reconnect',
               },
             ],
@@ -405,7 +405,7 @@ async function main(): Promise<void> {
     // the runtime; it is NOT an install-wide default — and it is NOT a
     // creation flag. Provider is a DB property of a group: the creation flows
     // create provider-agnostic groups, and setup sets the picked provider on
-    // each via `ncl groups config update --provider` right after creating it
+    // each via `area51 groups config update --provider` right after creating it
     // (the creation scripts inherit it and apply at create — see picked-provider). Existing groups switch the
     // same way (docs/provider-migration.md).
     agentProvider = await askAgentProviderChoice();
@@ -491,7 +491,7 @@ async function main(): Promise<void> {
     }
     // Persist the pick as the instance-wide default so every future group
     // (channel-approved, ncl-created) is created on this provider. Read from
-    // .env at host start; per-group `ncl groups config update --provider` wins.
+    // .env at host start; per-group `area51 groups config update --provider` wins.
     // Only after install + auth succeeded — a failed setup must not leave new
     // groups defaulting to an unauthenticated runtime.
     upsertEnvVar('DEFAULT_AGENT_PROVIDER', agentProvider);
@@ -514,14 +514,14 @@ async function main(): Promise<void> {
 
   if (!skip.has('service')) {
     const res = await runQuietStep('service', {
-      running: 'Starting NanoClaw in the background…',
-      done: 'NanoClaw is running.',
+      running: 'Starting Area51 in the background…',
+      done: 'Area51 is running.',
     });
     if (!res.ok) {
-      await fail('service', "Couldn't start NanoClaw.", 'See logs/nanoclaw.error.log for details.');
+      await fail('service', "Couldn't start Area51.", 'See logs/area51.error.log for details.');
     }
     if (res.terminal?.fields.DOCKER_GROUP_STALE === 'true') {
-      p.log.warn(brandBody("NanoClaw's permissions need a tweak before it can reach Docker."));
+      p.log.warn(brandBody("Area51's permissions need a tweak before it can reach Docker."));
       p.log.message(
         brandBody(
           '  sudo setfacl -m u:$(whoami):rw /var/run/docker.sock\n' + `  systemctl --user restart ${getSystemdUnit()}`,
@@ -533,7 +533,7 @@ async function main(): Promise<void> {
   let displayName: string | undefined;
   async function resolveDisplayName(): Promise<string> {
     if (displayName) return displayName;
-    const preset = process.env.NANOCLAW_DISPLAY_NAME?.trim();
+    const preset = process.env.AREA51_DISPLAY_NAME?.trim();
     const existing = detectExistingDisplayName(process.cwd());
     const fallback = process.env.USER?.trim() || 'Operator';
     displayName = preset || existing || (await askDisplayName(fallback));
@@ -636,7 +636,7 @@ async function main(): Promise<void> {
           stepName: 'cli-agent',
           msg:
             ping === 'socket_error'
-              ? "NanoClaw service isn't listening on its CLI socket."
+              ? "Area51 service isn't listening on its CLI socket."
               : 'No reply from the assistant within 30 seconds.',
           hint:
             ping === 'socket_error'
@@ -729,7 +729,7 @@ async function main(): Promise<void> {
         notes.push(
           wrapForGutter(
             [
-              '• Your NanoClaw service is running from a different folder on this machine.',
+              '• Your Area51 service is running from a different folder on this machine.',
               '  Point it at this checkout with:',
               `    launchctl bootout gui/$(id -u)/${label}`,
               `    launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/${label}.plist`,
@@ -771,7 +771,7 @@ async function main(): Promise<void> {
 
   const rows: [string, string][] = [
     ['Chat in the terminal:', 'pnpm run chat hi'],
-    ["See what's happening:", 'tail -f logs/nanoclaw.log'],
+    ["See what's happening:", 'tail -f logs/area51.log'],
     ['Open Claude Code:', 'claude'],
   ];
   const labelWidth = Math.max(...rows.map(([l]) => l.length));
@@ -782,7 +782,7 @@ async function main(): Promise<void> {
   // caveat doesn't land after the user's already looked away at their phone.
   note(
     wrapForGutter(
-      "NanoClaw runs on this machine. It's only reachable while this computer is on and connected to the internet. For always-on availability, run it on a cloud VM — or keep this machine awake.",
+      "Area51 runs on this machine. It's only reachable while this computer is on and connected to the internet. For always-on availability, run it on a cloud VM — or keep this machine awake.",
       6,
     ),
     'Heads up',
@@ -796,7 +796,7 @@ async function main(): Promise<void> {
     // No welcome DM exists yet — the one remaining action is the last thing
     // on screen, in the same bright framed style as the "go say hi" banner.
     note(
-      `${brandBold('→')} ${k.bold(`Have the person you want wired DM the bot once in ${dmTarget ?? 'your chat app'} ("hi" works).`)}\nNanoClaw registers their identity and chat from that first message; then run /init-first-agent with your coding agent and pick them.`,
+      `${brandBold('→')} ${k.bold(`Have the person you want wired DM the bot once in ${dmTarget ?? 'your chat app'} ("hi" works).`)}\nArea51 registers their identity and chat from that first message; then run /init-first-agent with your coding agent and pick them.`,
       "What's left",
     );
     p.outro(k.green("You're set — one DM to go."));
@@ -860,7 +860,7 @@ async function confirmAssistantResponds(): Promise<PingResult> {
     s.stop(`${k.bold(fitToWidth('Your assistant is ready.', suffix))}${k.dim(suffix)}`);
   } else {
     const msg =
-      result === 'socket_error' ? "Couldn't reach the NanoClaw service." : "Your assistant didn't reply in time.";
+      result === 'socket_error' ? "Couldn't reach the Area51 service." : "Your assistant didn't reply in time.";
     s.stop(`${k.bold(fitToWidth(msg, suffix))}${k.dim(suffix)}`, 1);
   }
   return result;
@@ -871,7 +871,7 @@ function renderPingFailureNote(result: PingResult): void {
     result === 'socket_error'
       ? [
           wrapForGutter(
-            "The NanoClaw service isn't listening on its local socket. Try restarting it, then chat with `pnpm run chat hi`:",
+            "The Area51 service isn't listening on its local socket. Try restarting it, then chat with `pnpm run chat hi`:",
             6,
           ),
           '',
@@ -879,7 +879,7 @@ function renderPingFailureNote(result: PingResult): void {
           `  Linux:  systemctl --user restart ${getSystemdUnit()}`,
         ].join('\n')
       : wrapForGutter(
-          'No reply from your assistant within 30 seconds. Check `logs/nanoclaw.log` for clues, then try `pnpm run chat hi`.',
+          'No reply from your assistant within 30 seconds. Check `logs/area51.log` for clues, then try `pnpm run chat hi`.',
           6,
         );
   note(body, 'Skipping the first chat');
@@ -928,7 +928,7 @@ async function runFirstChat(): Promise<void> {
 
 function sendChatMessage(message: string): Promise<void> {
   return new Promise((resolve) => {
-    // `pnpm --silent` suppresses the `> nanoclaw@… chat` preamble so the
+    // `pnpm --silent` suppresses the `> area51@… chat` preamble so the
     // agent's reply reads as a clean block under the prompt. Splitting on
     // whitespace mirrors `pnpm run chat hello world` — chat.ts joins argv
     // with spaces on the far side.
@@ -957,7 +957,7 @@ const INSTALLABLE_PROVIDERS = [
 // (--template-path, the Advanced screen, self re-execs, an exported env var)
 // keep the silent skip.
 async function runTemplateSetup(pickSavedByPreviousRun: boolean): Promise<void> {
-  const preset = process.env.NANOCLAW_TEMPLATE_PATH?.trim();
+  const preset = process.env.AREA51_TEMPLATE_PATH?.trim();
   if (preset) {
     if (listLocalTemplates().some((template) => template.ref === preset)) {
       if (!pickSavedByPreviousRun) {
@@ -996,7 +996,7 @@ async function runTemplateSetup(pickSavedByPreviousRun: boolean): Promise<void> 
         message: 'How should we create your first agent?',
         options: [
           { value: 'none', label: 'Fresh agent', hint: 'recommended — shape it by chatting' },
-          { value: 'library', label: 'From the NanoClaw template library', hint: 'prebuilt agents' },
+          { value: 'library', label: 'From the Area51 template library', hint: 'prebuilt agents' },
           { value: 'local', label: 'From local templates', hint: 'templates/ in this install' },
         ],
         initialValue: 'none',
@@ -1104,13 +1104,13 @@ async function chooseTemplate(templates: TemplateEntry[]): Promise<string | unde
 }
 
 async function installSelectedTemplateAgent(provider?: string): Promise<void> {
-  const ref = process.env.NANOCLAW_TEMPLATE_PATH?.trim();
-  if (!ref || process.env.NANOCLAW_TEMPLATE_AGENT_ID?.trim()) return;
+  const ref = process.env.AREA51_TEMPLATE_PATH?.trim();
+  if (!ref || process.env.AREA51_TEMPLATE_AGENT_ID?.trim()) return;
 
   // Only an explicit operator name overrides the template: the CLI's own
   // fallback chain (--name → the manifest's agentName → the folder leaf) must
   // stay reachable through the wizard, or a template's agentName is dead.
-  const name = process.env.NANOCLAW_AGENT_NAME?.trim() || undefined;
+  const name = process.env.AREA51_AGENT_NAME?.trim() || undefined;
   const transport = new SocketTransport();
   const runNcl = async (command: string, args: Record<string, unknown>): Promise<unknown> => {
     const response = await transport.sendFrame({ id: randomUUID(), command, args });
@@ -1147,8 +1147,8 @@ async function installSelectedTemplateAgent(provider?: string): Promise<void> {
     });
 
     if (result.status === 'kept') {
-      process.env.NANOCLAW_TEMPLATE_AGENT_ID = result.group.id;
-      process.env.NANOCLAW_AGENT_NAME = result.group.name;
+      process.env.AREA51_TEMPLATE_AGENT_ID = result.group.id;
+      process.env.AREA51_AGENT_NAME = result.group.name;
       setupLog.step('template-agent', 'success', Date.now() - start, {
         ref,
         agent_group_id: result.group.id,
@@ -1163,8 +1163,8 @@ async function installSelectedTemplateAgent(provider?: string): Promise<void> {
     // consumes the stamped agent succeeds (run-channel-skill), or a rerun
     // after a failed channel step silently wires a fresh vanilla agent while
     // this one sits orphaned. Contract comment: setup/templates.ts.
-    process.env.NANOCLAW_TEMPLATE_AGENT_ID = result.group.id;
-    process.env.NANOCLAW_AGENT_NAME = result.group.name;
+    process.env.AREA51_TEMPLATE_AGENT_ID = result.group.id;
+    process.env.AREA51_AGENT_NAME = result.group.name;
     setupLog.step('template-agent', 'success', Date.now() - start, {
       ref,
       agent_group_id: result.group.id,
@@ -1190,7 +1190,7 @@ async function installSelectedTemplateAgent(provider?: string): Promise<void> {
         "  1. If the service isn't running:",
         `     macOS:  launchctl kickstart -k gui/$(id -u)/${getLaunchdLabel()}`,
         `     Linux:  systemctl --user restart ${getSystemdUnit()}`,
-        '  2. Rerun: bash nanoclaw.sh',
+        '  2. Rerun: bash area51.sh',
       ].join('\n'),
       'Skipping the template',
     );
@@ -1202,13 +1202,13 @@ async function installSelectedTemplateAgent(provider?: string): Promise<void> {
  *
  * Asked once, ahead of the container step, and persisted to `.env` *before* the
  * sign-in runs. Both resume paths (fail()'s retry re-exec and
- * maybeReexecUnderSg) rebuild NANOCLAW_SKIP from the steps that completed, and
+ * maybeReexecUnderSg) rebuild AREA51_SKIP from the steps that completed, and
  * the sign-in is deliberately not a step — so an answer that lived only in this
  * process would be gone by the time the resumed run reached here, and the
  * operator would be asked again after already signing in.
  *
  * Returns having done nothing when the question is already settled, which also
- * covers `NANOCLAW_HARDENED_IMAGE=true` passed in by a packaged flow.
+ * covers `AREA51_HARDENED_IMAGE=true` passed in by a packaged flow.
  */
 async function chooseImageSource(): Promise<void> {
   if (imageSourceDecided()) return;
@@ -1217,7 +1217,7 @@ async function chooseImageSource(): Promise<void> {
   // available: an explicit preset, else the persisted install-wide default.
   // Getting it wrong in the permissive direction is caught at that pick.
   const plannedProvider = (
-    process.env.NANOCLAW_AGENT_PROVIDER?.trim() ||
+    process.env.AREA51_AGENT_PROVIDER?.trim() ||
     DEFAULT_AGENT_PROVIDER ||
     'claude'
   ).toLowerCase();
@@ -1255,7 +1255,7 @@ async function chooseImageSource(): Promise<void> {
   p.log.message(
     brandBody(
       dimWrap(
-        'Fetching it means authenticating with NanoClaw: we record your email address and that you fetched an image, nothing else. Building sends nothing at all.',
+        'Fetching it means authenticating with Area51: we record your email address and that you fetched an image, nothing else. Building sends nothing at all.',
         4,
       ),
     ),
@@ -1288,14 +1288,14 @@ async function chooseImageSource(): Promise<void> {
   if (!loginScriptAvailable()) {
     p.log.warn(
       brandBody(
-        `This copy of NanoClaw has no ${REGISTRY_LOGIN_SCRIPT} — building the sandbox here instead.`,
+        `This copy of Area51 has no ${REGISTRY_LOGIN_SCRIPT} — building the sandbox here instead.`,
       ),
     );
     writeImageSource('local');
     return;
   }
 
-  p.log.step(brandBody('Authenticating with NanoClaw…'));
+  p.log.step(brandBody('Authenticating with Area51…'));
   console.log(k.dim('   (a code appears below; finish in your browser)'));
   console.log();
   const start = Date.now();
@@ -1351,10 +1351,10 @@ async function askAgentProviderChoice(): Promise<string> {
       hint: note(prov.value, `${prov.hint} — installs now`),
     })),
   ];
-  const preset = process.env.NANOCLAW_AGENT_PROVIDER?.trim().toLowerCase();
+  const preset = process.env.AREA51_AGENT_PROVIDER?.trim().toLowerCase();
   if (preset) {
     if (!options.some((option) => option.value === preset)) {
-      throw new Error(`NANOCLAW_AGENT_PROVIDER=${preset} is not available in this NanoClaw install`);
+      throw new Error(`AREA51_AGENT_PROVIDER=${preset} is not available in this Area51 install`);
     }
     setupLog.userInput('agent_provider', preset);
     phEmit('agent_provider_chosen', { provider: preset, preset: true });
@@ -1389,8 +1389,8 @@ async function runAuthStep(): Promise<void> {
   // Custom Anthropic-compatible endpoint flow. Both URL and token must be set;
   // OneCLI stores the token as a generic Bearer secret keyed to the URL host,
   // so the container only ever sees ANTHROPIC_BASE_URL + a placeholder.
-  const customBaseUrl = process.env.NANOCLAW_ANTHROPIC_BASE_URL?.trim();
-  const customAuthToken = process.env.NANOCLAW_ANTHROPIC_AUTH_TOKEN?.trim();
+  const customBaseUrl = process.env.AREA51_ANTHROPIC_BASE_URL?.trim();
+  const customAuthToken = process.env.AREA51_ANTHROPIC_AUTH_TOKEN?.trim();
   if (customBaseUrl && customAuthToken) {
     await runCustomEndpointAuth(customBaseUrl, customAuthToken);
     return;
@@ -1441,7 +1441,7 @@ async function runAuthStep(): Promise<void> {
     setupLog.step('auth', 'skipped', 0, { REASON: 'user-skipped' });
     p.log.warn(
       brandBody(
-        'Claude sign-in skipped. Re-run setup or run `bash nanoclaw.sh` to finish later.',
+        'Claude sign-in skipped. Re-run setup or run `bash area51.sh` to finish later.',
       ),
     );
     return;
@@ -1918,7 +1918,7 @@ function runInheritScript(cmd: string, args: string[]): Promise<number> {
     // reporting to us instead of printing its own alongside ours.
     const child = spawn(cmd, args, {
       stdio: 'inherit',
-      env: { ...process.env, NANOCLAW_SETUP_WIZARD: '1' },
+      env: { ...process.env, AREA51_SETUP_WIZARD: '1' },
     });
     child.on('close', (code) => {
       // Deliberately not restoring raw mode: clack sets it per prompt, and
@@ -1937,7 +1937,7 @@ function runInheritScript(cmd: string, args: string[]): Promise<number> {
  * so the rest of the run inherits the docker group without a re-login.
  */
 function maybeReexecUnderSg(): void {
-  if (process.env.NANOCLAW_REEXEC_SG === '1') return;
+  if (process.env.AREA51_REEXEC_SG === '1') return;
   if (process.platform !== 'linux') return;
   const info = spawnSync('docker', ['info'], { encoding: 'utf-8' });
   if (info.status === 0) return;
@@ -1946,11 +1946,11 @@ function maybeReexecUnderSg(): void {
   if (spawnSync('which', ['sg'], { stdio: 'ignore' }).status !== 0) return;
 
   p.log.warn(brandBody('Docker socket not accessible in current group. Re-executing under `sg docker`.'));
-  const existingSkip = (process.env.NANOCLAW_SKIP ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+  const existingSkip = (process.env.AREA51_SKIP ?? '').split(',').map((s) => s.trim()).filter(Boolean);
   const skipList = [...new Set([...existingSkip, ...setupLog.completedStepNames()])].join(',');
   const res = spawnSync('sg', ['docker', '-c', 'pnpm run setup:auto'], {
     stdio: 'inherit',
-    env: { ...process.env, NANOCLAW_REEXEC_SG: '1', ...(skipList ? { NANOCLAW_SKIP: skipList } : {}) },
+    env: { ...process.env, AREA51_REEXEC_SG: '1', ...(skipList ? { AREA51_SKIP: skipList } : {}) },
   });
   process.exit(res.status ?? 1);
 }
@@ -1958,7 +1958,7 @@ function maybeReexecUnderSg(): void {
 // ─── intro + progression-log init ──────────────────────────────────────
 
 function printIntro(): void {
-  const isReexec = process.env.NANOCLAW_REEXEC_SG === '1';
+  const isReexec = process.env.AREA51_REEXEC_SG === '1';
   const wordmark = `${k.bold('Nano')}${brandBold('Claw')}`;
 
   if (isReexec) {
@@ -1974,13 +1974,13 @@ function printIntro(): void {
 }
 
 /**
- * Bootstrap (nanoclaw.sh) normally initializes logs/setup.log and writes
+ * Bootstrap (area51.sh) normally initializes logs/setup.log and writes
  * the bootstrap entry before we even boot. If someone runs `pnpm run
  * setup:auto` directly, start a fresh progression log here so we don't
  * append to a stale one from a previous run.
  */
 function initProgressionLog(): void {
-  if (process.env.NANOCLAW_BOOTSTRAPPED === '1') return;
+  if (process.env.AREA51_BOOTSTRAPPED === '1') return;
   let commit = '';
   try {
     commit = spawnSync('git', ['rev-parse', '--short', 'HEAD'], {

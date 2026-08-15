@@ -335,7 +335,7 @@ export function createNewAgentGroup(name: string): AgentGroup {
   // Channel-approved groups are created on the instance default provider
   // (DEFAULT_AGENT_PROVIDER, or claude when unset) — initGroupFilesystem stamps
   // it onto the fresh config row. The operator flips a group afterward with
-  // `ncl groups config update --provider`.
+  // `area51 groups config update --provider`.
   initGroupFilesystem(ag);
   return ag;
 }

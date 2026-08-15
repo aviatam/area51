@@ -64,11 +64,11 @@ describe('release metadata', () => {
 describe('release workflow safeguards', () => {
   it('fails wrong-repository and wrong-ref dispatches instead of skipping verification', () => {
     expect(releaseWorkflow).toContain('name: Verify dispatch source');
-    expect(releaseWorkflow).toContain('if [ "$DISPATCH_REPOSITORY" != "nanocoai/nanoclaw" ]');
+    expect(releaseWorkflow).toContain('if [ "$DISPATCH_REPOSITORY" != "aviatam/area51" ]');
     expect(releaseWorkflow).toContain('if [ "$DISPATCH_REF" != "refs/heads/main" ]');
     expect(releaseWorkflow).toContain('verify:\n    needs: dispatch');
     expect(releaseWorkflow).not.toContain(
-      "if: github.repository == 'nanocoai/nanoclaw' && github.ref == 'refs/heads/main'",
+      "if: github.repository == 'aviatam/area51' && github.ref == 'refs/heads/main'",
     );
   });
 
@@ -94,13 +94,13 @@ describe('release workflow safeguards', () => {
 describe('release body assembly', () => {
   it('keeps curated notes and appends first-time and complete contributor sections', () => {
     const generatedNotes = `## What's Changed
-* Fix one by @alice in https://github.com/nanocoai/nanoclaw/pull/1
-* Fix two by @bob in https://github.com/nanocoai/nanoclaw/pull/2
+* Fix one by @alice in https://github.com/aviatam/area51/pull/1
+* Fix two by @bob in https://github.com/aviatam/area51/pull/2
 
 ## New Contributors
-* @alice made their first contribution in https://github.com/nanocoai/nanoclaw/pull/1
+* @alice made their first contribution in https://github.com/aviatam/area51/pull/1
 
-**Full Changelog**: https://github.com/nanocoai/nanoclaw/compare/v2.1.17...v2.1.54`;
+**Full Changelog**: https://github.com/aviatam/area51/compare/v2.1.17...v2.1.54`;
 
     const body = assembleReleaseBody({ changelog, generatedNotes, version: '2.1.54' });
 
@@ -115,9 +115,9 @@ describe('release body assembly', () => {
 
   it('works when GitHub reports no first-time contributors', () => {
     const generatedNotes = `## What's Changed
-* Fix one by @alice in https://github.com/nanocoai/nanoclaw/pull/1
+* Fix one by @alice in https://github.com/aviatam/area51/pull/1
 
-**Full Changelog**: https://github.com/nanocoai/nanoclaw/compare/v2.1.17...v2.1.54`;
+**Full Changelog**: https://github.com/aviatam/area51/compare/v2.1.17...v2.1.54`;
 
     const body = assembleReleaseBody({ changelog, generatedNotes, version: '2.1.54' });
 
@@ -133,7 +133,7 @@ describe('publication recovery', () => {
   const matchingRelease = {
     body: expectedBody,
     draft: false,
-    html_url: 'https://github.com/nanocoai/nanoclaw/releases/tag/v2.1.54',
+    html_url: 'https://github.com/aviatam/area51/releases/tag/v2.1.54',
     immutable: true,
     name: 'v2.1.54',
     prerelease: false,

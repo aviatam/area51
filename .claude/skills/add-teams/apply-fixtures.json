@@ -16,7 +16,7 @@
       "name": "create-wire-owner",
       "inputs": {
         "public_url": "https://nc.example.com",
-        "app_name": "NanoClaw Bot",
+        "app_name": "Area51 Bot",
         "wire_owner": "yes",
         "signout": "yes"
       },
@@ -34,7 +34,7 @@
       "name": "create-wire-other-account",
       "inputs": {
         "public_url": "https://nc.example.com",
-        "app_name": "NanoClaw Bot",
+        "app_name": "Area51 Bot",
         "wire_owner": "no",
         "wire_target": "other-account",
         "target_aad_id": "12345678-1234-1234-1234-123456789abc",
@@ -55,7 +55,7 @@
       "name": "create-wire-logged-in-account",
       "inputs": {
         "public_url": "https://nc.example.com",
-        "app_name": "NanoClaw Bot",
+        "app_name": "Area51 Bot",
         "wire_owner": "no",
         "wire_target": "logged-in-account",
         "signout": "no"

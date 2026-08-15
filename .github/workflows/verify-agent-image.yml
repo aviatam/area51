@@ -143,8 +143,8 @@ jobs:
           docker pull -q "$REF"
 
           LOCK_ACTUAL="$(sha256sum container/agent-runner/bun.lock | cut -d' ' -f1)"
-          LOCK_IMAGE="$(docker image inspect --format '{{index .Config.Labels "dev.nanoclaw.agent-runner-lock-sha256"}}' "$REF")"
-          SOURCE="$(docker image inspect --format '{{index .Config.Labels "dev.nanoclaw.image-source"}}' "$REF")"
+          LOCK_IMAGE="$(docker image inspect --format '{{index .Config.Labels "dev.area51.agent-runner-lock-sha256"}}' "$REF")"
+          SOURCE="$(docker image inspect --format '{{index .Config.Labels "dev.area51.image-source"}}' "$REF")"
 
           # /app/node_modules is baked from bun.lock while /app/src is mounted
           # from the user's checkout at spawn. A mismatch dies as a missing

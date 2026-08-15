@@ -155,7 +155,7 @@ async function status(say: (line?: string) => void): Promise<void> {
     say('');
     say('Signed in, but this install is still set to build its own image.');
     say('  bash setup/registry-login.sh --force       re-run sign-in, which sets the pinned path');
-    say('  ... or set NANOCLAW_HARDENED_IMAGE=true in .env');
+    say('  ... or set AREA51_HARDENED_IMAGE=true in .env');
   } else if (!helper.installed) {
     say('');
     say('Signed in, but docker has no credential helper — re-run');

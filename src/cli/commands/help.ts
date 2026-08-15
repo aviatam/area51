@@ -1,8 +1,8 @@
 /**
  * Built-in help command. Introspects the resource and command registries.
  *
- *   ncl help               — list all resources and commands
- *   ncl groups help         — show group resource details (verbs, columns, enums)
+ *   area51 help               — list all resources and commands
+ *   area51 groups help         — show group resource details (verbs, columns, enums)
  */
 import { getContainerConfig } from '../../db/container-configs.js';
 import { getResources } from '../crud.js';
@@ -59,7 +59,7 @@ register({
     }
 
     lines.push('');
-    lines.push('Run `ncl <resource> help` for detailed field information.');
+    lines.push('Run `area51 <resource> help` for detailed field information.');
     return lines.join('\n');
   },
 });
@@ -83,7 +83,7 @@ export function registerResourceHelpCommands(): void {
           const cliScope = getCliScope(ctx);
           const lines: string[] = [];
 
-          // `ncl <resource> help <verb>` arrives via the dispatcher's
+          // `area51 <resource> help <verb>` arrives via the dispatcher's
           // longest-prefix fallback (`groups-help-create` → `groups-help` +
           // id=`create`) and renders that verb's deep help — full description,
           // flags, examples. No new routing. Group-scope auto-fill also puts
@@ -93,7 +93,7 @@ export function registerResourceHelpCommands(): void {
           const verbArg = !autoFilled && typeof args.id === 'string' ? args.id : null;
           if (verbArg) {
             const deep = renderVerbHelp(res, verbArg);
-            if (!deep) throw new Error(`no verb "${verbArg}" on ${res.plural} — run \`ncl ${res.plural} help\``);
+            if (!deep) throw new Error(`no verb "${verbArg}" on ${res.plural} — run \`area51 ${res.plural} help\``);
             return deep;
           }
 
@@ -125,7 +125,7 @@ export function registerResourceHelpCommands(): void {
           lines.push('Verbs:');
           for (const v of verbs) lines.push(`  ${v}`);
           lines.push('');
-          lines.push(`Run \`ncl ${res.plural} help <verb>\` (or add --help to any command) for flags and examples.`);
+          lines.push(`Run \`area51 ${res.plural} help <verb>\` (or add --help to any command) for flags and examples.`);
           lines.push('');
 
           // Columns

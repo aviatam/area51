@@ -13,7 +13,7 @@
  * `'claude'` means no run-scoped pick; the creation scripts then fall back to
  * the install-wide default.
  */
-const ENV_KEY = 'NANOCLAW_PICKED_PROVIDER';
+const ENV_KEY = 'AREA51_PICKED_PROVIDER';
 
 export function setPickedProvider(provider: string | undefined): void {
   const normalized = provider?.trim().toLowerCase() || undefined;

@@ -1,11 +1,11 @@
 ---
 name: add-karpathy-llm-wiki
-description: Add a persistent wiki knowledge base to a NanoClaw group. Based on Karpathy's LLM Wiki pattern. Triggers on "add wiki", "wiki", "knowledge base", "llm wiki", "karpathy wiki".
+description: Add a persistent wiki knowledge base to a Area51 group. Based on Karpathy's LLM Wiki pattern. Triggers on "add wiki", "wiki", "knowledge base", "llm wiki", "karpathy wiki".
 ---
 
 # Add Karpathy LLM Wiki
 
-Set up a persistent wiki knowledge base on NanoClaw, based on Karpathy's LLM Wiki pattern.
+Set up a persistent wiki knowledge base on Area51, based on Karpathy's LLM Wiki pattern.
 
 Each step is safe to re-run: directory creation uses `mkdir -p`, initial wiki files are created only if absent, the container skill is preserved unless the user opts to update it, and the group CLAUDE.md section is replaced in place via marker comments rather than duplicated.
 
@@ -88,7 +88,7 @@ If yes, ask the agent to schedule the lint task using the `schedule_task` MCP to
 
 ## Step 6: Restart
 
-Run from your NanoClaw project root:
+Run from your Area51 project root:
 
 ```bash
 source setup/lib/install-slug.sh

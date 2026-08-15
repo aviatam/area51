@@ -66,7 +66,7 @@ async function getJson<T>(url: string, token: string, fetchImpl: FetchFn): Promi
   const res = await fetchImpl(url, {
     headers: {
       Authorization: `Bot ${token}`,
-      'User-Agent': 'NanoClaw-Migration (https://github.com/nanocoai/nanoclaw, 2.x)',
+      'User-Agent': 'Area51-Migration (https://github.com/aviatam/area51, 2.x)',
     },
   });
   if (!res.ok) {

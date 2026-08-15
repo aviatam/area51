@@ -23,7 +23,7 @@ const res: ResourceDef = {
         { name: 'target', type: 'string', description: 'Where to ping.', required: true },
         { name: 'count', type: 'number', description: 'How many times.', default: 1 },
       ],
-      examples: ['ncl widgets ping --target prod --count 3'],
+      examples: ['area51 widgets ping --target prod --count 3'],
       handler: async () => ({}),
     },
   },
@@ -38,14 +38,14 @@ describe('listVerbs', () => {
 describe('renderVerbHelp — custom operation', () => {
   it('renders usage, full description, flags with tags, and examples', () => {
     const out = renderVerbHelp(res, 'ping')!;
-    expect(out).toContain('ncl widgets ping');
+    expect(out).toContain('area51 widgets ping');
     expect(out).toContain('Longer prose that only deep help shows.');
     expect(out).toContain('--target');
     expect(out).toContain('(required)');
     expect(out).toContain('--count');
     expect(out).toContain('default: 1');
     expect(out).toContain('Examples:');
-    expect(out).toContain('ncl widgets ping --target prod --count 3');
+    expect(out).toContain('area51 widgets ping --target prod --count 3');
   });
 
   it('tags non-open access on the usage line', () => {
@@ -53,14 +53,14 @@ describe('renderVerbHelp — custom operation', () => {
       ...res,
       customOperations: { ping: { ...res.customOperations!.ping, access: 'approval' } },
     };
-    expect(renderVerbHelp(gated, 'ping')).toContain('ncl widgets ping [approval]');
+    expect(renderVerbHelp(gated, 'ping')).toContain('area51 widgets ping [approval]');
   });
 });
 
 describe('renderVerbHelp — generic verbs', () => {
   it('create renders non-generated columns as flags', () => {
     const out = renderVerbHelp(res, 'create')!;
-    expect(out).toContain('ncl widgets create [approval]');
+    expect(out).toContain('area51 widgets create [approval]');
     expect(out).toContain('--name');
     expect(out).toContain('(required)');
     expect(out).toContain('--size');
@@ -70,7 +70,7 @@ describe('renderVerbHelp — generic verbs', () => {
 
   it('update renders only updatable columns and takes <id>', () => {
     const out = renderVerbHelp(res, 'update')!;
-    expect(out).toContain('ncl widgets update <id> [approval]');
+    expect(out).toContain('area51 widgets update <id> [approval]');
     expect(out).toContain('--name');
     expect(out).not.toContain('--size');
   });

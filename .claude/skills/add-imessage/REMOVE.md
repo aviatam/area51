@@ -74,5 +74,5 @@ DELETE FROM messaging_groups WHERE channel_type='imessage';
 
 ## 8. Delete the Photon project (optional, hosted)
 
-To fully deprovision, delete the `NanoClaw` project from the
+To fully deprovision, delete the `Area51` project from the
 [Photon dashboard](https://app.photon.codes). This releases the iMessage line.

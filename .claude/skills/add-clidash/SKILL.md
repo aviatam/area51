@@ -1,23 +1,23 @@
 ---
 name: add-clidash
-description: Add clidash — a zero-dependency, read-only web dashboard that derives its tabs and tables at runtime from any CLI that lists resources as JSON. Ships pre-wired for NanoClaw's ncl CLI (agent groups, sessions, channels, users, roles), plus message-activity charts, a log tail, and a read-only file viewer for group skills/CLAUDE.md/profiles.
+description: Add clidash — a zero-dependency, read-only web dashboard that derives its tabs and tables at runtime from any CLI that lists resources as JSON. Ships pre-wired for Area51's area51 CLI (agent groups, sessions, channels, users, roles), plus message-activity charts, a log tail, and a read-only file viewer for group skills/CLAUDE.md/profiles.
 ---
 
 # /add-clidash — CLI-derived read-only dashboard
 
 clidash is a small, read-only web dashboard. You point it at any CLI that can
-list resources as JSON (NanoClaw's `ncl`, `docker`, `kubectl`, …) and it builds
+list resources as JSON (Area51's `area51`, `docker`, `kubectl`, …) and it builds
 the dashboard at runtime: one tab per resource, a generic table over whatever
-columns the rows have. A new `ncl` resource becomes a new tab and a new column
+columns the rows have. A new `area51` resource becomes a new tab and a new column
 becomes a new table column with **zero code changes**.
 
-It ships pre-wired for NanoClaw's `ncl` CLI and adds three NanoClaw-aware
+It ships pre-wired for Area51's `area51` CLI and adds three Area51-aware
 panels driven entirely by config:
 
 - **Agents overview** — status cards joining groups + sessions + messaging
   groups + wirings (green <15m / amber <2h / red older).
 - **Activity** — per-session inbound/outbound message totals and a daily series,
-  read directly from the session DBs (`ncl` has no messages resource).
+  read directly from the session DBs (`area51` has no messages resource).
 - **Logs** — last N lines of allowlisted host log files.
 - **Files** — a read-only viewer for group skills, `CLAUDE.md`, and profiles.
 
@@ -31,9 +31,9 @@ is the auth boundary** — it binds `127.0.0.1` by default. Only ever bind a
 private interface (e.g. a tailnet IP), never a public one.
 
 It's distinct from `/add-dashboard` (which pushes JSON snapshots to a separate
-`@nanoco/nanoclaw-dashboard` npm package): clidash has **zero dependencies**, no
-build step, no push pipeline, and no edits to NanoClaw source — it just reads
-`ncl` and the session DBs.
+`@nanoco/area51-dashboard` npm package): clidash has **zero dependencies**, no
+build step, no push pipeline, and no edits to Area51 source — it just reads
+`area51` and the session DBs.
 
 ## Steps
 
@@ -41,7 +41,7 @@ build step, no push pipeline, and no edits to NanoClaw source — it just reads
 
 clidash is fully self-contained — copy the whole directory in:
 
-`tools/` is not a standard NanoClaw directory and `cp -R` won't create it, so
+`tools/` is not a standard Area51 directory and `cp -R` won't create it, so
 make it first:
 
 ```bash
@@ -49,12 +49,12 @@ mkdir -p tools
 cp -R .claude/skills/add-clidash/add/tools/clidash tools/clidash
 ```
 
-That is the only file change this skill makes. Nothing in NanoClaw `src/` is
+That is the only file change this skill makes. Nothing in Area51 `src/` is
 touched, no dependency is added.
 
 ### 2. Create the config
 
-The example config is pre-wired for NanoClaw with paths relative to the repo
+The example config is pre-wired for Area51 with paths relative to the repo
 root, so it works as-is when you run clidash from `tools/clidash/`:
 
 ```bash
@@ -69,12 +69,12 @@ don't want to commit install-specific paths:
 echo 'tools/clidash/clidash.config.json' >> ../../.gitignore
 ```
 
-The example assumes `ncl` is built at `bin/ncl`. If `bin/ncl` doesn't exist,
-build it first (`pnpm run build`) or point `clis.ncl.bin` at the right path.
+The example assumes `area51` is built at `bin/area51`. If `bin/area51` doesn't exist,
+build it first (`pnpm run build`) or point `clis.area51.bin` at the right path.
 
 ### 3. Test
 
-Tests use a stub CLI — no real `ncl` or `docker` needed:
+Tests use a stub CLI — no real `area51` or `docker` needed:
 
 ```bash
 npm test
@@ -88,15 +88,15 @@ All tests should pass (Node ≥ 22.5, `node:test`, zero dependencies).
 node server.js          # serves http://127.0.0.1:4690
 ```
 
-In another shell, confirm it's live and that `ncl` discovery worked:
+In another shell, confirm it's live and that `area51` discovery worked:
 
 ```bash
 curl -s http://127.0.0.1:4690/api/clis | head -c 400      # CLIs + discovered resources
-curl -s http://127.0.0.1:4690/api/r/ncl/groups | head -c 400   # a real resource table
+curl -s http://127.0.0.1:4690/api/r/area51/groups | head -c 400   # a real resource table
 ```
 
 Then open `http://127.0.0.1:4690/` in a browser. You should see the Agents
-overview plus a tab per `ncl` resource.
+overview plus a tab per `area51` resource.
 
 ### 5. (Optional) Run as a service
 
@@ -110,8 +110,8 @@ public interface.
 Description=clidash read-only CLI dashboard
 
 [Service]
-WorkingDirectory=%h/nanoclaw/tools/clidash
-ExecStart=/usr/bin/node %h/nanoclaw/tools/clidash/server.js
+WorkingDirectory=%h/area51/tools/clidash
+ExecStart=/usr/bin/node %h/area51/tools/clidash/server.js
 Environment=BIND=127.0.0.1
 Restart=on-failure
 
@@ -124,7 +124,7 @@ systemctl --user enable --now clidash
 ```
 
 On macOS, wrap `node server.js` (with `WorkingDirectory` = `tools/clidash`) in a
-launchd plist the same way the main NanoClaw service is configured.
+launchd plist the same way the main Area51 service is configured.
 
 ## Configuration reference
 
@@ -135,7 +135,7 @@ launchd plist the same way the main NanoClaw service is configured.
 |-----|---------|
 | `port`, `bind`, `refreshSeconds` | server bind + UI auto-refresh cadence |
 | `clis.<name>.bin` / `cwd` / `env` | how to invoke the CLI (`bin` is relative to `cwd`) |
-| `clis.<name>.discover` or `resources` | runtime discovery (`ncl help`) vs a static resource list |
+| `clis.<name>.discover` or `resources` | runtime discovery (`area51 help`) vs a static resource list |
 | `clis.<name>.list` | argv template; `{resource}` is the only substitution |
 | `clis.<name>.output` | `json` or `jsonlines` (docker/kubectl style) |
 | `clis.<name>.unwrap` | dot-path into a response envelope (e.g. `data`) |
@@ -144,7 +144,7 @@ launchd plist the same way the main NanoClaw service is configured.
 | `logs` | `dir`, `tailLines`, and an allowlist of `files` to tail |
 | `docs` | file viewer: `root`, a `deny` glob list, and `collections` of glob patterns |
 
-Adding a second CLI is config-only — e.g. `docker` is included as a `jsonlines`
+Adding a second CLI is config-only — e.g. `docker` is iarea51uded as a `jsonlines`
 example. View plugins (`views/<cli>-<view>.js`) are the only per-CLI code and
 are optional.
 
@@ -153,14 +153,14 @@ are optional.
 - **`ENOENT` / config not found** — run from `tools/clidash/` and make sure you
   copied `clidash.config.example.json` to `clidash.config.json` (step 2), or set
   `CLIDASH_CONFIG=/abs/path.json`.
-- **No `ncl` resources / discovery empty** — `bin/ncl` isn't built or the path
-  is wrong. Build it (`pnpm run build`) or fix `clis.ncl.bin`.
+- **No `area51` resources / discovery empty** — `bin/area51` isn't built or the path
+  is wrong. Build it (`pnpm run build`) or fix `clis.area51.bin`.
 - **docker tab errors** — the docker daemon isn't running, or remove the
   `docker` CLI from config if you don't need it.
 - **Can't reach it from another device** — it binds `127.0.0.1`; set
   `BIND=<private-ip>` (tailnet), never a public interface.
 - **Empty Activity/Logs/Files** — check that `activity.sessionsRoot`,
-  `logs.dir`, and `docs.root` resolve to your NanoClaw root (relative to where
+  `logs.dir`, and `docs.root` resolve to your Area51 root (relative to where
   you launch `node server.js`).
 
 ## Removal

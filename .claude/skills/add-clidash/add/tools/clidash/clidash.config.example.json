@@ -3,10 +3,10 @@
   "bind": "127.0.0.1",
   "refreshSeconds": 60,
   "clis": {
-    "ncl": {
-      "bin": "bin/ncl",
+    "area51": {
+      "bin": "bin/area51",
       "cwd": "../..",
-      "discover": { "args": ["help"], "parser": "ncl-help" },
+      "discover": { "args": ["help"], "parser": "area51-help" },
       "list": ["{resource}", "list", "--json"],
       "output": "json",
       "unwrap": "data",
@@ -69,8 +69,8 @@
     "dir": "../../logs",
     "tailLines": 500,
     "files": [
-      { "name": "nanoclaw.log", "label": "host log" },
-      { "name": "nanoclaw.error.log", "label": "errors" }
+      { "name": "area51.log", "label": "host log" },
+      { "name": "area51.error.log", "label": "errors" }
     ]
   },
   "docs": {

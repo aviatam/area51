@@ -1,6 +1,6 @@
 /**
  * Strict parser for template task files (tasks/*.md with YAML frontmatter).
- * Shared plumbing, not extension-specific code — the NanoClaw extension dir
+ * Shared plumbing, not extension-specific code — the Area51 extension dir
  * is merely where the files live in a plugin.
  */
 import fs from 'fs';

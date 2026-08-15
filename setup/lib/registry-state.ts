@@ -30,7 +30,7 @@ import { upsertEnvVar } from '../set-env.js';
 import { readVersionPinValue } from './version-pins.js';
 
 /** `.env` key carrying the opt-in. Read by setup and by `container/build.sh`. */
-export const HARDENED_IMAGE_ENV_KEY = 'NANOCLAW_HARDENED_IMAGE';
+export const HARDENED_IMAGE_ENV_KEY = 'AREA51_HARDENED_IMAGE';
 
 /**
  * `versions.json` key holding the full pullable reference, digest included.
@@ -52,13 +52,13 @@ export const AGENT_IMAGE_PIN = 'agent-image';
  * Per-machine override of that reference, so an operator can point at their own
  * registry without editing a committed file. `container/pull.sh` reads it too.
  */
-export const AGENT_IMAGE_REF_ENV_KEY = 'NANOCLAW_AGENT_IMAGE_REF';
+export const AGENT_IMAGE_REF_ENV_KEY = 'AREA51_AGENT_IMAGE_REF';
 
 /**
  * Provenance label. Only a build can set it, so it travels with the bytes and
  * survives the retag that erases every other difference.
  */
-export const IMAGE_SOURCE_LABEL = 'dev.nanoclaw.image-source';
+export const IMAGE_SOURCE_LABEL = 'dev.area51.image-source';
 
 /** What the operator asked for. */
 export type ImageSource = 'local' | 'hardened';
@@ -221,7 +221,7 @@ export function readRegistryHost(): string | undefined {
 }
 
 export interface AgentImageInspection {
-  /** The local tag inspected — `nanoclaw-agent-v2-<slug>:latest`. */
+  /** The local tag inspected — `area51-agent-v2-<slug>:latest`. */
   ref: string;
   /** Local image ID (`sha256:…` over the config blob). Absent when not present. */
   id?: string;
@@ -333,7 +333,7 @@ export function loginScriptAvailable(projectRoot: string = process.cwd()): boole
 /**
  * Broker base URL override.
  */
-export const BROKER_URL_ENV_KEY = 'NANOCLAW_REGISTRY_API';
+export const BROKER_URL_ENV_KEY = 'AREA51_REGISTRY_API';
 
 /**
  * The deployed account service, and the single definition of it —
@@ -353,10 +353,10 @@ export const BROKER_URL_ENV_KEY = 'NANOCLAW_REGISTRY_API';
  * signs people in, still issues tokens, and still looks like success — it just
  * records the accounts somewhere nobody is looking, against an identity
  * provider nobody meant to use. Override it per-install with
- * `NANOCLAW_REGISTRY_API`; a fork pointing at its own service should change it
+ * `AREA51_REGISTRY_API`; a fork pointing at its own service should change it
  * here, alongside the pin.
  */
-export const DEFAULT_BROKER_URL = 'https://registry.nanoclaw.dev';
+export const DEFAULT_BROKER_URL = 'https://registry.area51.dev';
 
 /**
  * `account.json` as the sign-in writes it. Everything is optional except the
@@ -379,7 +379,7 @@ export interface RegistryAccount {
 
 /** Per-user, not per-checkout: uninstalling one copy must not sign out another. */
 function configDir(): string {
-  return path.join(os.homedir(), '.config', 'nanoclaw');
+  return path.join(os.homedir(), '.config', 'area51');
 }
 
 /** The account record — what a human and `--status` read. */

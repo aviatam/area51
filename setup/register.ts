@@ -189,7 +189,7 @@ export async function run(args: string[]): Promise<void> {
   // spawn (group-init), where the DB-resolved provider is known; here we only
   // seed the config row — stamped with the instance default so a newly wired
   // channel group is created on the operator's chosen provider (per-group
-  // `ncl groups config update --provider` still overrides). A reused group
+  // `area51 groups config update --provider` still overrides). A reused group
   // keeps its existing provider (INSERT OR IGNORE).
   let agentGroup = getAgentGroupByFolder(parsed.folder);
   if (!agentGroup) {
@@ -262,7 +262,7 @@ export async function run(args: string[]): Promise<void> {
         ? { engage_mode: 'mention', engage_pattern: null }
         : { engage_mode: 'pattern', engage_pattern: '.' };
     }
-    // Same cross-checks as `ncl wirings create`: rejects mention modes on
+    // Same cross-checks as `area51 wirings create`: rejects mention modes on
     // channels declaring mentions:'never'; coerces mention-sticky→mention
     // when the channel context has no thread ids.
     validateEngageAgainstChannel(engage, messagingGroup);

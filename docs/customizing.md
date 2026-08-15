@@ -1,8 +1,8 @@
-# Customizing NanoClaw
+# Customizing Area51
 
-NanoClaw is made to be forked and changed. The catch with most projects is that once you edit the code, every upstream update turns into a merge fight, and the more you customized, the worse it gets.
+Area51 is made to be forked and changed. The catch with most projects is that once you edit the code, every upstream update turns into a merge fight, and the more you customized, the worse it gets.
 
-NanoClaw avoids that with one simple idea: **every change you make is a skill.**
+Area51 avoids that with one simple idea: **every change you make is a skill.**
 
 ## The idea in a minute
 
@@ -24,7 +24,7 @@ The only rule worth remembering: **a change isn't really part of your fork until
 
 ## Upgrading
 
-Always upgrade by running `/update-nanoclaw`. **Don't just `git pull`.** The command sets a rollback point, pulls the upstream changes, runs your tests, and walks you through anything that needs fixing, usually a small, local fix in one skill.
+Always upgrade by running `/update-area51`. **Don't just `git pull`.** The command sets a rollback point, pulls the upstream changes, runs your tests, and walks you through anything that needs fixing, usually a small, local fix in one skill.
 
 ## The deal
 

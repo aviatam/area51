@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Restart the NanoClaw service, then wait (best-effort) for its `ncl` CLI socket
+# Restart the Area51 service, then wait (best-effort) for its `area51` CLI socket
 # so a following wiring directive doesn't race the restart. Channel skills call
 # this as `nc:run effect:restart`. Best-effort throughout: a fresh setup may not
-# have the service installed yet, and the wiring's own `ncl` call is the real
+# have the service installed yet, and the wiring's own `area51` call is the real
 # signal if the socket never appears — so a wait timeout does not fail the step.
 set -u
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -16,10 +16,10 @@ case "$(uname -s)" in
     || sudo systemctl restart "$(systemd_unit)" 2>/dev/null || true ;;
 esac
 
-# Wait up to ~30s for the CLI socket so `ncl` can connect on the next directive.
+# Wait up to ~30s for the CLI socket so `area51` can connect on the next directive.
 for _ in $(seq 1 60); do
-  [ -S "$root/data/ncl.sock" ] && exit 0
+  [ -S "$root/data/area51.sock" ] && exit 0
   sleep 0.5
 done
-echo "nanoclaw: ncl socket not up yet after restart — the wiring step may need a retry" >&2
+echo "area51: area51 socket not up yet after restart — the wiring step may need a retry" >&2
 exit 0

@@ -18,7 +18,7 @@ const RECURRENCE_LIMIT_WARNING =
   'script returns a decision programmatically whether the task needs to be run now ' +
   'or not. For example, an API call to GitHub to check if there are open PRs, and ' +
   'only run when there are new open PRs.\n' +
-  'Run `ncl tasks create --help` to get full directions on how to write a script and test it.\n\n' +
+  'Run `area51 tasks create --help` to get full directions on how to write a script and test it.\n\n' +
   'Note: if and only if you explicitly need to schedule a task more frequently and ' +
   "you've verified with the user that they understand and that this is what they " +
   'want and based on your judgment you agree that this is the right thing to do in ' +
@@ -140,7 +140,7 @@ export function prepareScheduledTask(input: {
   return { name: input.name, prompt: input.prompt, recurrence, script, processAfter };
 }
 
-/** Persist a prepared task through NanoClaw's single task/session representation. */
+/** Persist a prepared task through Area51's single task/session representation. */
 export function createScheduledTask(
   agentGroupId: string,
   task: PreparedScheduledTask,

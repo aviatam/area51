@@ -3,7 +3,7 @@ import os from 'os';
 import path from 'path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { NANOCLAW_EXTENSION_NS } from './extension.js';
+import { AREA51_EXTENSION_NS } from './extension.js';
 import { MCP_SCHEMA_URL, PLUGIN_SCHEMA_URL } from './manifest.js';
 import { parseTemplate } from './parse.js';
 import { readPluginSkills } from './skills.js';
@@ -36,11 +36,11 @@ function writeSkill(name: string, frontmatter = `---\nname: ${name}\ndescription
 }
 
 describe('parseTemplate', () => {
-  it('parses a full plugin: manifest, skills, mcp, and the NanoClaw extension', () => {
+  it('parses a full plugin: manifest, skills, mcp, and the Area51 extension', () => {
     writeManifest({
       version: '1.0.0',
       description: 'SDR agent',
-      extensions: { [NANOCLAW_EXTENSION_NS]: { agentName: 'SDR Agent' } },
+      extensions: { [AREA51_EXTENSION_NS]: { agentName: 'SDR Agent' } },
     });
     writeSkill('sdr-agent');
     writeMcp({
@@ -52,10 +52,10 @@ describe('parseTemplate', () => {
       },
       docs: { type: 'streamable-http', url: 'https://mcp.example.com/mcp' },
     });
-    write(`${NANOCLAW_EXTENSION_NS}/context/instructions.md`, 'Be helpful.\n\n');
-    write(`${NANOCLAW_EXTENSION_NS}/context/playbook.md`, '# Playbook');
-    write(`${NANOCLAW_EXTENSION_NS}/context/additional_context/faq.md`, '# FAQ');
-    write(`${NANOCLAW_EXTENSION_NS}/tasks/daily-briefing.md`, '---\nschedule: 0 8 * * *\n---\n\nSend the briefing.\n');
+    write(`${AREA51_EXTENSION_NS}/context/instructions.md`, 'Be helpful.\n\n');
+    write(`${AREA51_EXTENSION_NS}/context/playbook.md`, '# Playbook');
+    write(`${AREA51_EXTENSION_NS}/context/additional_context/faq.md`, '# FAQ');
+    write(`${AREA51_EXTENSION_NS}/tasks/daily-briefing.md`, '---\nschedule: 0 8 * * *\n---\n\nSend the briefing.\n');
 
     const tpl = parseTemplate(dir);
 
@@ -77,14 +77,14 @@ describe('parseTemplate', () => {
         name: 'daily-briefing',
         schedule: '0 8 * * *',
         prompt: 'Send the briefing.',
-        source: `${NANOCLAW_EXTENSION_NS}/tasks/daily-briefing.md`,
+        source: `${AREA51_EXTENSION_NS}/tasks/daily-briefing.md`,
       },
     ]);
     expect(tpl.dir).toBe(path.resolve(dir));
     expect(tpl.report).toEqual([]);
   });
 
-  it('stamps a plain conformant plugin with no NanoClaw extension (persona-less)', () => {
+  it('stamps a plain conformant plugin with no Area51 extension (persona-less)', () => {
     writeManifest();
     writeSkill('greet');
 
@@ -369,9 +369,9 @@ describe('parseTemplate', () => {
     });
   });
 
-  describe('NanoClaw extension', () => {
+  describe('Area51 extension', () => {
     it('reports and ignores a malformed agentName and unknown extension keys', () => {
-      writeManifest({ extensions: { [NANOCLAW_EXTENSION_NS]: { agentName: 7, color: 'red' } } });
+      writeManifest({ extensions: { [AREA51_EXTENSION_NS]: { agentName: 7, color: 'red' } } });
       const tpl = parseTemplate(dir);
       expect(tpl.agentName).toBeUndefined();
       expect(tpl.report).toEqual(
@@ -396,14 +396,14 @@ describe('parseTemplate', () => {
       ['empty prompt', '---\nschedule: 0 9 * * *\n---\n', /prompt is required/],
     ])('rejects a task with %s', (_case, content, expected) => {
       writeManifest();
-      write(`${NANOCLAW_EXTENSION_NS}/tasks/broken.md`, content);
+      write(`${AREA51_EXTENSION_NS}/tasks/broken.md`, content);
       expect(() => parseTemplate(dir)).toThrow(expected);
     });
 
     it('accepts a multiline script and a single-line script', () => {
       writeManifest();
       write(
-        `${NANOCLAW_EXTENSION_NS}/tasks/check.md`,
+        `${AREA51_EXTENSION_NS}/tasks/check.md`,
         '---\nschedule: "0 9 * * *"\nscript: echo wake\n---\nCheck it.\n',
       );
       expect(parseTemplate(dir).tasks[0].script).toBe('echo wake');

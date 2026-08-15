@@ -19,15 +19,15 @@ import { pinnedPlatforms, resolvePinForPlatform } from './registry-state.js';
 const here = path.dirname(fileURLToPath(import.meta.url));
 
 const PER_ARCH = {
-  'linux/amd64': 'reg.example.com/nanoclaw/agent@sha256:aaaa',
-  'linux/arm64': 'reg.example.com/nanoclaw/agent@sha256:bbbb',
+  'linux/amd64': 'reg.example.com/area51/agent@sha256:aaaa',
+  'linux/arm64': 'reg.example.com/area51/agent@sha256:bbbb',
 };
 
 describe('resolvePinForPlatform', () => {
   it('returns a single reference unchanged for every platform', () => {
     // A multi-arch index is docker's job to resolve. Second-guessing it here is
     // how you end up pulling the wrong child.
-    const ref = 'reg.example.com/nanoclaw/agent@sha256:cccc';
+    const ref = 'reg.example.com/area51/agent@sha256:cccc';
     expect(resolvePinForPlatform(ref, 'linux/amd64')).toBe(ref);
     expect(resolvePinForPlatform(ref, 'linux/arm64')).toBe(ref);
   });

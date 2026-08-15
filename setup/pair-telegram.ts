@@ -61,7 +61,7 @@ function intentToString(intent: PairingIntent): string {
  * Render the pairing code card with clack's STATIC primitives (note/log).
  *
  * The Option A driver's streaming exec (setup/lib/skill-driver.ts
- * `hostExecStream`) CONSUMES the `=== NANOCLAW SETUP: … ===` status blocks (it
+ * `hostExecStream`) CONSUMES the `=== AREA51 SETUP: … ===` status blocks (it
  * does not show them) and tees every OTHER stdout line verbatim to the
  * operator's terminal. Static clack output is just lines, so it survives that
  * tee and reads like the rest of the wizard — only INTERACTIVE/animated clack

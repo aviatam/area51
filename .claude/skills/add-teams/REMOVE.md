@@ -46,8 +46,8 @@ that is the step that actually revokes the client secret. Additionally:
 - **Teams CLI path**: delete the app listing in the Teams Developer Portal
   (https://dev.teams.microsoft.com/apps) — removing it there alone does NOT
   revoke the secret.
-- **Manual Azure path**: delete the Azure Bot resource, and the `nanoclaw-rg`
-  resource group if you created one (`az group delete --name nanoclaw-rg`).
+- **Manual Azure path**: delete the Azure Bot resource, and the `area51-rg`
+  resource group if you created one (`az group delete --name area51-rg`).
 
 ## 6. Rebuild and restart
 

@@ -1,11 +1,11 @@
 ---
-name: migrate-nanoclaw
+name: migrate-area51
 description: Extracts user customizations from a fork, generates a replayable migration guide, and upgrades to upstream by reapplying customizations on a clean base. Replaces merge-based upgrades with intent-based migration.
 ---
 
 # Context
 
-NanoClaw users fork the repo and customize it — changing config values, editing source files, modifying personas, adding skills. When upstream ships updates or refactors, `git merge` produces painful conflicts because the same core files were changed on both sides.
+Area51 users fork the repo and customize it — changing config values, editing source files, modifying personas, adding skills. When upstream ships updates or refactors, `git merge` produces painful conflicts because the same core files were changed on both sides.
 
 This skill extracts the user's customizations into a migration guide — capturing both the intent (what they want) and the implementation details (how they did it, with code snippets, API calls, and specific configurations). On upgrade, it checks out clean upstream in a worktree, then reapplies customizations using the guide. No merge conflicts because there's nothing to merge.
 
@@ -31,11 +31,11 @@ Two phases: **Extract** (build the migration guide) and **Upgrade** (use it). If
 # Phase 0: Refresh this skill first
 
 The migration process itself evolves, so run its newest version before doing anything else:
-- Ensure the `upstream` remote exists (default `https://github.com/nanocoai/nanoclaw.git`) and fetch: `git fetch upstream --prune`. Detect the upstream branch (`main` or `master`).
-- Refresh this skill from upstream: `git checkout upstream/<branch> -- .claude/skills/migrate-nanoclaw/`
-- Re-read `.claude/skills/migrate-nanoclaw/SKILL.md`. If it changed, **follow the updated version from the top** instead of this one.
+- Ensure the `upstream` remote exists (default `https://github.com/aviatam/area51.git`) and fetch: `git fetch upstream --prune`. Detect the upstream branch (`main` or `master`).
+- Refresh this skill from upstream: `git checkout upstream/<branch> -- .claude/skills/migrate-area51/`
+- Re-read `.claude/skills/migrate-area51/SKILL.md`. If it changed, **follow the updated version from the top** instead of this one.
 
-This is the only working-tree change expected before the preflight check below; changes limited to `.claude/skills/migrate-nanoclaw/` are this self-refresh — ignore them in the 1.0 clean-tree check and proceed.
+This is the only working-tree change expected before the preflight check below; changes limited to `.claude/skills/migrate-area51/` are this self-refresh — ignore them in the 1.0 clean-tree check and proceed.
 
 # Phase 1: Extract
 
@@ -43,7 +43,7 @@ This is the only working-tree change expected before the preflight check below; 
 
 Run `git status --porcelain`. If non-empty, offer to stash or commit for them (AskUserQuestion: "Stash changes" / "Commit changes" / "I'll handle it"). If they want to commit, stage and commit with a descriptive message. If they want to stash, run `git stash push -m "pre-migration stash"`.
 
-Check remotes with `git remote -v`. If `upstream` is missing, ask for the URL (default: `https://github.com/nanocoai/nanoclaw.git`), add it, then `git fetch upstream --prune`.
+Check remotes with `git remote -v`. If `upstream` is missing, ask for the URL (default: `https://github.com/aviatam/area51.git`), add it, then `git fetch upstream --prune`.
 
 Detect upstream branch: check `git branch -r | grep upstream/` for `main` or `master`. Store as UPSTREAM_BRANCH.
 
@@ -61,17 +61,17 @@ git diff --stat $BASE..HEAD | tail -1                   # insertions/deletions
 git diff --name-only $BASE..upstream/$UPSTREAM_BRANCH | wc -l  # upstream changed files
 ```
 
-Check for existing guide: `.nanoclaw-migrations/guide.md` or `.nanoclaw-migrations/index.md`.
+Check for existing guide: `.area51-migrations/guide.md` or `.area51-migrations/index.md`.
 
 **Determine the tier based on the total diff from base:**
 
-### Tier 1: Lightweight — suggest `/update-nanoclaw` instead
+### Tier 1: Lightweight — suggest `/update-area51` instead
 
 Conditions (any of):
 - Very few upstream changes (< ~5 commits) AND few user changes (< ~3 changed files)
 - User recently updated/migrated (merge-base is close to upstream HEAD)
 
-Tell the user the scope is small and suggest `/update-nanoclaw` might be simpler. Let them choose.
+Tell the user the scope is small and suggest `/update-area51` might be simpler. Let them choose.
 
 ### Tier 2: Standard
 
@@ -92,7 +92,7 @@ Use the full process: multiple sub-agents in parallel, directory-based guide, mi
 **Now combine the scope assessment with initial user input in one interaction.** Present the scope summary (how many commits, files, which tier) and ask (AskUserQuestion):
 
 For Tier 1:
-- **Use /update-nanoclaw** — simpler merge-based approach
+- **Use /update-area51** — simpler merge-based approach
 - **Proceed with full migration** — continue
 
 For Tier 2/3 (with or without existing guide):
@@ -118,7 +118,7 @@ If the user chose to update an existing guide rather than re-extract:
 
 Spawn a haiku sub-agent (Agent tool, model: haiku) for initial exploration:
 
-> Explore this NanoClaw fork to identify all changes from the upstream base. Run these commands and report back:
+> Explore this Area51 fork to identify all changes from the upstream base. Run these commands and report back:
 >
 > 1. `git diff --name-only $BASE..HEAD` — all changed files
 > 2. `git log --oneline $BASE..HEAD` — all commits
@@ -189,7 +189,7 @@ Present the plan to the user for review before proceeding to the guide.
 
 ## 1.7 Write the migration guide
 
-**Storage:** `.nanoclaw-migrations/guide.md` for Tier 2. `.nanoclaw-migrations/` directory with `index.md` and section files for Tier 3.
+**Storage:** `.area51-migrations/guide.md` for Tier 2. `.area51-migrations/` directory with `index.md` and section files for Tier 3.
 
 **Verification:** After writing the guide, read it back and verify:
 - Every referenced file path exists in the current codebase
@@ -201,7 +201,7 @@ The guide is structured markdown that a fresh Claude session can follow to repro
 Structure:
 
 ```markdown
-# NanoClaw Migration Guide
+# Area51 Migration Guide
 
 Generated: <timestamp>
 Base: <BASE hash>
@@ -306,7 +306,7 @@ Example entries at different detail levels:
 
 After writing, offer to commit for the user:
 ```bash
-git add .nanoclaw-migrations/
+git add .area51-migrations/
 git commit -m "chore: save migration guide"
 ```
 
@@ -448,7 +448,7 @@ WORKTREE_PATH=$(cd "$PROJECT_ROOT/.upgrade-worktree" && pwd)
 UPGRADE_COMMIT=$(git -C "$WORKTREE_PATH" rev-parse HEAD)
 
 # 2. Copy the migration guide out of the worktree before removing it
-cp -r "$WORKTREE_PATH/.nanoclaw-migrations" /tmp/nanoclaw-migrations-backup 2>/dev/null || true
+cp -r "$WORKTREE_PATH/.area51-migrations" /tmp/area51-migrations-backup 2>/dev/null || true
 
 # 3. Remove the worktree
 git worktree remove "$WORKTREE_PATH" --force
@@ -457,13 +457,13 @@ git worktree remove "$WORKTREE_PATH" --force
 git reset --hard $UPGRADE_COMMIT
 
 # 5. Restore the migration guide and update its hashes
-cp -r /tmp/nanoclaw-migrations-backup/* .nanoclaw-migrations/ 2>/dev/null || true
-rm -rf /tmp/nanoclaw-migrations-backup
+cp -r /tmp/area51-migrations-backup/* .area51-migrations/ 2>/dev/null || true
+rm -rf /tmp/area51-migrations-backup
 ```
 
 Update the guide's header hashes to reflect the new state. Offer to commit:
 ```bash
-git add .nanoclaw-migrations/
+git add .area51-migrations/
 git commit -m "chore: upgrade to upstream $(git rev-parse --short upstream/$UPSTREAM_BRANCH)"
 ```
 
@@ -475,7 +475,7 @@ Run `pnpm install && pnpm run build` in the main tree to confirm.
 
 Stamp the upgrade marker (required — without it the startup tripwire stops the host on next start). Only do this after the build above succeeds:
 ```bash
-pnpm exec tsx scripts/upgrade-state.ts set "" migrate-nanoclaw
+pnpm exec tsx scripts/upgrade-state.ts set "" migrate-area51
 ```
 
 Restart the service. Service labels are per-install — derive them from `setup/lib/install-slug.sh`:
@@ -499,5 +499,5 @@ Offer to pop the stash if one was created in preflight: `git stash pop`
 
 ## Diagnostics
 
-1. Use the Read tool to read `.claude/skills/migrate-nanoclaw/diagnostics.md`.
+1. Use the Read tool to read `.claude/skills/migrate-area51/diagnostics.md`.
 2. Follow every step in that file before finishing.

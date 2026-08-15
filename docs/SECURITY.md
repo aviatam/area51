@@ -1,7 +1,7 @@
-# NanoClaw Security Model
+# Area51 Security Model
 
 > The canonical, continuously-verified version of this model lives at
-> [docs.nanoclaw.dev/concepts/security](https://docs.nanoclaw.dev/concepts/security).
+> [docs.area51.dev/concepts/security](https://docs.area51.dev/concepts/security).
 > This in-repo copy can drift; if the two disagree, verify against
 > `src/container-runner.ts` (`buildMounts`).
 
@@ -64,7 +64,7 @@ therefore reach only paths already visible inside that container, not arbitrary
 host files.
 
 **Additional-mount allowlist** — extra mounts from a group's container config
-are validated against an allowlist at `~/.config/nanoclaw/mount-allowlist.json`,
+are validated against an allowlist at `~/.config/area51/mount-allowlist.json`,
 which is:
 - Outside the project root
 - Never mounted into containers
@@ -108,20 +108,20 @@ This prevents cross-group information disclosure.
 
 ### 4. Credential Isolation (OneCLI Agent Vault)
 
-Real API credentials **never enter containers**. NanoClaw uses [OneCLI's Agent Vault](https://github.com/onecli/onecli) to proxy outbound requests and inject credentials at the gateway level.
+Real API credentials **never enter containers**. Area51 uses [OneCLI's Agent Vault](https://github.com/onecli/onecli) to proxy outbound requests and inject credentials at the gateway level.
 
 **How it works:**
 1. Credentials are registered once with `onecli secrets create`, stored and managed by OneCLI
-2. When NanoClaw spawns a container, it calls `applyContainerConfig()` to route outbound HTTPS through the OneCLI gateway
+2. When Area51 spawns a container, it calls `applyContainerConfig()` to route outbound HTTPS through the OneCLI gateway
 3. The gateway matches requests by host and path, injects the real credential, and forwards
 4. Agents cannot discover real credentials — not in environment, stdin, files, or `/proc`
 
 **Per-agent policies:**
-Each NanoClaw group gets its own OneCLI agent identity. This allows different credential policies per group (e.g. your sales agent vs. support agent). OneCLI supports rate limits, and time-bound access and approval flows are on the roadmap.
+Each Area51 group gets its own OneCLI agent identity. This allows different credential policies per group (e.g. your sales agent vs. support agent). OneCLI supports rate limits, and time-bound access and approval flows are on the roadmap.
 
 **Never on the container filesystem:**
 - The project root and `.env` — never mounted; the container only receives the paths in the mount table above.
-- The mount allowlist — external (`~/.config/nanoclaw/…`), never mounted.
+- The mount allowlist — external (`~/.config/area51/…`), never mounted.
 - Real credentials — injected per request by the OneCLI gateway, never written into any mount.
 
 ### 5. Egress Lockdown (Forced Proxy)
@@ -132,7 +132,7 @@ credential injection, approvals, and audit. Egress lockdown closes that hole at
 the network layer.
 
 **How it works:** agents are placed on a Docker `--internal` network
-(`nanoclaw-egress`) that has **no route to the internet**. The OneCLI gateway
+(`area51-egress`) that has **no route to the internet**. The OneCLI gateway
 container is attached to that network, aliased as `host.docker.internal`, so the
 injected proxy URL (`…@host.docker.internal:10255`) resolves to the gateway
 *container-to-container*. The gateway is therefore the **only reachable hop** —
@@ -146,9 +146,9 @@ no `host-gateway` route).
   automatically.
 - **Fail-fast:** if lockdown is on but the network can't be created or the
   gateway can't be attached (e.g. a non-standard gateway container name, or the
-  gateway isn't running), nanoclaw **refuses to spawn the agent** and surfaces a
+  gateway isn't running), area51 **refuses to spawn the agent** and surfaces a
   clear error — it never silently falls back to open egress. Fix the cause (or
-  set `NANOCLAW_EGRESS_LOCKDOWN=false`) and retry. The host-sweep re-heal is the
+  set `AREA51_EGRESS_LOCKDOWN=false`) and retry. The host-sweep re-heal is the
   exception: a heal failure there is logged but not fatal, since already-running
   agents stay on the internal net (no leak) until the gateway returns.
 
@@ -160,8 +160,8 @@ traffic is not confined to the internal network.
 
 | Env | Default | Meaning |
 | --- | --- | --- |
-| `NANOCLAW_EGRESS_LOCKDOWN` | `false` | Set `true` to opt in (otherwise the host-gateway path is used). |
-| `NANOCLAW_EGRESS_NETWORK` | `nanoclaw-egress` | Network name. |
+| `AREA51_EGRESS_LOCKDOWN` | `false` | Set `true` to opt in (otherwise the host-gateway path is used). |
+| `AREA51_EGRESS_NETWORK` | `area51-egress` | Network name. |
 | `ONECLI_GATEWAY_CONTAINER` | `onecli` | Gateway container to attach. |
 
 These variables are read from the **host process** environment (the service's
@@ -173,7 +173,7 @@ variables, including secrets, are never forwarded into the agent.
 internet** — all traffic must go through OneCLI. Proxy-aware clients (npm, pnpm,
 pip, curl, node/bun with the proxy env) are unaffected. Any workflow that relies
 on a **non-proxy-aware** tool reaching the internet directly will fail by design.
-Lockdown is **off by default**; opt in with `NANOCLAW_EGRESS_LOCKDOWN=true`.
+Lockdown is **off by default**; opt in with `AREA51_EGRESS_LOCKDOWN=true`.
 
 ## Resource Limits
 
@@ -220,7 +220,7 @@ OOM-killed at the limit.
 
 ## Supply Chain Security (pnpm)
 
-NanoClaw uses pnpm with two supply chain defenses configured in `pnpm-workspace.yaml`:
+Area51 uses pnpm with two supply chain defenses configured in `pnpm-workspace.yaml`:
 
 ### Minimum Release Age
 

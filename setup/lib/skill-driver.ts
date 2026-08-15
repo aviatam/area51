@@ -3,7 +3,7 @@
  * the directive engine. The entire connect+wire procedure now lives in the
  * SKILL.md — operator walkthroughs (`nc:operator`), credential prompts
  * (`nc:prompt`), the service restart (`nc:run effect:restart`), and the wiring
- * (`nc:run effect:wire`, `ncl …`). So the driver is just: ask the prompts
+ * (`nc:run effect:wire`, `area51 …`). So the driver is just: ask the prompts
  * (`resolveInput`), render the engine's events (`onEvent` — spinners for step
  * events, notes + policy for operator blocks), run the engine in document order.
  *
@@ -243,7 +243,7 @@ async function reuseFromEnv(
 /**
  * Host exec for the engine's run directives. Returns stdout so a
  * `run capture:<var>` can bind it. Puts the project's `bin/` on PATH so a bare
- * `ncl …` in a wire directive resolves to `bin/ncl` even when it isn't
+ * `area51 …` in a wire directive resolves to `bin/area51` even when it isn't
  * symlinked onto the operator's PATH.
  *
  * Async (spawn, not execSync) so the step spinner keeps animating: a sync exec
@@ -290,7 +290,7 @@ export function hostExec(projectRoot: string, rawLog?: string): (cmd: string) =>
 /**
  * Streaming host exec for `nc:run effect:step`. Spawns the step through a shell,
  * tees its human-facing output to the operator's terminal live (so a pairing code
- * card or a QR rendered by the step shows), parses the `=== NANOCLAW SETUP: TYPE
+ * card or a QR rendered by the step shows), parses the `=== AREA51 SETUP: TYPE
  * ===` status blocks, and resolves with the terminal (last STATUS-bearing) block's
  * fields so the engine can `capture:<var>=<FIELD>` them. The block protocol mirrors
  * setup/lib/runner.ts's StatusStream — a step is just a command that emits blocks.
@@ -325,7 +325,7 @@ export function hostExecStream(projectRoot: string): (cmd: string) => Promise<St
         while ((idx = buf.indexOf('\n')) !== -1) {
           const line = buf.slice(0, idx);
           buf = buf.slice(idx + 1);
-          if (/^=== NANOCLAW SETUP: \S+ ===/.test(line)) { current = { fields: {} }; continue; }
+          if (/^=== AREA51 SETUP: \S+ ===/.test(line)) { current = { fields: {} }; continue; }
           if (line.startsWith('=== END ===')) { if (current) blocks.push(current); current = null; continue; }
           if (current) {
             const c = line.indexOf(':');

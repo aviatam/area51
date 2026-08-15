@@ -1,10 +1,10 @@
-# NanoClaw API Details
+# Area51 API Details
 
 Implementation-level details for the architecture. See [architecture.md](architecture.md) for the high-level design.
 
 ## Channel Adapter Interface
 
-### NanoClaw Channel Interface
+### Area51 Channel Interface
 
 ```typescript
 interface ChannelSetup {
@@ -48,7 +48,7 @@ interface ChannelAdapter {
 interface InboundMessage {
   id: string;
   kind: 'chat' | 'chat-sdk';
-  content: unknown;       // JSON blob — NanoClaw chat format or Chat SDK SerializedMessage
+  content: unknown;       // JSON blob — Area51 chat format or Chat SDK SerializedMessage
   timestamp: string;
 }
 
@@ -99,7 +99,7 @@ interface ChannelDefaults {
 4. Registration entry under the channelType (from the live adapter's channelType, else the caller-supplied hint)
 5. `fallbackChannelDefaults(supportsThreads)` — behavior-faithful to the pre-declaration router: dm `{ pattern '.', threads: supportsThreads, request_approval }`, group `{ mention-sticky, threads: supportsThreads, request_approval }`, mentions `'platform'`. `supportsThreads` is `false` when no adapter is live.
 
-Never returns undefined. `hasDeclaredChannelDefaults()` reports whether tiers 1–4 hit; manual creation surfaces (`ncl`) gate declaration-derived defaults on it so stale (undeclared) adapters keep the legacy static schema defaults — a trunk update alone changes no behavior.
+Never returns undefined. `hasDeclaredChannelDefaults()` reports whether tiers 1–4 hit; manual creation surfaces (`area51`) gate declaration-derived defaults on it so stale (undeclared) adapters keep the legacy static schema defaults — a trunk update alone changes no behavior.
 
 **Creation helpers** (`src/channels/channel-defaults.ts`): every wiring-creation path calls `resolveWiringDefaults(channelKey, isGroup, agentGroupName)` — it picks `decl.group` vs `decl.dm` by `isGroup = event.message.isGroup ?? (mg.is_group === 1)` (never `threadId !== null`), substitutes `{name}`, and downgrades `mention-sticky` → `mention` when the context's resolved threads value is false. `resolveUnknownSenderPolicy` does the same for auto-created messaging_groups rows.
 
@@ -107,7 +107,7 @@ Never returns undefined. `hasDeclaredChannelDefaults()` reports whether tiers 1�
 
 ### Chat SDK Bridge
 
-Wraps a Chat SDK adapter + Chat instance to conform to the NanoClaw ChannelAdapter interface. Trunk ships the bridge and the channel registry only — platform-specific Chat SDK adapters (Discord, Slack, Telegram, etc.) and native adapters (WhatsApp/Baileys) are installed by the `/add-<channel>` skills from the `channels` branch.
+Wraps a Chat SDK adapter + Chat instance to conform to the Area51 ChannelAdapter interface. Trunk ships the bridge and the channel registry only — platform-specific Chat SDK adapters (Discord, Slack, Telegram, etc.) and native adapters (WhatsApp/Baileys) are installed by the `/add-<channel>` skills from the `channels` branch.
 
 ```typescript
 function createChatSdkBridge(
@@ -216,7 +216,7 @@ function createChatSdkBridge(
 }
 ```
 
-### Native NanoClaw Channel (no Chat SDK)
+### Native Area51 Channel (no Chat SDK)
 
 Native channels implement the ChannelAdapter interface directly. The WhatsApp/Baileys adapter is the canonical example — it ships via the `/add-whatsapp` skill, not in trunk:
 
@@ -283,7 +283,7 @@ function createWhatsAppChannel(): ChannelAdapter {
 
 ### messages_in content examples
 
-**`chat`** — simple NanoClaw format:
+**`chat`** — simple Area51 format:
 ```json
 {
   "sender": "John",

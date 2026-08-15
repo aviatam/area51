@@ -3,7 +3,7 @@
  *
  * Takes a declarative resource definition (table, columns, access levels)
  * and auto-registers list/get/create/update/delete commands in the CLI
- * registry. Column metadata doubles as documentation — `ncl <resource> help`
+ * registry. Column metadata doubles as documentation — `area51 <resource> help`
  * is generated from the same definitions.
  */
 import { randomUUID } from 'crypto';
@@ -39,7 +39,7 @@ export interface ColumnDef {
 export interface CustomOperation {
   access: Access;
   /** First line = one-line summary (resource help). Full text renders in the
-   *  per-verb deep help (`ncl <resource> help <verb>` / `--help`). */
+   *  per-verb deep help (`area51 <resource> help <verb>` / `--help`). */
   description: string;
   /**
    * Declaring args opts this verb into strict validation: required/enum/type
@@ -86,7 +86,7 @@ export interface ResourceDef {
   /**
    * Columns forming a natural unique key. When set, generic `create` is
    * idempotent: if a row already matches on these columns it is returned
-   * instead of re-inserted (so a skill that wires via `ncl ... create` is
+   * instead of re-inserted (so a skill that wires via `area51 ... create` is
    * safe to re-apply).
    */
   naturalKey?: string[];
@@ -129,8 +129,8 @@ export interface ResourceDef {
    * sit inside the better-sqlite3 transaction, which only covers central-DB
    * statements and is synchronous.
    *
-   * The canonical case is live-refresh parity with `ncl destinations add`:
-   * after `ncl wirings create` writes the companion `agent_destinations`
+   * The canonical case is live-refresh parity with `area51 destinations add`:
+   * after `area51 wirings create` writes the companion `agent_destinations`
    * row, the change has to be projected into any running container's session
    * DB or the agent won't see the new delivery target until its next spawn
    * (#2389). Runs only if the transaction succeeds, so it never observes a
@@ -240,7 +240,7 @@ function genericCreate(def: ResourceDef) {
     }
 
     // Idempotent create: if a row already matches the natural key, return it
-    // rather than hitting a UNIQUE violation. Lets a skill re-run `ncl … create`.
+    // rather than hitting a UNIQUE violation. Lets a skill re-run `area51 … create`.
     // Runs after pass 3 so defaultFrom-filled columns (e.g. messaging-groups'
     // `instance`) participate in the match. No new row means postCreate /
     // postCommit are correctly skipped — no new companion rows to create.

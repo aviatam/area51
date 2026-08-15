@@ -25,9 +25,9 @@
  * swallowed. Only the terminal result is a status block.
  *
  * Files written, all under a 0700 directory:
- *   ~/.config/nanoclaw/account.json        the account record + token (0600)
- *   ~/.config/nanoclaw/registry-auth.json  the credential helper's view (0600)
- *   ~/.config/nanoclaw/host-id             per-machine id for the mint log (0600)
+ *   ~/.config/area51/account.json        the account record + token (0600)
+ *   ~/.config/area51/registry-auth.json  the credential helper's view (0600)
+ *   ~/.config/area51/host-id             per-machine id for the mint log (0600)
  *
  * The helper reads files rather than the environment because docker spawns it
  * with an environment we do not control. `registry-auth.json` is its contract,
@@ -62,15 +62,15 @@ const DEFAULT_TOKEN_ENDPOINT = 'https://api.workos.com/user_management/authentic
 const DEVICE_GRANT_TYPE = 'urn:ietf:params:oauth:grant-type:device_code';
 
 const ENV = {
-  api: 'NANOCLAW_REGISTRY_API',
-  token: 'NANOCLAW_REGISTRY_TOKEN',
-  enrollCode: 'NANOCLAW_REGISTRY_ENROLL_CODE',
-  clientId: 'NANOCLAW_WORKOS_CLIENT_ID',
-  deviceEndpoint: 'NANOCLAW_WORKOS_DEVICE_ENDPOINT',
-  tokenEndpoint: 'NANOCLAW_WORKOS_TOKEN_ENDPOINT',
+  api: 'AREA51_REGISTRY_API',
+  token: 'AREA51_REGISTRY_TOKEN',
+  enrollCode: 'AREA51_REGISTRY_ENROLL_CODE',
+  clientId: 'AREA51_WORKOS_CLIENT_ID',
+  deviceEndpoint: 'AREA51_WORKOS_DEVICE_ENDPOINT',
+  tokenEndpoint: 'AREA51_WORKOS_TOKEN_ENDPOINT',
 } as const;
 
-const CONFIG_DIR = path.join(os.homedir(), '.config', 'nanoclaw');
+const CONFIG_DIR = path.join(os.homedir(), '.config', 'area51');
 const ACCOUNT_FILE = path.join(CONFIG_DIR, 'account.json');
 const REGISTRY_AUTH_FILE = path.join(CONFIG_DIR, 'registry-auth.json');
 const HOST_ID_FILE = path.join(CONFIG_DIR, 'host-id');
@@ -100,7 +100,7 @@ const EXIT_SKIPPED = 2;
  * it. The variable is set at the spawn site, not in `.env` — it describes this
  * invocation, not the install.
  */
-const SPAWNED_BY_WIZARD = process.env.NANOCLAW_SETUP_WIZARD === '1';
+const SPAWNED_BY_WIZARD = process.env.AREA51_SETUP_WIZARD === '1';
 
 /**
  * Whether anything is parsing our stdout. Set from `--non-interactive` / no TTY.
@@ -427,7 +427,7 @@ function resolveApiBase(override?: string): string {
 interface ClientRecord {
   os: string;
   arch: string;
-  nanoclaw_version: string;
+  area51_version: string;
   host_id: string;
 }
 
@@ -439,7 +439,7 @@ function clientRecord(): ClientRecord {
   } catch {
     // Running from somewhere other than the checkout root. Not worth failing over.
   }
-  return { os: process.platform, arch: process.arch, nanoclaw_version: version, host_id: ensureHostId() };
+  return { os: process.platform, arch: process.arch, area51_version: version, host_id: ensureHostId() };
 }
 
 type ProbeState =
@@ -493,7 +493,7 @@ async function enroll(api: string, body: EnrollBody): Promise<EnrollResult> {
     res = await http(`${api}/v1/enroll`, json(enrollWire(body)), HTTP_TIMEOUT_MS);
   } catch (err) {
     throw new LoginError(
-      `Couldn't reach the NanoClaw account service at ${api}: ${message(err)}`,
+      `Couldn't reach the Area51 account service at ${api}: ${message(err)}`,
       `Check your network, then re-run. Point ${ENV.api} elsewhere if you run your own.`,
     );
   }
@@ -551,7 +551,7 @@ function idpRejectionHint(code?: string): string {
     case 'token_expired':
       return 'The sign-in took too long. Run this again — the code is valid for 5 minutes.';
     case 'account_unavailable':
-      return 'This account is suspended. Contact whoever administers your NanoClaw account.';
+      return 'This account is suspended. Contact whoever administers your Area51 account.';
     case 'identity_provider_unconfigured':
       return 'Browser sign-in is not enabled on this deployment. Use an enrollment code instead.';
     default:
@@ -612,9 +612,9 @@ interface IdpConfig {
 /**
  * Three outcomes, not two.
  *
- * "No identity provider" and "that URL is not a NanoClaw registry" are different
+ * "No identity provider" and "that URL is not a Area51 registry" are different
  * problems with different fixes, and collapsing them is how a wrong
- * NANOCLAW_REGISTRY_API presents as "browser authentication is not configured" — which
+ * AREA51_REGISTRY_API presents as "browser authentication is not configured" — which
  * sends someone looking in entirely the wrong place. The default host resolves
  * and answers 404 from the marketing site, so "unreachable" is not a safe proxy
  * for "misconfigured" either.
@@ -650,7 +650,7 @@ async function probeBroker(api: string): Promise<BrokerProbe> {
   const declared = res.body && typeof res.body === 'object' ? res.body : undefined;
   const looksLikeBroker = declared !== undefined && 'device_flow_available' in declared;
   if (!looksLikeBroker) {
-    return { kind: 'not-a-broker', detail: `HTTP ${res.status} with no NanoClaw registry response` };
+    return { kind: 'not-a-broker', detail: `HTTP ${res.status} with no Area51 registry response` };
   }
 
   const clientId = str(declared.client_id);
@@ -940,13 +940,13 @@ async function askLine(prompt: string): Promise<string | undefined> {
  * the text stored against their answer cannot drift apart.
  *
  * Echo is named because they are a second sender: somebody agreeing to hear
- * from NanoClaw has not thereby agreed to hear from whoever builds the image.
+ * from Area51 has not thereby agreed to hear from whoever builds the image.
  */
 const CONSENT_VERSION = 'cli-v1';
 const CONSENT_LINES = [
-  'NanoClaw and Echo, who build the agent image, may email me security notices',
+  'Area51 and Echo, who build the agent image, may email me security notices',
   'and project updates. I can unsubscribe at any time.',
-  'What we do with your address: https://nanoclaw.dev/privacy',
+  'What we do with your address: https://area51.dev/privacy',
 ];
 const CONSENT_TEXT = CONSENT_LINES.join(' ');
 
@@ -1077,7 +1077,7 @@ export async function run(argv: string[]): Promise<void> {
       });
       return;
     }
-    console.log('The stored NanoClaw sign-in is no longer valid — signing in again.');
+    console.log('The stored Area51 sign-in is no longer valid — signing in again.');
   }
 
   const presetToken = str(process.env[ENV.token]);
@@ -1127,8 +1127,8 @@ export async function run(argv: string[]): Promise<void> {
   const probe = await probeBroker(api);
   if (probe.kind === 'not-a-broker') {
     throw new LoginError(
-      `No NanoClaw registry at ${api} (${probe.detail}).`,
-      `Nothing at that address answers as a NanoClaw registry. If ${ENV.api} is set, check it points at one — unset, this reaches the hosted service. Either way \`./container/build.sh\` builds the image locally and needs no account.`,
+      `No Area51 registry at ${api} (${probe.detail}).`,
+      `Nothing at that address answers as a Area51 registry. If ${ENV.api} is set, check it points at one — unset, this reaches the hosted service. Either way \`./container/build.sh\` builds the image locally and needs no account.`,
     );
   }
   const idp = probe.kind === 'idp' ? probe.config : undefined;

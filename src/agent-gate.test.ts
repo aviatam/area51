@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { scanAgentGate, writeAgentGateReport } from './agent-gate.js';
 
 function tempGroup(): string {
-  return fs.mkdtempSync(path.join(os.tmpdir(), 'nanoclaw-agent-gate-'));
+  return fs.mkdtempSync(path.join(os.tmpdir(), 'area51-agent-gate-'));
 }
 
 function writeJson(filePath: string, value: unknown): void {
@@ -50,7 +50,7 @@ describe('scanAgentGate', () => {
     writeText(path.join(groupDir, 'CLAUDE.md'), 'You are a production support agent with memory.');
     writeText(path.join(groupDir, 'skills', 'refunds', 'SKILL.md'), 'Refund approval workflow.');
     writeText(path.join(groupDir, 'approval-policy.md'), 'Approval is required for high-value refunds.');
-    writeJson(path.join(groupDir, '.nanoclaw', 'agent-gate', 'scenarios', 'high-value-refund.json'), {
+    writeJson(path.join(groupDir, '.area51', 'agent-gate', 'scenarios', 'high-value-refund.json'), {
       id: 'high-value-refund',
       expected: 'request_approval',
     });
@@ -83,6 +83,6 @@ describe('scanAgentGate', () => {
     const report = await scanAgentGate({ groupDir, env: {} });
     writeAgentGateReport(report, reportPath);
 
-    expect(JSON.parse(fs.readFileSync(reportPath, 'utf8')).schema).toBe('nanoclaw.agent_gate.v1');
+    expect(JSON.parse(fs.readFileSync(reportPath, 'utf8')).schema).toBe('area51.agent_gate.v1');
   });
 });

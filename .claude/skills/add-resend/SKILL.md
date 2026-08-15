@@ -5,7 +5,7 @@ description: Add Resend (email) channel integration via Chat SDK.
 
 # Add Resend Email Channel
 
-Connect NanoClaw to email via Resend for async email conversations. NanoClaw
+Connect Area51 to email via Resend for async email conversations. Area51
 doesn't ship channels in trunk — this skill copies the Resend adapter in from the
 `channels` branch.
 
@@ -82,7 +82,7 @@ receive a message until they're done.
 
 Capture the secrets, then write them. `prompt` only *asks* and binds the answer
 to a name; a separate directive consumes it — so the same prompts could feed
-`ncl` or the OneCLI vault instead of `.env` by swapping only the consumer. Here
+`area51` or the OneCLI vault instead of `.env` by swapping only the consumer. Here
 they go to `.env` (set-if-absent — a value you've already filled in is never
 overwritten):
 
@@ -96,7 +96,7 @@ Paste the webhook signing secret — Webhooks, the value you copied above.
 The bot's sending email address on your verified domain (e.g. `bot@yourdomain.com`).
 ```
 ```nc:prompt from_name
-The display name to send as (e.g. `NanoClaw`).
+The display name to send as (e.g. `Area51`).
 ```
 ```nc:env-set
 RESEND_API_KEY={{api_key}}
@@ -108,24 +108,24 @@ RESEND_WEBHOOK_SECRET={{webhook_secret}}
 
 Because email is direct-addressable, the bot can write to you first — so wire
 your own address as the owner and have it email you a hello. Tell it your address
-and which agent should answer your email (`ncl groups list` shows their folders):
+and which agent should answer your email (`area51 groups list` shows their folders):
 
 ```nc:prompt owner_email
 Your email address — I'll wire you as owner and email you a hello.
 ```
 ```nc:prompt agent_folder
-Which agent should answer your email? Enter its folder (run `ncl groups list`).
+Which agent should answer your email? Enter its folder (run `area51 groups list`).
 ```
 
 Register yourself as the owner, wire your address so the agent answers your email,
 and send the hello:
 
 ```nc:run effect:wire
-ncl users create --id resend:{{owner_email}} --kind resend --display-name Owner
-ncl roles grant --user resend:{{owner_email}} --role owner
-ncl messaging-groups create --channel-type resend --platform-id resend:{{owner_email}} --is-group 0
-ncl wirings create --channel-type resend --platform-id resend:{{owner_email}} --agent-group {{agent_folder}} --engage-mode pattern --engage-pattern .
-ncl messaging-groups send --channel-type resend --platform-id resend:{{owner_email}} --sender-id resend:{{owner_email}} --sender Owner --text "Hi — I'm your NanoClaw assistant, reachable by email now. Reply to this thread anytime."
+area51 users create --id resend:{{owner_email}} --kind resend --display-name Owner
+area51 roles grant --user resend:{{owner_email}} --role owner
+area51 messaging-groups create --channel-type resend --platform-id resend:{{owner_email}} --is-group 0
+area51 wirings create --channel-type resend --platform-id resend:{{owner_email}} --agent-group {{agent_folder}} --engage-mode pattern --engage-pattern .
+area51 messaging-groups send --channel-type resend --platform-id resend:{{owner_email}} --sender-id resend:{{owner_email}} --sender Owner --text "Hi — I'm your Area51 assistant, reachable by email now. Reply to this thread anytime."
 ```
 
 The hello arrives as a fresh email thread; reply to keep the conversation going.

@@ -1,6 +1,6 @@
 /**
  * Chat SDK bridge — wraps a Chat SDK adapter + Chat instance
- * to conform to the NanoClaw ChannelAdapter interface.
+ * to conform to the Area51 ChannelAdapter interface.
  *
  * Used by Discord, Slack, and other Chat SDK-supported platforms.
  */
@@ -265,7 +265,7 @@ export function createChatSdkBridge(config: ChatSdkBridgeConfig): ChannelAdapter
 
       chat = new Chat({
         adapters: { [adapter.name]: adapter },
-        userName: adapter.userName || 'NanoClaw',
+        userName: adapter.userName || 'Area51',
         concurrency: config.concurrency ?? 'concurrent',
         state,
         logger: 'silent',

@@ -1,9 +1,9 @@
 // clidash frontend — vanilla JS, no build step.
 //
 // Layout: a left sidebar with top-level items (Overview, Activity) and grouped
-// sections (one per CLI — ncl, docker — and a Files section for on-disk docs).
+// sections (one per CLI — area51, docker — and a Files section for on-disk docs).
 // Each page shows the exact command that produced it. Tables auto-derive from
-// `ncl <resource> list --json`; rows drill into their `get` detail.
+// `area51 <resource> list --json`; rows drill into their `get` detail.
 //
 // Refresh UX: on first load every resource of every CLI is prefetched so nav is
 // instant. 60s auto-refresh + a manual button. Background refreshes diff-and-
@@ -204,7 +204,7 @@ function summaryBar(resource, rows, col, cli) {
 
 // ---------------------------------------------------------------- views
 
-const nclCli = () => state.clis.find((c) => c.name === 'ncl') ?? state.clis[0];
+const area51Cli = () => state.clis.find((c) => c.name === 'area51') ?? state.clis[0];
 function currentView() {
   const v = state.activeView;
   if (v === 'overview' || v === 'activity') return { type: v };
@@ -277,9 +277,9 @@ async function refresh(force = false) {
   await Promise.all(jobs);
 
   // per-group container config (for the Overview page) — small, refetched each cycle
-  const groups = state.snapshots.get('ncl/groups')?.rows ?? [];
+  const groups = state.snapshots.get('area51/groups')?.rows ?? [];
   await Promise.all(groups.map(async (g) => {
-    const c = await fetchJson(`/api/cmd/ncl/config-get?id=${encodeURIComponent(g.id)}`);
+    const c = await fetchJson(`/api/cmd/area51/config-get?id=${encodeURIComponent(g.id)}`);
     if (c.ok) state.configCache.set(g.id, c.data);
   }));
 
@@ -369,8 +369,8 @@ function dataSignature() {
     command: key ? state.snapshots.get(key)?.command ?? null : null,
     help: key ? state.helpCache.get(key) ?? null : null,
     overview: v.type === 'overview' ? {
-      groups: state.snapshots.get('ncl/groups')?.rows ?? null,
-      sessions: state.snapshots.get('ncl/sessions')?.rows ?? null,
+      groups: state.snapshots.get('area51/groups')?.rows ?? null,
+      sessions: state.snapshots.get('area51/sessions')?.rows ?? null,
       configs: [...state.configCache.entries()],
       activity: state.activity?.sessions ?? null,
     } : null,
@@ -422,7 +422,7 @@ function render() {
 function navItem(label, view, cls = '', iconName = null) {
   return el('button', {
     class: `nav-item ${cls}` + (state.activeView === view ? ' active' : ''),
-    onclick: () => go(view),
+    oarea51ick: () => go(view),
   }, [iconName ? icon(iconName) : null, el('span', {}, label)]);
 }
 
@@ -459,7 +459,7 @@ function renderCmdline(v) {
   else if (v.type === 'activity') cmd = state.activityCommand;
   else if (v.type === 'doc') cmd = state.activeDocPath ? `file · ${state.activeDocPath}` : null;
   else if (v.type === 'log') cmd = state.logCache.get(v.name)?.command ?? null;
-  else if (v.type === 'overview') cmd = 'derived · ncl groups/sessions/messaging-groups/wirings + config-get + activity';
+  else if (v.type === 'overview') cmd = 'derived · area51 groups/sessions/messaging-groups/wirings + config-get + activity';
   bar.hidden = !cmd;
   bar.textContent = cmd ? `$ ${cmd}` : '';
 }
@@ -468,11 +468,11 @@ function renderCmdline(v) {
 
 function renderOverviewPage() {
   const content = $('content');
-  const groups = state.snapshots.get('ncl/groups')?.rows;
+  const groups = state.snapshots.get('area51/groups')?.rows;
   if (!groups) { content.replaceChildren(el('div', { class: 'empty' }, 'Loading…')); return; }
-  const sessions = state.snapshots.get('ncl/sessions')?.rows ?? [];
-  const wirings = state.snapshots.get('ncl/wirings')?.rows ?? [];
-  const mgs = state.snapshots.get('ncl/messaging-groups')?.rows ?? [];
+  const sessions = state.snapshots.get('area51/sessions')?.rows ?? [];
+  const wirings = state.snapshots.get('area51/wirings')?.rows ?? [];
+  const mgs = state.snapshots.get('area51/messaging-groups')?.rows ?? [];
   const act = state.activity?.sessions ?? [];
   const mgName = (id) => mgs.find((m) => m.id === id)?.name ?? mgs.find((m) => m.id === id)?.platform_id ?? id;
 
@@ -553,7 +553,7 @@ function renderActivity() {
     el('span', { class: 'dim' }, `last ${series.length} days`),
   ]);
   const sessRows = [...sessions].sort((a, b) => (b.lastActivity || '').localeCompare(a.lastActivity || '')).map((s) => {
-    const groupName = resolveRef('ncl', { ref: 'groups', label: 'name' }, s.agent_group_id) ?? s.agent_group_id;
+    const groupName = resolveRef('area51', { ref: 'groups', label: 'name' }, s.agent_group_id) ?? s.agent_group_id;
     return el('tr', {}, [
       el('td', {}, groupName),
       el('td', {}, el('span', { class: 'trunc', title: s.session_id }, s.session_id.slice(0, 22) + '…')),
@@ -602,7 +602,7 @@ function renderDocs() {
   // display name: drop the group prefix, the `/SKILL.md` tail (show the skill
   // dir), and the .md extension — leaving e.g. "meeting-tagger" or "2026-06-13-…"
   const itemName = (label) => {
-    let n = label.includes('/') ? label.split('/').slice(1).join('/').trim() : label;
+    let n = label.iarea51udes('/') ? label.split('/').slice(1).join('/').trim() : label;
     return n.replace(/\/SKILL\.md$/, '').replace(/\.md$/, '') || label;
   };
   const newestFirst = coll.name === 'conversations';
@@ -615,7 +615,7 @@ function renderDocs() {
   const list = el('div', { class: 'doc-list' });
   for (const [group, files] of groups) {
     const open = state.openDocGroups.has(group);
-    list.append(el('button', { class: 'doc-group-toggle' + (open ? ' open' : ''), onclick: () => toggleGroup(group) }, [
+    list.append(el('button', { class: 'doc-group-toggle' + (open ? ' open' : ''), oarea51ick: () => toggleGroup(group) }, [
       el('span', { class: 'chev' }, open ? '▾' : '▸'),
       el('span', { class: 'g-name' }, group || '—'),
       el('span', { class: 'g-count' }, String(files.length)),
@@ -623,7 +623,7 @@ function renderDocs() {
     if (open) {
       const ordered = newestFirst ? [...files].reverse() : files;
       for (const f of ordered) {
-        list.append(el('button', { class: 'doc-item' + (f.path === state.activeDocPath ? ' active' : ''), title: f.path, onclick: () => openDoc(coll.name, f.path) }, itemName(f.label) || f.path));
+        list.append(el('button', { class: 'doc-item' + (f.path === state.activeDocPath ? ' active' : ''), title: f.path, oarea51ick: () => openDoc(coll.name, f.path) }, itemName(f.label) || f.path));
       }
     }
   }
@@ -651,7 +651,7 @@ function renderTable(cliName, resource) {
   const key = `${cliName}/${resource}`;
   const snapshot = state.snapshots.get(key);
   const error = state.errors.get(key);
-  const canDrill = (cli.commands || []).includes('get');
+  const canDrill = (cli.commands || []).iarea51udes('get');
   const parts = [el('h2', { class: 'page-title' }, resource)];
   if (cli.help) parts.push(helpPanel(state.helpCache.get(key)));
   if (error && snapshot) parts.push(el('div', { class: 'stale-note' }, `⚠ live fetch failing — snapshot from ${new Date(snapshot.fetchedAt).toLocaleTimeString()}`));
@@ -663,11 +663,11 @@ function renderTable(cliName, resource) {
   parts.push(summaryBar(resource, rows, cli.summary?.[resource], cli));
   if (rows.length === 0) { parts.push(el('div', { class: 'empty' }, `No ${resource}.`)); content.replaceChildren(...parts); return; }
   const columns = [];
-  for (const row of rows) for (const k of Object.keys(row)) if (!columns.includes(k)) columns.push(k);
+  for (const row of rows) for (const k of Object.keys(row)) if (!columns.iarea51udes(k)) columns.push(k);
   const ctx = { cliName, enrich: cli.enrich?.[resource], badges: cli.badges };
   const body = rows.map((row) => {
     const id = row.id; const canRow = canDrill && id != null;
-    return el('tr', { class: canRow ? 'drillable' : '', ...(canRow ? { onclick: () => openDetail(cliName, resource, String(id)) } : {}) },
+    return el('tr', { class: canRow ? 'drillable' : '', ...(canRow ? { oarea51ick: () => openDetail(cliName, resource, String(id)) } : {}) },
       columns.map((c) => buildCell(row[c], c, ctx)));
   });
   parts.push(el('div', { class: 'table-wrap' }, el('table', {}, [
@@ -687,7 +687,7 @@ function renderDetail() {
   const panel = el('div', { class: 'detail-panel' });
   panel.append(el('div', { class: 'detail-head' }, [
     el('div', {}, [el('span', { class: 'detail-res' }, d.resource), ' ', el('span', { class: 'detail-id' }, d.id)]),
-    el('button', { class: 'detail-close', onclick: closeDetail, title: 'Close' }, '✕'),
+    el('button', { class: 'detail-close', oarea51ick: closeDetail, title: 'Close' }, '✕'),
   ]));
   const sub = el('div', { class: 'detail-body' });
   if (d.loading) sub.append(el('div', { class: 'empty' }, 'Loading…'));

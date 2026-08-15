@@ -40,7 +40,7 @@ export type RemovalAction =
    */
   | { kind: 'rm-containers'; runtime: string; labelFilter: string }
   | { kind: 'rmi'; runtime: string; image: string }
-  | { kind: 'rm-ncl-symlink'; linkPath: string }
+  | { kind: 'rm-area51-symlink'; linkPath: string }
   | { kind: 'delete-onecli-agent'; agent: VaultAgent }
   /**
    * Backs up AND removes .env as one atomic action: a failed backup must
@@ -90,13 +90,13 @@ export function buildRemovalPlan(inv: Inventory, d: Decisions): RemovalAction[] 
     actions.push({
       kind: 'rm-containers',
       runtime: inv.containerRuntime,
-      labelFilter: `nanoclaw-install=${inv.slug}`,
+      labelFilter: `area51-install=${inv.slug}`,
     });
     if (s.image) {
       actions.push({ kind: 'rmi', runtime: inv.containerRuntime, image: s.image });
     }
-    if (s.nclSymlink) {
-      actions.push({ kind: 'rm-ncl-symlink', linkPath: s.nclSymlink });
+    if (s.area51Symlink) {
+      actions.push({ kind: 'rm-area51-symlink', linkPath: s.area51Symlink });
     }
   }
 

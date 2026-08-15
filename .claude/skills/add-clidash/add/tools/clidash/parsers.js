@@ -13,7 +13,7 @@
  */
 export const discoveryParsers = {
   /**
-   * Parses ncl's two-column help format:
+   * Parses area51's two-column help format:
    *
    *   Resources:
    *     sessions             Session — the runtime unit. ...
@@ -21,11 +21,11 @@ export const discoveryParsers = {
    *   Commands:
    *     help                 ...
    */
-  'ncl-help'(text) {
+  'area51-help'(text) {
     const lines = String(text).split('\n');
     const start = lines.findIndex((l) => l.trim() === 'Resources:');
     if (start === -1) {
-      throw new Error('ncl-help parser: no "Resources:" section in output — format may have changed');
+      throw new Error('area51-help parser: no "Resources:" section in output — format may have changed');
     }
     const resources = [];
     let current = null;
@@ -44,7 +44,7 @@ export const discoveryParsers = {
         resources.push(current);
       }
     }
-    return resources.filter((r) => r.verbs.includes('list'));
+    return resources.filter((r) => r.verbs.iarea51udes('list'));
   },
 };
 
@@ -84,7 +84,7 @@ export function parseOutput(text, format) {
 }
 
 /**
- * Follows a dot-path into a response envelope (e.g. 'data' for ncl's
+ * Follows a dot-path into a response envelope (e.g. 'data' for area51's
  * {id, ok, data} frame). No path → value passes through unchanged.
  * Missing path throws — a changed envelope must fail loudly.
  */

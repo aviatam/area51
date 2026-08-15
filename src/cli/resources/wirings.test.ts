@@ -30,7 +30,7 @@ const hostCtx = { caller: 'host' as const };
 const now = () => new Date().toISOString();
 
 // Registration-tier declarations only — no adapter is live, which is exactly
-// the environment `ncl` sees for offline instances and setup scripts.
+// the environment `area51` sees for offline instances and setup scripts.
 const declared: ChannelDefaults = {
   dm: { engageMode: 'pattern', engagePattern: 'hey {name}!', threads: false, unknownSenderPolicy: 'public' },
   group: { engageMode: 'mention-sticky', threads: true, unknownSenderPolicy: 'request_approval' },

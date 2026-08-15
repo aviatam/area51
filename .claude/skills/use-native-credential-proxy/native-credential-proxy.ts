@@ -25,7 +25,7 @@
 import { readEnvFile } from './env.js';
 
 /** Env flag that turns the native `.env` credential opt-out on. */
-export const NATIVE_CREDENTIALS_FLAG = 'NANOCLAW_NATIVE_CREDENTIALS';
+export const NATIVE_CREDENTIALS_FLAG = 'AREA51_NATIVE_CREDENTIALS';
 
 /**
  * Anthropic credential variables read from `.env`, in the order the Claude

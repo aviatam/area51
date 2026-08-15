@@ -5,9 +5,9 @@
       "name": "homeserver",
       "inputs": {
         "base_url": "https://matrix.example.com",
-        "user_id": "@nanoclaw:example.com",
-        "bot_username": "nanoclaw",
-        "username": "nanoclaw",
+        "user_id": "@area51:example.com",
+        "bot_username": "area51",
+        "username": "area51",
         "password": "fake-password",
         "access_token": "syt_fake_access_token"
       }
