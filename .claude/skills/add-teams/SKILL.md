@@ -89,7 +89,7 @@ configuration, see [Troubleshooting](#troubleshooting); if your tunnel URL
 changed, the fix is `teams app update`, not a re-run (also in Troubleshooting).
 
 ```nc:run capture:have_creds
-( grep -q '^TEAMS_APP_ID=.' .env 2>/dev/null || grep -q '^TEAMS_APP_PASSWORD=.' .env 2>/dev/null ) && echo yes || echo no
+node -e "const fs=require('fs');let env='';try{env=fs.readFileSync('.env','utf8')}catch{};console.log(/(^|\n)TEAMS_APP_ID=.+/.test(env)||/(^|\n)TEAMS_APP_PASSWORD=.+/.test(env)?'yes':'no')"
 ```
 
 Before creating anything, tell the user:

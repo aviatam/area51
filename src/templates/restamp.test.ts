@@ -1,18 +1,28 @@
-import Database from 'better-sqlite3';
 import fs from 'fs';
 import path from 'path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const TEST_ROOT = '/tmp/area51-restamp-test';
+const testDirs = vi.hoisted(() => {
+  const tmp = process.env.TEMP || process.env.TMPDIR || process.env.TMP || '/tmp';
+  const root = `${tmp.replace(/[\\/]$/, '')}/area51-restamp-test-${process.pid}`;
+  return {
+    root,
+    groups: `${root}/groups`,
+    data: `${root}/data`,
+    templates: `${root}/templates`,
+  };
+});
+
+const TEST_ROOT = testDirs.root;
 const GROUPS_DIR = path.join(TEST_ROOT, 'groups');
 const DATA_DIR = path.join(TEST_ROOT, 'data');
 const TEMPLATES_DIR = path.join(TEST_ROOT, 'templates');
 
 vi.mock('../config.js', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../config.js')>()),
-  GROUPS_DIR: '/tmp/area51-restamp-test/groups',
-  DATA_DIR: '/tmp/area51-restamp-test/data',
-  TEMPLATES_DIR: '/tmp/area51-restamp-test/templates',
+  GROUPS_DIR: testDirs.groups,
+  DATA_DIR: testDirs.data,
+  TEMPLATES_DIR: testDirs.templates,
 }));
 
 vi.mock('../log.js', () => ({
@@ -27,7 +37,7 @@ import { findTaskSessions } from '../db/sessions.js';
 import { PERSONA_PREPEND_FILE } from '../group-persona.js';
 import { createScheduledTask, prepareScheduledTask } from '../modules/scheduling/create.js';
 import { resumeTask } from '../modules/scheduling/db.js';
-import { inboundDbPath, withInboundDb } from '../session-manager.js';
+import { withInboundDb } from '../session-manager.js';
 import type { AgentGroup } from '../types.js';
 import { AREA51_EXTENSION_NS } from './extension.js';
 import { MCP_SCHEMA_URL, PLUGIN_SCHEMA_URL } from './manifest.js';
@@ -103,15 +113,16 @@ function servers(groupId: string): Record<string, McpServerConfig> {
 function liveTasks(groupId: string): Array<{ series_id: string; status: string; recurrence: string; prompt: string }> {
   const rows: Array<{ series_id: string; status: string; recurrence: string; prompt: string }> = [];
   for (const session of findTaskSessions(groupId)) {
-    const db = new Database(inboundDbPath(groupId, session.id), { readonly: true });
-    for (const row of db
-      .prepare(
-        "SELECT series_id, status, recurrence, content FROM messages_in WHERE kind = 'task' AND status IN ('pending', 'paused')",
-      )
-      .all() as Array<{ series_id: string; status: string; recurrence: string; content: string }>) {
-      rows.push({ ...row, prompt: (JSON.parse(row.content) as { prompt: string }).prompt });
-    }
-    db.close();
+    withInboundDb(groupId, session.id, (db) => {
+      const taskRows = db
+        .prepare(
+          "SELECT series_id, status, recurrence, content FROM messages_in WHERE kind = 'task' AND status IN ('pending', 'paused')",
+        )
+        .all() as Array<{ series_id: string; status: string; recurrence: string; content: string }>;
+      for (const row of taskRows) {
+        rows.push({ ...row, prompt: (JSON.parse(row.content) as { prompt: string }).prompt });
+      }
+    });
   }
   return rows;
 }
@@ -120,13 +131,14 @@ function liveTasks(groupId: string): Array<{ series_id: string; status: string; 
 function allTaskSeries(groupId: string): string[] {
   const ids = new Set<string>();
   for (const session of findTaskSessions(groupId)) {
-    const db = new Database(inboundDbPath(groupId, session.id), { readonly: true });
-    for (const row of db.prepare("SELECT DISTINCT series_id FROM messages_in WHERE kind = 'task'").all() as Array<{
-      series_id: string;
-    }>) {
-      ids.add(row.series_id);
-    }
-    db.close();
+    withInboundDb(groupId, session.id, (db) => {
+      const taskRows = db.prepare("SELECT DISTINCT series_id FROM messages_in WHERE kind = 'task'").all() as Array<{
+        series_id: string;
+      }>;
+      for (const row of taskRows) {
+        ids.add(row.series_id);
+      }
+    });
   }
   return [...ids];
 }
@@ -143,6 +155,7 @@ function stamp(): AgentGroup {
 
 const overlaySkill = (groupId: string, skill: string): string =>
   path.join(DATA_DIR, 'v2-sessions', groupId, '.claude-shared', 'skills', skill, 'SKILL.md');
+const itWithExecutableBits = process.platform === 'win32' ? it.skip : it;
 
 beforeEach(() => {
   fs.rmSync(TEST_ROOT, { recursive: true, force: true });
@@ -194,7 +207,7 @@ describe('restampAgentFromTemplate', () => {
     expect(result.note).toMatch(/Nothing to apply/);
   });
 
-  it('treats an exec-bit-only template change as an update', () => {
+  itWithExecutableBits('treats an exec-bit-only template change as an update', () => {
     // The copier preserves the executable bit, so a chmod-only revision must
     // ship on restamp instead of comparing as byte-identical.
     const g = stamp();

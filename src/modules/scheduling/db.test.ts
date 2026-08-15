@@ -22,12 +22,15 @@ import {
 
 const TEST_DIR = '/tmp/area51-scheduling-db-test';
 const DB_PATH = path.join(TEST_DIR, 'inbound.db');
+const openDbs = new Set<ReturnType<typeof openInboundDb>>();
 
 function freshDb() {
-  if (fs.existsSync(TEST_DIR)) fs.rmSync(TEST_DIR, { recursive: true });
+  if (fs.existsSync(TEST_DIR)) fs.rmSync(TEST_DIR, { recursive: true, force: true });
   fs.mkdirSync(TEST_DIR, { recursive: true });
   ensureSchema(DB_PATH, 'inbound');
-  return openInboundDb(DB_PATH);
+  const db = openInboundDb(DB_PATH);
+  openDbs.add(db);
+  return db;
 }
 
 function insertBasicTask(db: ReturnType<typeof openInboundDb>, id: string, recurrence: string | null) {
@@ -41,7 +44,11 @@ function insertBasicTask(db: ReturnType<typeof openInboundDb>, id: string, recur
 }
 
 afterEach(() => {
-  if (fs.existsSync(TEST_DIR)) fs.rmSync(TEST_DIR, { recursive: true });
+  for (const db of openDbs) {
+    if (db.open) db.close();
+  }
+  openDbs.clear();
+  if (fs.existsSync(TEST_DIR)) fs.rmSync(TEST_DIR, { recursive: true, force: true });
 });
 
 describe('insertTaskRow', () => {
