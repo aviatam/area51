@@ -5,8 +5,15 @@ import path from 'path';
 import { describe, expect, it } from 'vitest';
 
 import { exposeArea51, formatArea51ExposureReport, type CommandRunner } from './area51-exposure.js';
+import './cli/commands/index.js';
+import { lookup } from './cli/registry.js';
 
 describe('exposeArea51', () => {
+  it('registers both installed-binary and direct command names', () => {
+    expect(lookup('area51-expose')).toBeTruthy();
+    expect(lookup('expose')).toBeTruthy();
+  });
+
   it('exposes one report for an agent target with gate, runtime policy, verify, and findings', async () => {
     const dir = tempDir();
     writeFile(path.join(dir, 'CLAUDE.md'), 'You are a support agent.');

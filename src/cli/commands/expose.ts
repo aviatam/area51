@@ -31,68 +31,70 @@ interface ExposeArgs {
   allow_docker_fallback?: boolean;
 }
 
-register<ExposeArgs, Area51ExposureReport>({
-  name: 'expose',
-  description:
-    'Expose Area51 as one assessment surface for an agent, repo, or code change: scan, verify, decide runtime, and explain findings.',
-  access: 'open',
-  hostOnly: true,
-  parseArgs: (raw) => {
-    const args = normalizeRawArgs(raw);
-    return {
-      path: requiredString(args.path, 'path'),
-      target_type: optionalEnum(args.target_type, 'target-type', ['agent', 'repo', 'change']),
-      json_path: optionalString(args.json_path, 'json-path'),
-      verify: parseBoolean(args.verify, true, 'verify'),
-      verify_script: optionalString(args.verify_script, 'verify-script'),
-      package_manager: optionalEnum(args.package_manager, 'package-manager', ['pnpm', 'npm', 'yarn']),
-      required_secrets: parseCsv(args.required_secrets, 'required-secrets'),
-      quarantine: parseBoolean(args.quarantine, true, 'quarantine'),
-      fail_on_warnings: parseBoolean(args.fail_on_warnings, false, 'fail-on-warnings'),
-      runtime_profile: optionalEnum(args.runtime_profile, 'runtime-profile', ['local', 'production', 'maximum']),
-      trust_level: optionalEnum(args.trust_level, 'trust-level', ['built-in', 'approved', 'third-party', 'unknown']),
-      data_sensitivity: optionalEnum(args.data_sensitivity, 'data-sensitivity', [
-        'low',
-        'business',
-        'customer',
-        'secret',
-      ]),
-      capabilities: parseCsvEnum(args.capabilities, 'capabilities', [
-        'chat',
-        'files',
-        'network',
-        'browser',
-        'shell',
-        'package-install',
-        'broad-mount',
-        'secret-access',
-      ]),
-      incus_available: optionalBoolean(args.incus_available, 'incus-available'),
-      allow_docker_fallback: optionalBoolean(args.allow_docker_fallback, 'allow-docker-fallback'),
-    };
-  },
-  handler: async (args) => {
-    const report = await exposeArea51({
-      targetPath: args.path,
-      targetType: args.target_type,
-      requiredSecrets: args.required_secrets,
-      quarantine: args.quarantine,
-      failOnWarnings: args.fail_on_warnings,
-      runtimeProfile: args.runtime_profile,
-      trustLevel: args.trust_level,
-      dataSensitivity: args.data_sensitivity,
-      capabilities: args.capabilities,
-      incusAvailable: args.incus_available,
-      allowDockerFallback: args.allow_docker_fallback,
-      verify: args.verify,
-      verifyScript: args.verify_script,
-      packageManager: args.package_manager,
-    });
-    if (args.json_path) writeArea51ExposureReport(report, args.json_path);
-    return report;
-  },
-  formatHuman: formatArea51ExposureReport,
-});
+for (const name of ['area51-expose', 'expose']) {
+  register<ExposeArgs, Area51ExposureReport>({
+    name,
+    description:
+      'Expose Area51 as one assessment surface for an agent, repo, or code change: scan, verify, decide runtime, and explain findings.',
+    access: 'open',
+    hostOnly: true,
+    parseArgs: (raw) => {
+      const args = normalizeRawArgs(raw);
+      return {
+        path: requiredString(args.path, 'path'),
+        target_type: optionalEnum(args.target_type, 'target-type', ['agent', 'repo', 'change']),
+        json_path: optionalString(args.json_path, 'json-path'),
+        verify: parseBoolean(args.verify, true, 'verify'),
+        verify_script: optionalString(args.verify_script, 'verify-script'),
+        package_manager: optionalEnum(args.package_manager, 'package-manager', ['pnpm', 'npm', 'yarn']),
+        required_secrets: parseCsv(args.required_secrets, 'required-secrets'),
+        quarantine: parseBoolean(args.quarantine, true, 'quarantine'),
+        fail_on_warnings: parseBoolean(args.fail_on_warnings, false, 'fail-on-warnings'),
+        runtime_profile: optionalEnum(args.runtime_profile, 'runtime-profile', ['local', 'production', 'maximum']),
+        trust_level: optionalEnum(args.trust_level, 'trust-level', ['built-in', 'approved', 'third-party', 'unknown']),
+        data_sensitivity: optionalEnum(args.data_sensitivity, 'data-sensitivity', [
+          'low',
+          'business',
+          'customer',
+          'secret',
+        ]),
+        capabilities: parseCsvEnum(args.capabilities, 'capabilities', [
+          'chat',
+          'files',
+          'network',
+          'browser',
+          'shell',
+          'package-install',
+          'broad-mount',
+          'secret-access',
+        ]),
+        incus_available: optionalBoolean(args.incus_available, 'incus-available'),
+        allow_docker_fallback: optionalBoolean(args.allow_docker_fallback, 'allow-docker-fallback'),
+      };
+    },
+    handler: async (args) => {
+      const report = await exposeArea51({
+        targetPath: args.path,
+        targetType: args.target_type,
+        requiredSecrets: args.required_secrets,
+        quarantine: args.quarantine,
+        failOnWarnings: args.fail_on_warnings,
+        runtimeProfile: args.runtime_profile,
+        trustLevel: args.trust_level,
+        dataSensitivity: args.data_sensitivity,
+        capabilities: args.capabilities,
+        incusAvailable: args.incus_available,
+        allowDockerFallback: args.allow_docker_fallback,
+        verify: args.verify,
+        verifyScript: args.verify_script,
+        packageManager: args.package_manager,
+      });
+      if (args.json_path) writeArea51ExposureReport(report, args.json_path);
+      return report;
+    },
+    formatHuman: formatArea51ExposureReport,
+  });
+}
 
 function normalizeRawArgs(raw: Record<string, unknown>): Record<string, unknown> {
   return Object.fromEntries(Object.entries(raw).map(([key, value]) => [key.replace(/-/g, '_'), value]));
