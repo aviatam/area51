@@ -30,19 +30,7 @@ jobs:
             # Windows runs the portable host behavior suite as a blocking lane.
             # The full corpus still contains POSIX-specific cases that need
             # Bash, Unix symlink privileges, or executable-bit semantics.
-            test-command: >-
-              pnpm exec vitest run
-              src/area51-demo.test.ts
-              src/agent-gate.test.ts
-              src/attachment-naming.test.ts
-              src/container-config.test.ts
-              src/container-runner.test.ts
-              src/container-runtime.test.ts
-              src/db/container-configs.test.ts
-              src/modules/scheduling/db.test.ts
-              src/modules/scheduling/recurrence.test.ts
-              setup/channels/run-channel-skill.test.ts
-              scripts/skill-directives.test.ts
+            test-command: pnpm run test:portable:windows
 
     steps:
       - name: Checkout
@@ -67,7 +55,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: High severity dependency audit
-        run: pnpm audit --audit-level high
+        run: pnpm run audit:high
 
       - name: Typecheck host
         run: pnpm run typecheck

@@ -1,7 +1,7 @@
 {
   "name": "area51",
   "version": "2.2.0",
-  "description": "Personal AI assistant. Lightweight, secure, customizable.",
+  "description": "AI agent containment runtime: scan, isolate, run, and quarantine autonomous agents.",
   "type": "module",
   "packageManager": "pnpm@10.33.0",
   "main": "dist/index.js",
@@ -24,8 +24,28 @@
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix",
     "test": "vitest run",
+    "test:portable:windows": "vitest run src/area51-demo.test.ts src/agent-gate.test.ts src/attachment-naming.test.ts src/container-config.test.ts src/container-runner.test.ts src/container-runtime.test.ts src/db/container-configs.test.ts src/modules/scheduling/db.test.ts src/modules/scheduling/recurrence.test.ts setup/channels/run-channel-skill.test.ts scripts/skill-directives.test.ts",
+    "audit:high": "corepack pnpm audit --audit-level high",
+    "verify": "corepack pnpm run audit:high && corepack pnpm run typecheck && corepack pnpm run test:portable:windows",
     "test:watch": "vitest"
   },
+  "homepage": "https://docs.area51.dev",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aviatam/area51.git"
+  },
+  "bugs": {
+    "url": "https://github.com/aviatam/area51/issues"
+  },
+  "keywords": [
+    "ai-agent",
+    "agent-runtime",
+    "containment",
+    "quarantine",
+    "security",
+    "incus",
+    "automation"
+  ],
   "dependencies": {
     "@clack/core": "^1.2.0",
     "@clack/prompts": "^1.2.0",
@@ -51,7 +71,7 @@
     "globals": "^15.12.0",
     "husky": "^9.1.7",
     "prettier": "^3.9.6",
-    "tsx": "^4.19.0",
+    "tsx": "^4.23.12",
     "typescript": "^5.7.0",
     "typescript-eslint": "^8.67.0",
     "vitest": "^4.1.10"

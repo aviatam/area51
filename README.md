@@ -144,6 +144,17 @@ area51 agent-gate scan --path ./groups/support-agent
 area51 agent-gate scan --path ./groups/support-agent --json-path reports/agent-gate.json --ci
 ```
 
+## Verification Commands
+
+```bash
+pnpm run audit:high
+pnpm run typecheck
+pnpm run test:portable:windows
+pnpm run verify
+```
+
+`pnpm run verify` matches the fast local confidence path: high-severity dependency audit, host typecheck, and the portable behavior suite that also runs as the blocking Windows CI lane. Linux and macOS CI run the full host behavior suite.
+
 ## Five Pillars
 
 - **Capabilities**: agent files, skills, and concrete behavior scenario coverage
