@@ -1,6 +1,8 @@
 import { execFileSync } from 'child_process';
 import type { ChildProcess } from 'child_process';
 import { spawn } from 'child_process';
+import os from 'os';
+import path from 'path';
 
 import type { IncusRuntimePlan } from './incus-runtime.js';
 
@@ -151,6 +153,7 @@ function validatePlan(plan: IncusRuntimePlan): void {
   assertSafeName(plan.project, 'project');
   assertSafeName(plan.instance, 'instance');
   for (const profile of plan.profiles) assertSafeName(profile, 'profile');
+  validateMounts(plan);
 }
 
 function assertSafeName(value: string, label: string): void {
@@ -173,4 +176,60 @@ function isAlreadyExistsError(error: unknown): boolean {
       ? `${error.message}\n${String((error as { stderr?: unknown }).stderr ?? '')}`
       : String(error);
   return /already exists/i.test(text);
+}
+
+function validateMounts(plan: IncusRuntimePlan): void {
+  const seenTargets = new Set<string>();
+  for (const mount of plan.mounts) {
+    const source = normalizeHostPath(mount.source);
+    const target = normalizeContainerPath(mount.path);
+
+    if (seenTargets.has(target)) {
+      throw new Error(`Duplicate Incus mount target: ${mount.path}`);
+    }
+    seenTargets.add(target);
+
+    if (!target.startsWith('/')) {
+      throw new Error(`Invalid Incus mount target: ${mount.path}`);
+    }
+    if (target === '/' || target.includes('/../') || target.endsWith('/..')) {
+      throw new Error(`Dangerous Incus mount target: ${mount.path}`);
+    }
+    if (!mount.readonly && target !== '/workspace') {
+      throw new Error(`Writable Incus mount target is not allowed: ${mount.path}`);
+    }
+    if (isDangerousHostMount(source)) {
+      throw new Error(`Dangerous Incus host mount denied: ${mount.source}`);
+    }
+  }
+}
+
+function normalizeHostPath(value: string): string {
+  return path.resolve(value).replace(/\\/g, '/').toLowerCase();
+}
+
+function normalizeContainerPath(value: string): string {
+  return value.replace(/\\/g, '/').replace(/\/+/g, '/');
+}
+
+function isDangerousHostMount(source: string): boolean {
+  const root = path.parse(source).root.replace(/\\/g, '/').toLowerCase();
+  if (source === root || source === normalizeHostPath(os.homedir())) return true;
+
+  const normalized = source.replace(/\/+/g, '/');
+  const parts = normalized.split('/');
+  const blockedParts = new Set(['.ssh', '.gnupg', '.aws', '.azure', '.gcloud', '.kube', '.docker', '.config/area51']);
+  for (const part of parts) {
+    if (blockedParts.has(part)) return true;
+  }
+
+  return (
+    normalized.includes('/.config/area51') ||
+    normalized.endsWith('/docker.sock') ||
+    normalized.endsWith('/podman.sock') ||
+    normalized.endsWith('/incus/unix.socket') ||
+    normalized.endsWith('/lxd/unix.socket') ||
+    normalized.includes('/var/lib/incus/unix.socket') ||
+    normalized.includes('/var/snap/lxd/common/lxd/unix.socket')
+  );
 }

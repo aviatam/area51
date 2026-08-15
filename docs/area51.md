@@ -47,12 +47,19 @@ Live agent execution can opt into the Incus backend with:
 ```bash
 AREA51_RUNTIME_BACKEND=incus
 AREA51_INCUS_IMAGE=images:debian/12/cloud
+AREA51_INCUS_INSTANCE_KIND=vm   # optional: container by default, vm for high-risk work
 ```
 
 In that mode the host builds the normal Area51 session/group/runner/skill mount
 set, applies an Incus runtime plan, and starts the runner with `incus exec`.
 Docker remains the default backend for local development and cross-platform
 compatibility.
+
+The live Incus path hardens that mount set before it reaches Incus. Only
+`/workspace` stays writable. Agent definitions, shared runtime source, skills,
+provider state, and plugin content are read-only. The adapter also fails closed
+if a plan tries to mount host roots, home-directory roots, SSH/cloud config
+directories, Docker/Podman sockets, or Incus/LXD sockets.
 
 ## Exposure Command
 

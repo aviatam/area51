@@ -20,6 +20,7 @@ import {
   DATA_DIR,
   GROUPS_DIR,
   AREA51_INCUS_IMAGE,
+  AREA51_INCUS_INSTANCE_KIND,
   AREA51_RUNTIME_BACKEND,
   ONECLI_API_KEY,
   ONECLI_URL,
@@ -273,13 +274,10 @@ async function spawnIncusAgent(args: {
     agentGroupFolder: agentGroup.folder,
     groupDir: path.resolve(GROUPS_DIR, agentGroup.folder),
     sessionDir: sessionDir(agentGroup.id, session.id),
+    instanceKind: AREA51_INCUS_INSTANCE_KIND,
     instanceSuffix: session.id,
     image: AREA51_INCUS_IMAGE,
-    mounts: mounts.map((mount) => ({
-      source: mount.hostPath,
-      path: mount.containerPath,
-      readonly: mount.readonly,
-    })),
+    mounts: hardenIncusMounts(mounts),
   });
 
   log.info('Spawning Incus agent runtime', {
@@ -326,6 +324,14 @@ async function spawnIncusAgent(args: {
     stopTypingRefresh(session.id);
     log.error('Incus agent runtime spawn error', { sessionId: session.id, err });
   });
+}
+
+export function hardenIncusMounts(mounts: VolumeMount[]): Array<{ source: string; path: string; readonly: boolean }> {
+  return mounts.map((mount) => ({
+    source: mount.hostPath,
+    path: mount.containerPath,
+    readonly: mount.containerPath === '/workspace' ? mount.readonly : true,
+  }));
 }
 
 /**

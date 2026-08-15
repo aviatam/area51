@@ -140,6 +140,54 @@ describe('Incus adapter', () => {
     expect(executor).not.toHaveBeenCalled();
   });
 
+  it('fails before running commands for dangerous host mounts', () => {
+    const executor = vi.fn();
+    const plan = buildIncusRuntimePlan({
+      agentGroupFolder: 'support',
+      groupDir: '/srv/area51/groups/support',
+      mounts: [{ source: '/var/lib/incus/unix.socket', path: '/workspace/incus.sock', readonly: true }],
+    });
+
+    expect(() => applyIncusRuntimePlan(plan, { executor })).toThrow('Dangerous Incus host mount denied');
+    expect(executor).not.toHaveBeenCalled();
+  });
+
+  it('fails before running commands for host root mounts', () => {
+    const executor = vi.fn();
+    const plan = buildIncusRuntimePlan({
+      agentGroupFolder: 'support',
+      groupDir: '/srv/area51/groups/support',
+      mounts: [{ source: '/', path: '/workspace/host-root', readonly: true }],
+    });
+
+    expect(() => applyIncusRuntimePlan(plan, { executor })).toThrow('Dangerous Incus host mount denied');
+    expect(executor).not.toHaveBeenCalled();
+  });
+
+  it('fails before running commands for Docker socket mounts', () => {
+    const executor = vi.fn();
+    const plan = buildIncusRuntimePlan({
+      agentGroupFolder: 'support',
+      groupDir: '/srv/area51/groups/support',
+      mounts: [{ source: '/var/run/docker.sock', path: '/workspace/docker.sock', readonly: true }],
+    });
+
+    expect(() => applyIncusRuntimePlan(plan, { executor })).toThrow('Dangerous Incus host mount denied');
+    expect(executor).not.toHaveBeenCalled();
+  });
+
+  it('fails before running commands for writable non-session mounts', () => {
+    const executor = vi.fn();
+    const plan = buildIncusRuntimePlan({
+      agentGroupFolder: 'support',
+      groupDir: '/srv/area51/groups/support',
+      mounts: [{ source: '/srv/area51/groups/support', path: '/workspace/agent', readonly: false }],
+    });
+
+    expect(() => applyIncusRuntimePlan(plan, { executor })).toThrow('Writable Incus mount target is not allowed');
+    expect(executor).not.toHaveBeenCalled();
+  });
+
   it('stops an Incus instance by project and instance name', () => {
     const executor = vi.fn();
     const plan = buildIncusRuntimePlan({ agentGroupFolder: 'support', groupDir: '/srv/area51/groups/support' });

@@ -244,9 +244,12 @@ Area51 now keeps Docker as the default local runtime and adds an opt-in live Inc
 ```bash
 AREA51_RUNTIME_BACKEND=incus
 AREA51_INCUS_IMAGE=images:debian/12/cloud
+AREA51_INCUS_INSTANCE_KIND=vm   # optional: container by default, vm for high-risk work
 ```
 
-When `AREA51_RUNTIME_BACKEND=incus`, live session wakeups build the same host-owned mount set, create/apply an Incus runtime plan, then run the agent runner with `incus exec`. The Incus socket is never mounted into the agent instance. The backend uses argv-based CLI calls, not shell-interpolated command strings.
+When `AREA51_RUNTIME_BACKEND=incus`, live session wakeups build the host-owned mount set, harden it for Incus, create/apply an Incus runtime plan, then run the agent runner with `incus exec`. The Incus socket is never mounted into the agent instance. The backend uses argv-based CLI calls, not shell-interpolated command strings.
+
+The Incus mount policy is intentionally stricter than the Docker local path: only the session workspace may remain writable. Agent definitions, runner source, skills, provider state, and plugin content are mounted read-only, and the Incus adapter refuses dangerous host sources such as filesystem roots, home-directory roots, SSH/cloud config directories, Docker/Podman sockets, and Incus/LXD sockets before invoking Incus.
 
 The Incus backend is Linux-production oriented. Docker remains the recommended local/dev path and the fallback for users who do not want to install Incus.
 

@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { describe, expect, it } from 'vitest';
 
-import { hardeningArgs, resolveProviderName } from './container-runner.js';
+import { hardenIncusMounts, hardeningArgs, resolveProviderName } from './container-runner.js';
 
 describe('resolveProviderName', () => {
   it('prefers session over container config', () => {
@@ -68,7 +68,22 @@ describe('Incus runtime backend wiring (structural)', () => {
     const cfg = fs.readFileSync(path.join(process.cwd(), 'src', 'config.ts'), 'utf-8');
     expect(cfg).toContain('AREA51_RUNTIME_BACKEND');
     expect(cfg).toContain('AREA51_INCUS_IMAGE');
+    expect(cfg).toContain('AREA51_INCUS_INSTANCE_KIND');
     expect(cfg).toContain("'docker'");
+  });
+
+  it('keeps only the session workspace writable for Incus', () => {
+    expect(
+      hardenIncusMounts([
+        { hostPath: '/srv/area51/session', containerPath: '/workspace', readonly: false },
+        { hostPath: '/srv/area51/group', containerPath: '/workspace/agent', readonly: false },
+        { hostPath: '/srv/area51/src', containerPath: '/app/src', readonly: true },
+      ]),
+    ).toEqual([
+      { source: '/srv/area51/session', path: '/workspace', readonly: false },
+      { source: '/srv/area51/group', path: '/workspace/agent', readonly: true },
+      { source: '/srv/area51/src', path: '/app/src', readonly: true },
+    ]);
   });
 });
 

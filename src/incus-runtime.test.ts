@@ -17,7 +17,7 @@ describe('buildIncusRuntimePlan', () => {
     expect(plan.profiles).toContain('area51-agent-net');
     expect(plan.mounts).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ path: '/workspace/agent', readonly: false }),
+        expect.objectContaining({ path: '/workspace/agent', readonly: true }),
         expect.objectContaining({ path: '/workspace', readonly: false }),
       ]),
     );

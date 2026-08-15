@@ -20,6 +20,7 @@ const envConfig = readEnvFile([
   'AREA51_EGRESS_NETWORK',
   'AREA51_RUNTIME_BACKEND',
   'AREA51_INCUS_IMAGE',
+  'AREA51_INCUS_INSTANCE_KIND',
   'ONECLI_GATEWAY_CONTAINER',
 ]);
 
@@ -105,6 +106,11 @@ export const AREA51_RUNTIME_BACKEND: Area51RuntimeBackend =
 
 export const AREA51_INCUS_IMAGE =
   process.env.AREA51_INCUS_IMAGE || envConfig.AREA51_INCUS_IMAGE || 'images:debian/12/cloud';
+
+export const AREA51_INCUS_INSTANCE_KIND: 'container' | 'vm' =
+  (process.env.AREA51_INCUS_INSTANCE_KIND || envConfig.AREA51_INCUS_INSTANCE_KIND || 'container').toLowerCase() === 'vm'
+    ? 'vm'
+    : 'container';
 
 // Timezone for scheduled tasks, message formatting, etc.
 // Validates each candidate is a real IANA identifier before accepting.
