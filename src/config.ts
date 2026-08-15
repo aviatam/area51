@@ -18,6 +18,8 @@ const envConfig = readEnvFile([
   'CONTAINER_PIDS_LIMIT',
   'AREA51_EGRESS_LOCKDOWN',
   'AREA51_EGRESS_NETWORK',
+  'AREA51_RUNTIME_BACKEND',
+  'AREA51_INCUS_IMAGE',
   'ONECLI_GATEWAY_CONTAINER',
 ]);
 
@@ -90,10 +92,19 @@ export const CONTAINER_PIDS_LIMIT = process.env.CONTAINER_PIDS_LIMIT ?? envConfi
 // Egress lockdown — force all agent traffic through the OneCLI gateway on a
 // no-internet Docker network. Off by default; consumed by src/egress-lockdown.ts.
 export const EGRESS_LOCKDOWN = (process.env.AREA51_EGRESS_LOCKDOWN || envConfig.AREA51_EGRESS_LOCKDOWN) === 'true';
-export const EGRESS_NETWORK =
-  process.env.AREA51_EGRESS_NETWORK || envConfig.AREA51_EGRESS_NETWORK || 'area51-egress';
+export const EGRESS_NETWORK = process.env.AREA51_EGRESS_NETWORK || envConfig.AREA51_EGRESS_NETWORK || 'area51-egress';
 export const ONECLI_GATEWAY_CONTAINER =
   process.env.ONECLI_GATEWAY_CONTAINER || envConfig.ONECLI_GATEWAY_CONTAINER || 'onecli';
+
+export type Area51RuntimeBackend = 'docker' | 'incus';
+
+export const AREA51_RUNTIME_BACKEND: Area51RuntimeBackend =
+  (process.env.AREA51_RUNTIME_BACKEND || envConfig.AREA51_RUNTIME_BACKEND || 'docker').toLowerCase() === 'incus'
+    ? 'incus'
+    : 'docker';
+
+export const AREA51_INCUS_IMAGE =
+  process.env.AREA51_INCUS_IMAGE || envConfig.AREA51_INCUS_IMAGE || 'images:debian/12/cloud';
 
 // Timezone for scheduled tasks, message formatting, etc.
 // Validates each candidate is a real IANA identifier before accepting.

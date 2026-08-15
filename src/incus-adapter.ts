@@ -1,4 +1,6 @@
 import { execFileSync } from 'child_process';
+import type { ChildProcess } from 'child_process';
+import { spawn } from 'child_process';
 
 import type { IncusRuntimePlan } from './incus-runtime.js';
 
@@ -98,6 +100,26 @@ export function quarantineIncusInstance(
   return runCommands(commands, options);
 }
 
+export function spawnIncusExec(
+  plan: IncusRuntimePlan,
+  command: string,
+  args: string[],
+  env: Record<string, string> = {},
+): ChildProcess {
+  validatePlan(plan);
+  const incusArgs = ['exec', plan.instance, '--project', plan.project];
+  for (const [key, value] of Object.entries(env)) {
+    incusArgs.push('--env', `${key}=${value}`);
+  }
+  incusArgs.push('--', command, ...args);
+  return spawn('incus', incusArgs, { stdio: ['ignore', 'pipe', 'pipe'] });
+}
+
+export function stopIncusInstance(plan: IncusRuntimePlan, options: IncusAdapterOptions = {}): IncusAdapterResult {
+  validatePlan(plan);
+  return runCommands([['stop', plan.instance, '--project', plan.project, '--force']], options);
+}
+
 function runCommands(commands: string[][], options: IncusAdapterOptions): IncusAdapterResult {
   const executor = options.executor ?? defaultExecutor;
   const results: IncusCommandResult[] = [];
@@ -106,6 +128,10 @@ function runCommands(commands: string[][], options: IncusAdapterOptions): IncusA
       const output = executor(argv);
       results.push({ argv, ok: true, output: typeof output === 'string' ? output : undefined });
     } catch (error) {
+      if (isAlreadyExistsError(error) && (argv[0] === 'project' || argv[0] === 'profile') && argv[1] === 'create') {
+        results.push({ argv, ok: true, output: 'already exists' });
+        continue;
+      }
       results.push({ argv, ok: false, error });
       throw new Error(`Incus command failed: incus ${argv.join(' ')}`, { cause: error });
     }
@@ -139,4 +165,12 @@ function mountDeviceName(containerPath: string): string {
 
 function sanitizeConfigValue(value: string): string {
   return value.replace(/[\r\n]/g, ' ').slice(0, 200);
+}
+
+function isAlreadyExistsError(error: unknown): boolean {
+  const text =
+    error instanceof Error
+      ? `${error.message}\n${String((error as { stderr?: unknown }).stderr ?? '')}`
+      : String(error);
+  return /already exists/i.test(text);
 }

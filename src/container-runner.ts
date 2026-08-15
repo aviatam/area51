@@ -19,6 +19,8 @@ import {
   CONTAINER_PIDS_LIMIT,
   DATA_DIR,
   GROUPS_DIR,
+  AREA51_INCUS_IMAGE,
+  AREA51_RUNTIME_BACKEND,
   ONECLI_API_KEY,
   ONECLI_URL,
   TIMEZONE,
@@ -28,6 +30,8 @@ import { getContainerConfig } from './db/container-configs.js';
 import { updateContainerConfigScalars } from './db/container-configs.js';
 import { CONTAINER_RUNTIME_BIN, hostGatewayArgs, readonlyMountArgs, stopContainer } from './container-runtime.js';
 import { EGRESS_NETWORK, egressNetworkArgs, ensureEgressNetwork } from './egress-lockdown.js';
+import { applyIncusRuntimePlan, spawnIncusExec, stopIncusInstance } from './incus-adapter.js';
+import { buildIncusRuntimePlan, type IncusRuntimePlan } from './incus-runtime.js';
 import { composeGroupClaudeMd } from './claude-md-compose.js';
 import { getAgentGroup } from './db/agent-groups.js';
 import { getDb, hasTable } from './db/connection.js';
@@ -56,7 +60,11 @@ import type { AgentGroup, Session } from './types.js';
 const onecli = new OneCLI({ url: ONECLI_URL, apiKey: ONECLI_API_KEY });
 
 /** Active containers tracked by session ID. */
-const activeContainers = new Map<string, { process: ChildProcess; containerName: string }>();
+const activeContainers = new Map<
+  string,
+  | { process: ChildProcess; containerName: string; backend: 'docker' }
+  | { process: ChildProcess; containerName: string; backend: 'incus'; plan: IncusRuntimePlan }
+>();
 
 /**
  * In-flight wake promises, keyed by session id. Deduplicates concurrent
@@ -149,6 +157,19 @@ async function spawnContainer(session: Session): Promise<void> {
   // OneCLI agent identifier is always the agent group id — stable across
   // sessions and reversible via getAgentGroup() for approval routing.
   const agentIdentifier = agentGroup.id;
+  if (AREA51_RUNTIME_BACKEND === 'incus') {
+    await spawnIncusAgent({
+      session,
+      agentGroup,
+      mounts,
+      providerContribution: contribution,
+      containerName,
+      agentIdentifier,
+      timezone: containerConfig.timezone ?? TIMEZONE,
+    });
+    return;
+  }
+
   const args = await buildContainerArgs(
     mounts,
     containerName,
@@ -169,7 +190,7 @@ async function spawnContainer(session: Session): Promise<void> {
 
   const container = spawn(CONTAINER_RUNTIME_BIN, args, { stdio: ['ignore', 'pipe', 'pipe'] });
 
-  activeContainers.set(session.id, { process: container, containerName });
+  activeContainers.set(session.id, { process: container, containerName, backend: 'docker' });
   markContainerRunning(session.id);
 
   // Log stderr. A container that dies at boot (unknown provider, missing
@@ -224,10 +245,87 @@ export function killContainer(sessionId: string, reason: string, onExit?: () => 
 
   log.info('Killing container', { sessionId, reason, containerName: entry.containerName });
   try {
-    stopContainer(entry.containerName);
+    if (entry.backend === 'incus') {
+      stopIncusInstance(entry.plan);
+    } else {
+      stopContainer(entry.containerName);
+    }
   } catch {
     entry.process.kill('SIGKILL');
   }
+}
+
+async function spawnIncusAgent(args: {
+  session: Session;
+  agentGroup: AgentGroup;
+  mounts: VolumeMount[];
+  providerContribution: ProviderContainerContribution;
+  containerName: string;
+  agentIdentifier: string;
+  timezone: string;
+}): Promise<void> {
+  const { session, agentGroup, mounts, providerContribution, containerName, agentIdentifier, timezone } = args;
+  if (agentIdentifier) {
+    await onecli.ensureAgent({ name: agentGroup.name, identifier: agentIdentifier });
+  }
+
+  const plan = buildIncusRuntimePlan({
+    agentGroupFolder: agentGroup.folder,
+    groupDir: path.resolve(GROUPS_DIR, agentGroup.folder),
+    sessionDir: sessionDir(agentGroup.id, session.id),
+    instanceSuffix: session.id,
+    image: AREA51_INCUS_IMAGE,
+    mounts: mounts.map((mount) => ({
+      source: mount.hostPath,
+      path: mount.containerPath,
+      readonly: mount.readonly,
+    })),
+  });
+
+  log.info('Spawning Incus agent runtime', {
+    sessionId: session.id,
+    agentGroup: agentGroup.name,
+    instance: plan.instance,
+    project: plan.project,
+  });
+
+  fs.rmSync(heartbeatPath(agentGroup.id, session.id), { force: true });
+  applyIncusRuntimePlan(plan);
+
+  const env: Record<string, string> = {
+    TZ: timezone,
+    ...(providerContribution.env ?? {}),
+  };
+  const container = spawnIncusExec(plan, 'bash', ['-lc', 'exec bun run /app/src/index.ts'], env);
+  activeContainers.set(session.id, { process: container, containerName, backend: 'incus', plan });
+  markContainerRunning(session.id);
+
+  const stderrTail: string[] = [];
+  container.stderr?.on('data', (data) => {
+    for (const line of data.toString().trim().split('\n')) {
+      if (!line) continue;
+      log.debug(line, { container: agentGroup.folder, runtime: 'incus' });
+      stderrTail.push(line);
+      if (stderrTail.length > 10) stderrTail.shift();
+    }
+  });
+  container.stdout?.on('data', () => {});
+  container.on('close', (code) => {
+    activeContainers.delete(session.id);
+    markContainerStopped(session.id);
+    stopTypingRefresh(session.id);
+    if (code !== 0 && code !== null && stderrTail.length > 0) {
+      log.warn('Incus agent runtime exited non-zero', { sessionId: session.id, code, containerName, stderrTail });
+    } else {
+      log.info('Incus agent runtime exited', { sessionId: session.id, code, containerName });
+    }
+  });
+  container.on('error', (err) => {
+    activeContainers.delete(session.id);
+    markContainerStopped(session.id);
+    stopTypingRefresh(session.id);
+    log.error('Incus agent runtime spawn error', { sessionId: session.id, err });
+  });
 }
 
 /**

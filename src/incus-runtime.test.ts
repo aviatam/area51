@@ -35,4 +35,33 @@ describe('buildIncusRuntimePlan', () => {
 
     expect(formatIncusRuntimePlan(plan)).toContain('Incus runtime: area51-demo/area51-demo-agent');
   });
+
+  it('accepts host-computed mounts for the live runner path', () => {
+    const plan = buildIncusRuntimePlan({
+      agentGroupFolder: 'demo',
+      groupDir: '.',
+      mounts: [
+        { source: '/srv/area51/sessions/s1', path: '/workspace', readonly: false },
+        { source: '/srv/area51/groups/demo/CLAUDE.md', path: '/workspace/agent/CLAUDE.md', readonly: true },
+      ],
+    });
+
+    expect(plan.mounts).toEqual([
+      { source: '/srv/area51/sessions/s1', path: '/workspace', readonly: false },
+      { source: '/srv/area51/groups/demo/CLAUDE.md', path: '/workspace/agent/CLAUDE.md', readonly: true },
+    ]);
+    expect(plan.commands.launch.join('\n')).toContain('readonly=true');
+  });
+
+  it('can scope live instances by session while keeping the project stable', () => {
+    const plan = buildIncusRuntimePlan({
+      agentGroupFolder: 'support',
+      groupDir: '.',
+      instanceSuffix: 'session-1234567890abcdef-extra',
+    });
+
+    expect(plan.project).toBe('area51-support');
+    expect(plan.instance).toBe('area51-support-session-12345678-agent');
+    expect(plan.instance.length).toBeLessThanOrEqual(63);
+  });
 });

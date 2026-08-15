@@ -47,6 +47,31 @@ describe('buildContainerArgs ordering invariant (structural)', () => {
   });
 });
 
+describe('Incus runtime backend wiring (structural)', () => {
+  it('branches live session wakeups to Incus when configured', () => {
+    const src = fs.readFileSync(path.join(process.cwd(), 'src', 'container-runner.ts'), 'utf-8');
+    expect(src).toContain("AREA51_RUNTIME_BACKEND === 'incus'");
+    expect(src).toContain('spawnIncusAgent');
+    expect(src).toContain('applyIncusRuntimePlan(plan)');
+    expect(src).toContain('spawnIncusExec(plan');
+  });
+
+  it('keeps Docker as the fallback/default path', () => {
+    const src = fs.readFileSync(path.join(process.cwd(), 'src', 'container-runner.ts'), 'utf-8');
+    const incusBranch = src.indexOf("AREA51_RUNTIME_BACKEND === 'incus'");
+    const dockerSpawn = src.indexOf('spawn(CONTAINER_RUNTIME_BIN, args');
+    expect(incusBranch).toBeGreaterThan(-1);
+    expect(dockerSpawn).toBeGreaterThan(incusBranch);
+  });
+
+  it('documents the runtime backend knobs in config', () => {
+    const cfg = fs.readFileSync(path.join(process.cwd(), 'src', 'config.ts'), 'utf-8');
+    expect(cfg).toContain('AREA51_RUNTIME_BACKEND');
+    expect(cfg).toContain('AREA51_INCUS_IMAGE');
+    expect(cfg).toContain("'docker'");
+  });
+});
+
 describe('plugins read-only mount (structural)', () => {
   // Stamped plugin content must be immutable inside the container (Agent
   // Plugins contract: writes go to plugin-data/). Driving buildMounts needs a

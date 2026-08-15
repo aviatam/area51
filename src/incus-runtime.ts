@@ -8,6 +8,8 @@ export interface IncusRuntimePlanOptions {
   image?: string;
   networkProfile?: string;
   quarantineProfile?: string;
+  instanceSuffix?: string;
+  mounts?: Array<{ source: string; path: string; readonly: boolean }>;
 }
 
 export interface IncusRuntimePlan {
@@ -32,8 +34,11 @@ const DEFAULT_QUARANTINE_PROFILE = 'area51-quarantine';
 
 export function buildIncusRuntimePlan(options: IncusRuntimePlanOptions): IncusRuntimePlan {
   const safeFolder = safeIncusName(options.agentGroupFolder, 'agent group folder');
+  const safeSuffix = options.instanceSuffix ? safeIncusName(options.instanceSuffix, 'instance suffix') : undefined;
   const project = `area51-${safeFolder}`;
-  const instance = `area51-${safeFolder}-agent`;
+  const instance = safeSuffix
+    ? `area51-${safeFolder.slice(0, 32)}-${safeSuffix.slice(0, 16)}-agent`
+    : `area51-${safeFolder}-agent`;
   const networkProfile = options.networkProfile ?? DEFAULT_NETWORK_PROFILE;
   const quarantineProfile = options.quarantineProfile ?? DEFAULT_QUARANTINE_PROFILE;
   const image = options.image ?? DEFAULT_IMAGE;
@@ -41,7 +46,7 @@ export function buildIncusRuntimePlan(options: IncusRuntimePlanOptions): IncusRu
   const groupDir = path.resolve(options.groupDir);
   const sessionDir = options.sessionDir ? path.resolve(options.sessionDir) : undefined;
 
-  const mounts = [
+  const mounts = options.mounts ?? [
     { source: groupDir, path: '/workspace/agent', readonly: false },
     ...(sessionDir ? [{ source: sessionDir, path: '/workspace', readonly: false }] : []),
   ];

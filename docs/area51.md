@@ -42,6 +42,18 @@ The demo is intentionally runnable on machines without an Incus daemon. It verif
 
 The Incus adapter applies the same plan with argv-based CLI calls. It never runs generated shell strings, and its executor is injectable so tests can prove every command without needing a privileged Incus daemon in GitHub's shared runners.
 
+Live agent execution can opt into the Incus backend with:
+
+```bash
+AREA51_RUNTIME_BACKEND=incus
+AREA51_INCUS_IMAGE=images:debian/12/cloud
+```
+
+In that mode the host builds the normal Area51 session/group/runner/skill mount
+set, applies an Incus runtime plan, and starts the runner with `incus exec`.
+Docker remains the default backend for local development and cross-platform
+compatibility.
+
 ## Exposure Command
 
 The demo is intentionally fixed so it can prove the same behavior every time. Real work enters through `area51 expose`.

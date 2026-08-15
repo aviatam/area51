@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { applyIncusRuntimePlan, ensureIncusAvailable, quarantineIncusInstance } from './incus-adapter.js';
+import {
+  applyIncusRuntimePlan,
+  ensureIncusAvailable,
+  quarantineIncusInstance,
+  stopIncusInstance,
+} from './incus-adapter.js';
 import { buildIncusRuntimePlan } from './incus-runtime.js';
 
 describe('Incus adapter', () => {
@@ -48,6 +53,30 @@ describe('Incus adapter', () => {
         'path=/workspace/agent',
       ]),
     );
+  });
+
+  it('treats existing projects and profiles as idempotent success', () => {
+    const executor = vi.fn((argv: string[]) => {
+      if (argv[0] === 'project' && argv[1] === 'create') {
+        const err = new Error('Project already exists') as Error & { stderr?: string };
+        err.stderr = 'already exists';
+        throw err;
+      }
+      if (argv[0] === 'profile' && argv[1] === 'create') {
+        const err = new Error('Profile already exists') as Error & { stderr?: string };
+        err.stderr = 'already exists';
+        throw err;
+      }
+    });
+    const plan = buildIncusRuntimePlan({
+      agentGroupFolder: 'support',
+      groupDir: '/srv/area51/groups/support',
+    });
+
+    const result = applyIncusRuntimePlan(plan, { executor });
+
+    expect(result.commands.some((command) => command.output === 'already exists')).toBe(true);
+    expect(result.commands.every((command) => command.ok)).toBe(true);
   });
 
   it('preserves mount paths as argv values instead of interpolating shell strings', () => {
@@ -109,5 +138,14 @@ describe('Incus adapter', () => {
 
     expect(() => applyIncusRuntimePlan(plan, { executor })).toThrow('Invalid Incus instance name');
     expect(executor).not.toHaveBeenCalled();
+  });
+
+  it('stops an Incus instance by project and instance name', () => {
+    const executor = vi.fn();
+    const plan = buildIncusRuntimePlan({ agentGroupFolder: 'support', groupDir: '/srv/area51/groups/support' });
+
+    stopIncusInstance(plan, { executor });
+
+    expect(executor).toHaveBeenCalledWith(['stop', 'area51-support-agent', '--project', 'area51-support', '--force']);
   });
 });
