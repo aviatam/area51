@@ -65,7 +65,6 @@ describe('Incus adapter', () => {
         'disk',
         `source=${plan.mounts.find((mount) => mount.path === '/workspace')?.source}`,
         'path=/workspace',
-        'shift=true',
       ]),
     );
     expect(executor).toHaveBeenCalledWith(
@@ -125,6 +124,9 @@ describe('Incus adapter', () => {
       applyIncusRuntimePlan(plan, { executor });
 
       expect(fs.statSync(path.join(sessionDir, 'agent')).isDirectory()).toBe(true);
+      if (process.platform !== 'win32') {
+        expect(fs.statSync(sessionDir).mode & 0o777).toBe(0o777);
+      }
       const calls = executor.mock.calls.map(([argv]) => argv as string[]);
       const agentDevice = calls.find((argv) => argv.includes('path=/workspace/agent'));
       const start = calls.find((argv) => argv[0] === 'start');

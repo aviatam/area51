@@ -35,6 +35,7 @@ export function ensureIncusAvailable(options: IncusAdapterOptions = {}): IncusAd
 
 export function applyIncusRuntimePlan(plan: IncusRuntimePlan, options: IncusAdapterOptions = {}): IncusAdapterResult {
   validatePlan(plan);
+  prepareWritableMountSources(plan);
   prepareNestedMountTargets(plan);
 
   const commands: string[][] = [
@@ -91,7 +92,6 @@ export function applyIncusRuntimePlan(plan: IncusRuntimePlan, options: IncusAdap
       plan.project,
     ];
     if (mount.readonly) argv.splice(8, 0, 'readonly=true');
-    if (!mount.readonly && plan.instanceKind === 'container') argv.splice(8, 0, 'shift=true');
     commands.push(argv);
   }
   commands.push(['start', plan.instance, '--project', plan.project]);
@@ -258,6 +258,13 @@ function prepareNestedMountTargets(plan: IncusRuntimePlan): void {
       fs.mkdirSync(path.dirname(hostTarget), { recursive: true });
       if (!fs.existsSync(hostTarget)) fs.closeSync(fs.openSync(hostTarget, 'w'));
     }
+  }
+}
+
+function prepareWritableMountSources(plan: IncusRuntimePlan): void {
+  for (const mount of plan.mounts.filter((candidate) => !candidate.readonly)) {
+    if (!fs.existsSync(mount.source)) continue;
+    fs.chmodSync(mount.source, 0o777);
   }
 }
 
