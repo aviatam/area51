@@ -109,7 +109,7 @@ export interface Problem {
   message: string;
 }
 
-const FENCE = /^```(\S.*)?$/;
+const FENCE = /^```(\S.*)?\r?$/;
 const EXACT_SEMVER = /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/;
 const VAR_REF = /\{\{\s*([A-Za-z_][A-Za-z0-9_]*)\s*\}\}/g;
 const KNOWN = new Set(['copy', 'append', 'dep', 'run', 'prompt', 'operator', 'env-set', 'json-merge']);
