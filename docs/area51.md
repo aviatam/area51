@@ -42,6 +42,38 @@ The demo is intentionally runnable on machines without an Incus daemon. It verif
 
 The Incus adapter applies the same plan with argv-based CLI calls. It never runs generated shell strings, and its executor is injectable so tests can prove every command without needing a privileged Incus daemon in GitHub's shared runners.
 
+## Exposure Command
+
+The demo is intentionally fixed so it can prove the same behavior every time. Real work enters through `area51 expose`.
+
+`area51 expose` accepts an agent group, repository, or code-change workspace and returns one consolidated assessment report. The report is designed for both humans and automation:
+
+- `agent_gate`: prompt, skill, MCP, package, secret, scenario, and policy findings when the target is an agent
+- `runtime_policy`: host-owned allow, block, quarantine, Docker, Incus container, or Incus VM decision when Agent Gate applies
+- `checks`: package verification status from a named package script such as `verify`
+- `findings`: normalized severity, surface, evidence, and recommendation entries
+- `recommendations`: deduplicated next steps for fixing the target before release
+
+Examples:
+
+```sh
+area51 expose \
+  --path ./groups/support-agent \
+  --target-type agent \
+  --runtime-profile production \
+  --data-sensitivity customer \
+  --capabilities chat,network,package-install \
+  --json-path reports/support-agent-exposure.json
+
+area51 expose \
+  --path . \
+  --target-type change \
+  --verify-script verify \
+  --json-path reports/change-exposure.json
+```
+
+The verify step runs package scripts by name through argv-based process execution. It does not accept arbitrary shell text as an Area51 command argument.
+
 ## Runtime Policy
 
 Runtime Policy is host-owned. Agents can request work, but they do not choose Docker, Incus, VM isolation, or quarantine for themselves.

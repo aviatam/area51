@@ -24,6 +24,7 @@ The first demo path combines:
 - **Agent Gate** scans for AI secret setup, package risk, behavior scenarios, integration health, and five-pillar readiness
 - **Runtime Policy** turns Agent Gate findings, admin posture, trust level, data sensitivity, and requested capabilities into a host-owned runtime decision
 - **Incus runtime planning** for per-agent projects, profiles, instances, mounts, quotas, snapshots, and quarantine flows
+- **Exposure reports** that connect an agent, repo, or code-change workspace to one assessment surface
 - **Fail-closed reports** for demos and CI
 
 ## Why We Know It Works
@@ -141,8 +142,38 @@ Incus quarantine flow: yes
 
 ```bash
 area51 demo --output-dir .area51/demo
+area51 expose --path ./groups/support-agent --target-type agent --json-path reports/exposure.json
+area51 expose --path . --target-type change --verify-script verify --json-path reports/exposure.json
 area51 agent-gate scan --path ./groups/support-agent
 area51 agent-gate scan --path ./groups/support-agent --json-path reports/agent-gate.json --ci
+```
+
+`area51 expose` is the broad entry point for connecting Area51 to work you want to assess. It accepts an agent group, a repository, or a code-change workspace and returns one report with:
+
+- Agent Gate findings when the target contains an agent definition
+- package verification status using a named package script, not arbitrary shell text
+- Runtime Policy decision when an agent gate exists
+- normalized findings with severity, evidence, recommendation, and next steps
+- optional JSON output for CI, dashboards, or release evidence
+
+Examples:
+
+```bash
+# Inspect an agent before running it in production posture.
+area51 expose \
+  --path ./groups/support-agent \
+  --target-type agent \
+  --runtime-profile production \
+  --data-sensitivity customer \
+  --capabilities chat,network,package-install \
+  --json-path reports/support-agent-exposure.json
+
+# Inspect the current repo/change and run the normal verify script.
+area51 expose \
+  --path . \
+  --target-type change \
+  --verify-script verify \
+  --json-path reports/change-exposure.json
 ```
 
 ## Verification Commands

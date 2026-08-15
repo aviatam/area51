@@ -7,6 +7,7 @@
 import '../resources/index.js';
 import './area51.js';
 import './agent-gate.js';
+import './expose.js';
 import { registerResourceHelpCommands } from './help.js';
 
 registerResourceHelpCommands();
