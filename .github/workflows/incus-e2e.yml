@@ -44,5 +44,5 @@ jobs:
 
       - name: Live Incus E2E
         env:
-          AREA51_INCUS_E2E_IMAGE: images:alpine/3.20
+          AREA51_INCUS_E2E_IMAGE: images:debian/12
         run: pnpm run test:incus:e2e
