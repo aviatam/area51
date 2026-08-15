@@ -47,8 +47,8 @@ export function buildIncusRuntimePlan(options: IncusRuntimePlanOptions): IncusRu
   const sessionDir = options.sessionDir ? path.resolve(options.sessionDir) : undefined;
 
   const mounts = options.mounts ?? [
-    { source: groupDir, path: '/workspace/agent', readonly: true },
     ...(sessionDir ? [{ source: sessionDir, path: '/workspace', readonly: false }] : []),
+    { source: groupDir, path: '/workspace/agent', readonly: true },
   ];
   const profiles = ['default', networkProfile];
   const restrictions = {

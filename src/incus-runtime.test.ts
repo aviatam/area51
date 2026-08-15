@@ -21,6 +21,7 @@ describe('buildIncusRuntimePlan', () => {
         expect.objectContaining({ path: '/workspace', readonly: false }),
       ]),
     );
+    expect(plan.mounts.map((mount) => mount.path)).toEqual(['/workspace', '/workspace/agent']);
     expect(plan.restrictions['security.privileged']).toBe('false');
     expect(plan.commands.quarantine).toEqual(
       expect.arrayContaining([

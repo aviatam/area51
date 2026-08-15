@@ -60,7 +60,7 @@ describe('Incus adapter', () => {
         'area51-support-agent',
         'workspace-agent',
         'disk',
-        `source=${plan.mounts[0].source}`,
+        `source=${plan.mounts.find((mount) => mount.path === '/workspace/agent')?.source}`,
         'path=/workspace/agent',
       ]),
     );
