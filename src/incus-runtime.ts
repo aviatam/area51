@@ -56,8 +56,6 @@ export function buildIncusRuntimePlan(options: IncusRuntimePlanOptions): IncusRu
     'limits.memory': '2GiB',
     'security.nesting': 'false',
     'security.privileged': 'false',
-    'security.syscalls.intercept.mknod': 'true',
-    'security.syscalls.intercept.setxattr': 'true',
   };
 
   return {
