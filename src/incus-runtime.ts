@@ -124,9 +124,9 @@ function buildLaunchCommands(input: {
   restrictions: Record<string, string>;
 }): string[] {
   const flags = input.profiles.flatMap((profile) => ['--profile', profile]);
-  const launch = [
+  const init = [
     'incus',
-    'launch',
+    'init',
     input.image,
     input.instance,
     '--project',
@@ -135,7 +135,7 @@ function buildLaunchCommands(input: {
     input.instanceKind === 'vm' ? 'true' : 'false',
     ...flags,
   ].join(' ');
-  const commands = [launch];
+  const commands = [init];
   for (const [key, value] of Object.entries(input.restrictions)) {
     commands.push(`incus config set ${input.instance} ${key}=${value} --project ${input.project}`);
   }
@@ -146,6 +146,7 @@ function buildLaunchCommands(input: {
       `incus config device add ${input.instance} ${device} disk source="${mount.source}" path=${mount.path}${readonly} --project ${input.project}`,
     );
   }
+  commands.push(`incus start ${input.instance} --project ${input.project}`);
   return commands;
 }
 

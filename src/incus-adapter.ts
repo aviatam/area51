@@ -65,10 +65,10 @@ export function applyIncusRuntimePlan(plan: IncusRuntimePlan, options: IncusAdap
     }
   }
 
-  const launch = ['launch', plan.image, plan.instance, '--project', plan.project];
-  if (plan.instanceKind === 'vm') launch.push('--vm');
-  for (const profile of plan.profiles) launch.push('--profile', profile);
-  commands.push(launch);
+  const init = ['init', plan.image, plan.instance, '--project', plan.project];
+  if (plan.instanceKind === 'vm') init.push('--vm');
+  for (const profile of plan.profiles) init.push('--profile', profile);
+  commands.push(init);
 
   for (const [key, value] of Object.entries(plan.restrictions)) {
     commands.push(['config', 'set', plan.instance, `${key}=${value}`, '--project', plan.project]);
@@ -91,6 +91,7 @@ export function applyIncusRuntimePlan(plan: IncusRuntimePlan, options: IncusAdap
     if (mount.readonly) argv.splice(8, 0, 'readonly=true');
     commands.push(argv);
   }
+  commands.push(['start', plan.instance, '--project', plan.project]);
 
   return runCommands(commands, options);
 }

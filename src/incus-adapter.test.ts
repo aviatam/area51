@@ -42,7 +42,7 @@ describe('Incus adapter', () => {
       `restricted.devices.disk.paths=${plan.mounts.map((mount) => mount.source).join(',')}`,
     ]);
     expect(executor).toHaveBeenCalledWith([
-      'launch',
+      'init',
       'images:debian/12/cloud',
       'area51-support-agent',
       '--project',
@@ -64,6 +64,7 @@ describe('Incus adapter', () => {
         'path=/workspace/agent',
       ]),
     );
+    expect(executor).toHaveBeenCalledWith(['start', 'area51-support-agent', '--project', 'area51-support']);
   });
 
   it('adds a project root disk when an Incus storage pool is configured', () => {
