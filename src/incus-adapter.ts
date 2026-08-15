@@ -1,6 +1,7 @@
 import { execFileSync } from 'child_process';
 import type { ChildProcess } from 'child_process';
 import { spawn } from 'child_process';
+import fs from 'fs';
 import os from 'os';
 import path from 'path';
 
@@ -34,6 +35,7 @@ export function ensureIncusAvailable(options: IncusAdapterOptions = {}): IncusAd
 
 export function applyIncusRuntimePlan(plan: IncusRuntimePlan, options: IncusAdapterOptions = {}): IncusAdapterResult {
   validatePlan(plan);
+  prepareNestedMountTargets(plan);
 
   const commands: string[][] = [
     ['project', 'create', plan.project],
@@ -228,6 +230,32 @@ function validateMounts(plan: IncusRuntimePlan): void {
     }
     if (isDangerousHostMount(source)) {
       throw new Error(`Dangerous Incus host mount denied: ${mount.source}`);
+    }
+  }
+}
+
+function prepareNestedMountTargets(plan: IncusRuntimePlan): void {
+  const writableParents = plan.mounts
+    .filter((mount) => !mount.readonly)
+    .map((mount) => ({ ...mount, target: normalizeContainerPath(mount.path) }))
+    .sort((a, b) => b.target.length - a.target.length);
+
+  for (const mount of plan.mounts.filter((candidate) => candidate.readonly)) {
+    const target = normalizeContainerPath(mount.path);
+    const parent = writableParents.find(
+      (candidate) => target !== candidate.target && target.startsWith(`${candidate.target}/`),
+    );
+    if (!parent) continue;
+    if (!fs.existsSync(parent.source) || !fs.existsSync(mount.source)) continue;
+
+    const relativeTarget = target.slice(parent.target.length + 1);
+    const hostTarget = path.join(parent.source, ...relativeTarget.split('/'));
+    const sourceStats = fs.statSync(mount.source);
+    if (sourceStats.isDirectory()) {
+      fs.mkdirSync(hostTarget, { recursive: true });
+    } else {
+      fs.mkdirSync(path.dirname(hostTarget), { recursive: true });
+      if (!fs.existsSync(hostTarget)) fs.closeSync(fs.openSync(hostTarget, 'w'));
     }
   }
 }

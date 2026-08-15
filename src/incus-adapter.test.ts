@@ -1,4 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
 
 import {
   applyIncusRuntimePlan,
@@ -90,6 +93,34 @@ describe('Incus adapter', () => {
       '--project',
       'area51-support',
     ]);
+  });
+
+  it('prepares nested mount targets inside the writable workspace before starting Incus', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'area51-incus-test-'));
+    try {
+      const sessionDir = path.join(root, 'session');
+      const groupDir = path.join(root, 'group');
+      fs.mkdirSync(sessionDir);
+      fs.mkdirSync(groupDir);
+      const executor = vi.fn();
+      const plan = buildIncusRuntimePlan({
+        agentGroupFolder: 'support',
+        groupDir,
+        sessionDir,
+      });
+
+      applyIncusRuntimePlan(plan, { executor });
+
+      expect(fs.statSync(path.join(sessionDir, 'agent')).isDirectory()).toBe(true);
+      const calls = executor.mock.calls.map(([argv]) => argv as string[]);
+      const agentDevice = calls.find((argv) => argv.includes('path=/workspace/agent'));
+      const start = calls.find((argv) => argv[0] === 'start');
+      expect(agentDevice).toBeDefined();
+      expect(start).toBeDefined();
+      expect(calls.indexOf(agentDevice!)).toBeLessThan(calls.indexOf(start!));
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
   });
 
   it('treats existing projects and profiles as idempotent success', () => {
