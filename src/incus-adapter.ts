@@ -42,6 +42,21 @@ export function applyIncusRuntimePlan(plan: IncusRuntimePlan, options: IncusAdap
     ['project', 'set', plan.project, 'restricted.devices.disk=allow'],
     ['project', 'set', plan.project, `restricted.devices.disk.paths=${allowedDiskPaths(plan)}`],
   ];
+  const rootDiskPool = process.env.AREA51_INCUS_STORAGE_POOL;
+  if (rootDiskPool) {
+    commands.push([
+      'profile',
+      'device',
+      'add',
+      'default',
+      'root',
+      'disk',
+      'path=/',
+      `pool=${rootDiskPool}`,
+      '--project',
+      plan.project,
+    ]);
+  }
 
   for (const profile of plan.profiles.filter((profile) => profile !== 'default')) {
     commands.push(['profile', 'create', profile, '--project', plan.project]);
@@ -132,7 +147,7 @@ function runCommands(commands: string[][], options: IncusAdapterOptions): IncusA
       const output = executor(argv);
       results.push({ argv, ok: true, output: typeof output === 'string' ? output : undefined });
     } catch (error) {
-      if (isAlreadyExistsError(error) && (argv[0] === 'project' || argv[0] === 'profile') && argv[1] === 'create') {
+      if (isAlreadyExists(argv, error)) {
         results.push({ argv, ok: true, output: 'already exists' });
         continue;
       }
@@ -182,6 +197,12 @@ function isAlreadyExistsError(error: unknown): boolean {
       ? `${error.message}\n${String((error as { stderr?: unknown }).stderr ?? '')}`
       : String(error);
   return /already exists/i.test(text);
+}
+
+function isAlreadyExists(argv: string[], error: unknown): boolean {
+  if (!isAlreadyExistsError(error)) return false;
+  if ((argv[0] === 'project' || argv[0] === 'profile') && argv[1] === 'create') return true;
+  return argv[0] === 'profile' && argv[1] === 'device' && argv[2] === 'add';
 }
 
 function validateMounts(plan: IncusRuntimePlan): void {

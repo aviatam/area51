@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   applyIncusRuntimePlan,
@@ -9,6 +9,10 @@ import {
 import { buildIncusRuntimePlan } from './incus-runtime.js';
 
 describe('Incus adapter', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   it('checks the Incus CLI without shell execution', () => {
     const executor = vi.fn();
 
@@ -60,6 +64,31 @@ describe('Incus adapter', () => {
         'path=/workspace/agent',
       ]),
     );
+  });
+
+  it('adds a project root disk when an Incus storage pool is configured', () => {
+    vi.stubEnv('AREA51_INCUS_STORAGE_POOL', 'default');
+    const executor = vi.fn();
+    const plan = buildIncusRuntimePlan({
+      agentGroupFolder: 'support',
+      groupDir: '/srv/area51/groups/support',
+      sessionDir: '/srv/area51/sessions/support/sess-1',
+    });
+
+    applyIncusRuntimePlan(plan, { executor });
+
+    expect(executor).toHaveBeenCalledWith([
+      'profile',
+      'device',
+      'add',
+      'default',
+      'root',
+      'disk',
+      'path=/',
+      'pool=default',
+      '--project',
+      'area51-support',
+    ]);
   });
 
   it('treats existing projects and profiles as idempotent success', () => {
