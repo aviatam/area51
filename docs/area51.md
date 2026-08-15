@@ -12,6 +12,7 @@ The demo writes:
 
 ```text
 .area51/demo/reports/agent-gate.json
+.area51/demo/reports/runtime-policy.json
 .area51/demo/reports/incus-runtime-plan.json
 .area51/demo/reports/area51-demo.json
 ```
@@ -26,7 +27,9 @@ The generated support-refund agent includes:
 - MCP entries for CRM and payments
 - a deliberately blocked npm package, `event-stream@3.3.6`
 
-Agent Gate scans the group, fails closed on the compromised package, writes quarantine evidence, and scores all five pillars. The Incus plan maps that same group to:
+Agent Gate scans the group, fails closed on the compromised package, writes quarantine evidence, and scores all five pillars. Runtime Policy then turns that gate output plus host-owned production posture, trust level, data sensitivity, and requested capabilities into a decision. The demo proves the compromised package path becomes `quarantine` through an Incus container instead of silently falling back to a weaker runtime.
+
+The Incus plan maps that same group to:
 
 - `area51-<group>` Incus project
 - per-agent instance
@@ -35,7 +38,28 @@ Agent Gate scans the group, fails closed on the compromised package, writes quar
 - network profile plus a quarantine profile
 - freeze, snapshot, network-detach, and quarantine-label commands
 
-The demo is intentionally runnable on machines without an Incus daemon. It verifies that Area51 can produce the exact Incus operations and the real Agent Gate artifacts. On a Linux host with Incus installed, the `incus-runtime-plan.json` commands are the implementation path for a live runner.
+The demo is intentionally runnable on machines without an Incus daemon. It verifies that Area51 can produce the exact Incus operations, the real Agent Gate artifacts, and a deterministic runtime policy decision. On a Linux host with Incus installed, the `incus-runtime-plan.json` commands are the implementation path for a live runner.
+
+## Runtime Policy
+
+Runtime Policy is host-owned. Agents can request work, but they do not choose Docker, Incus, VM isolation, or quarantine for themselves.
+
+Policy inputs:
+
+- Agent Gate pass/fail, findings, missing secrets, and quarantine evidence
+- admin profile: `local`, `production`, or `maximum`
+- trust level: built-in, approved, third-party, or unknown
+- data sensitivity: low, business, customer, or secret
+- requested capability level: chat, files, network, browser, shell, package install, broad mounts, or secret access
+- Incus availability and whether Docker fallback is allowed
+
+Policy outputs:
+
+- `allow` on `docker` for trusted low-risk local work
+- `allow` on `incus-container` for production work that needs stronger isolation
+- `allow` on `incus-vm` for maximum isolation
+- `quarantine` for compromised package evidence when Incus is available
+- `block` when policy requires Incus but Incus is unavailable
 
 ## Commercial Licensing
 

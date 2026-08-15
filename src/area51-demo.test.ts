@@ -18,13 +18,18 @@ describe('runArea51Demo', () => {
     expect(report.schema).toBe('area51.demo.v1');
     expect(report.agent_gate_report.passed).toBe(false);
     expect(report.agent_gate_report.findings.some((finding) => finding.id === 'npm-event-stream-3.3.6')).toBe(true);
+    expect(report.runtime_policy.action).toBe('quarantine');
+    expect(report.runtime_policy.runtime).toBe('incus-container');
+    expect(report.runtime_policy.requiresIncus).toBe(true);
     expect(report.incus_runtime_plan.project).toBe('area51-support-refund-agent');
     expect(report.verified).toEqual({
       agent_gate_failed_closed: true,
+      runtime_policy_failed_closed: true,
       quarantine_artifacts_written: true,
       incus_quarantine_flow_planned: true,
     });
     expect(fs.existsSync(path.join(outputDir, 'reports', 'agent-gate.json'))).toBe(true);
+    expect(fs.existsSync(path.join(outputDir, 'reports', 'runtime-policy.json'))).toBe(true);
     expect(fs.existsSync(path.join(outputDir, 'reports', 'incus-runtime-plan.json'))).toBe(true);
     expect(fs.existsSync(path.join(outputDir, 'reports', 'area51-demo.json'))).toBe(true);
   });
@@ -36,5 +41,6 @@ describe('runArea51Demo', () => {
     });
 
     expect(formatArea51DemoReport(report)).toContain('Area51 demo: VERIFIED');
+    expect(formatArea51DemoReport(report)).toContain('Runtime policy: QUARANTINE via incus-container');
   });
 });
