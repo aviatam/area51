@@ -15,7 +15,7 @@ Two-part migration:
 
 1. **`migrate-v2.sh`** — deterministic bash script. Handles prerequisites, DB seeding, file copies, channel install, container build, service switchover. Writes `logs/setup-migration/handoff.json` then `exec`s into Claude.
 
-2. **`/migrate-from-v1` skill** — Claude-driven. Reads the handoff, seeds owner/roles, invokes `/migrate-memory`, validates container configs, and ports fork customizations.
+2. **`/migrate-from-v1` skill** — Claude-driven. Reads the handoff, seeds owner/roles, invokes `/migrate-memory`, validates container configs, and ports custom install changes.
 
 ## File layout
 
@@ -106,17 +106,20 @@ python3 -m json.tool logs/setup-migration/handoff.json
 ### Common issues
 
 **Bot doesn't respond after switchover:**
+
 1. Check both services aren't running: `systemctl --user list-units 'area51*'`
 2. Check error log: `tail logs/area51.error.log`
 3. Check sender policy: `sqlite3 data/v2.db "SELECT unknown_sender_policy FROM messaging_groups"` — must be `public` before owner is seeded
 4. Check engage pattern: `sqlite3 data/v2.db "SELECT engage_mode, engage_pattern FROM messaging_group_agents"` — should be `pattern` / `.` for respond-to-everything
 
 **Session not continuing from v1:**
+
 1. Check continuation is set: see "Session continuation" query above
 2. Check JSONL exists at the right path: `ls data/v2-sessions/<ag_id>/.claude-shared/projects/-workspace-agent/`
 3. The v1 session JSONL should be copied from `-workspace-group/` to `-workspace-agent/` (v2 container CWD is `/workspace/agent`)
 
 **Service switchover revert didn't work:**
+
 1. The v2 service name is `area51-v2-<hash>` — find it: `systemctl --user list-units 'area51*'`
 2. Manually stop: `systemctl --user stop <unit> && systemctl --user disable <unit>`
 3. Restart v1: `systemctl --user start area51`

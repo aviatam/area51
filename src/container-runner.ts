@@ -445,7 +445,7 @@ function syncSkillSymlinks(claudeDir: string, containerConfig: import('./contain
 
 /**
  * Resolve the group's skill selection to concrete names — `'all'` recomputes
- * from `container/skills/` so newly-added upstream skills appear automatically.
+ * from `container/skills/` so newly-added shared skills appear automatically.
  */
 function selectedSkillNames(containerConfig: import('./container-config.js').ContainerConfig): string[] {
   if (containerConfig.skills !== 'all') return containerConfig.skills;

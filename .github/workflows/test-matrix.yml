@@ -66,6 +66,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: High severity dependency audit
+        run: pnpm audit --audit-level high
+
       - name: Typecheck host
         run: pnpm run typecheck
 

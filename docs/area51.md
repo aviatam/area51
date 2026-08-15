@@ -41,4 +41,4 @@ The demo is intentionally runnable on machines without an Incus daemon. It verif
 
 Area51 is MIT licensed. Incus is Apache-2.0 licensed. Both are permissive and generally compatible with commercial use, including modification and redistribution.
 
-Do not remove upstream license notices from copied source. Keep the MIT and Apache-2.0 notices with redistributed code, preserve copyright notices, and track any direct Incus code copied into this fork. The cleanest commercial route is to shell out to the Incus CLI or call its API from Area51 instead of vendoring large Incus source files.
+Do not remove required license notices from copied source. Keep the MIT and Apache-2.0 notices with redistributed code, preserve copyright notices, and track any direct Incus code copied into Area51. The cleanest commercial route is to shell out to the Incus CLI or call its API from Area51 instead of vendoring large Incus source files.

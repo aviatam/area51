@@ -1,13 +1,13 @@
 # Customizing Area51
 
-Area51 is made to be forked and changed. The catch with most projects is that once you edit the code, every upstream update turns into a merge fight, and the more you customized, the worse it gets.
+Area51 is made to be cloned, owned, and changed. The catch with most projects is that once you edit the code, every product update turns into a merge fight, and the more you customized, the worse it gets.
 
 Area51 avoids that with one simple idea: **every change you make is a skill.**
 
 ## The idea in a minute
 
 - A **skill** is a small, self-contained add-on. It brings its own code and knows how to install itself.
-- Your **fork is just a list of skills**, plus one "recipe" that says which skills you have and how they fit together.
+- Your **custom install is just a list of skills**, plus one "recipe" that says which skills you have and how they fit together.
 - Because your changes live beside the core instead of tangled into it, **pulling in updates stays easy**.
 
 ## What makes it work
@@ -20,11 +20,11 @@ And it ships a test for each spot where it touches the rest of the system. When 
 
 You don't have to think in skills while you're building. **Edit the code directly, get it working, then turn your changes into skills afterward.** A coding agent does the conversion for you, following [skill-guidelines.md](skill-guidelines.md).
 
-The only rule worth remembering: **a change isn't really part of your fork until it's a skill**, because that's the form that survives an upgrade.
+The only rule worth remembering: **a change isn't really part of your install until it's a skill**, because that's the form that survives an upgrade.
 
 ## Upgrading
 
-Always upgrade by running `/update-area51`. **Don't just `git pull`.** The command sets a rollback point, pulls the upstream changes, runs your tests, and walks you through anything that needs fixing, usually a small, local fix in one skill.
+Always upgrade by running `/update-area51`. **Don't just `git pull`.** The command sets a rollback point, pulls product updates, runs your tests, and walks you through anything that needs fixing, usually a small, local fix in one skill.
 
 ## The deal
 

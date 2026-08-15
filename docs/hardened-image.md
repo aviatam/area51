@@ -15,7 +15,7 @@ prefer an unauthenticated build on your own machine.
 That image is built by **[Echo](https://echo.ai)**, who rebuild the sandbox's contents — Chromium,
 Node, Bun, pnpm, git and the rest — from scratch with only the essentials, and patch what remains.
 Isolation already keeps a misbehaving agent away from your machine; this is the other half, and
-the reason it exists: the software the agent *uses* is worth patching too. Chromium alone is tens
+the reason it exists: the software the agent _uses_ is worth patching too. Chromium alone is tens
 of millions of lines you did not write and do not track.
 
 Fetching ours needs no configuration — the image reference ships in `versions.json` and the
@@ -39,7 +39,7 @@ is involved.
 
 - **Patch currency in layers you did not write** — Chromium, Node, Bun, OS packages, glibc —
   rebuilt and patched on Echo's CVE cadence rather than whenever you happen to re-run a build.
-  A local build gives you the standard upstream versions, which is where most container images
+  A local build gives you the standard dependency versions, which is where most container images
   start; this keeps them current without you tracking any of it.
 - **A digest you chose.** Pin `repo@sha256:…` and the bytes under your local tag are those bytes
   or the pull refuses.
@@ -57,12 +57,12 @@ allowlist, and per-group resource limits all do more here than any image can.
 
 ## What changes
 
-| | Pull | Build |
-|---|---|---|
-| `install_packages` (apt and npm only) | Works, as a derived image | Works |
-| Non-Claude providers | Only if the publisher baked the CLI, or you add it | Work |
-| Custom `Dockerfile` edits | Replaced on the next refresh | Yours |
-| `INSTALL_CJK_FONTS` | Whatever the publisher baked — or `fonts-noto-cjk` via `install_packages` | Your choice |
+|                                       | Pull                                                                      | Build       |
+| ------------------------------------- | ------------------------------------------------------------------------- | ----------- |
+| `install_packages` (apt and npm only) | Works, as a derived image                                                 | Works       |
+| Non-Claude providers                  | Only if the publisher baked the CLI, or you add it                        | Work        |
+| Custom `Dockerfile` edits             | Replaced on the next refresh                                              | Yours       |
+| `INSTALL_CJK_FONTS`                   | Whatever the publisher baked — or `fonts-noto-cjk` via `install_packages` | Your choice |
 
 Nothing rebuilds the pinned image itself: `./container/build.sh` with no argument exits `3` and
 prints what to run instead, so a skill that rebuilds can't silently replace the pulled bytes.
@@ -86,13 +86,13 @@ shared image, losing the extra packages.
 
 All optional, all read from `.env` or the environment.
 
-| Variable | What it does |
-|---|---|
-| `AREA51_HARDENED_IMAGE` | `true` makes this install pull instead of build. The sign-in sets it for you. |
-| `AREA51_AGENT_IMAGE_REF` | The image to pull, ideally `repo@sha256:…`. Overrides the `agent-image` pin in `versions.json`. |
-| `AREA51_REGISTRY_API` | Base URL of the account service. Defaults to ours; set it only to point at a different one. |
-| `AREA51_REGISTRY_ENROLL_CODE` | Redeem an enrolment code without a browser. For CI. |
-| `AREA51_REGISTRY_TOKEN` | Adopt an existing account token directly. |
+| Variable                       | What it does                                                                                              |
+| ------------------------------ | --------------------------------------------------------------------------------------------------------- |
+| `AREA51_HARDENED_IMAGE`        | `true` makes this install pull instead of build. The sign-in sets it for you.                             |
+| `AREA51_AGENT_IMAGE_REF`       | The image to pull, ideally `repo@sha256:…`. Overrides the `agent-image` pin in `versions.json`.           |
+| `AREA51_REGISTRY_API`          | Base URL of the account service. Defaults to ours; set it only to point at a different one.               |
+| `AREA51_REGISTRY_ENROLL_CODE`  | Redeem an enrolment code without a browser. For CI.                                                       |
+| `AREA51_REGISTRY_TOKEN`        | Adopt an existing account token directly.                                                                 |
 | `AREA51_ALLOW_UNLABELED_IMAGE` | Accept an image with no agent-runner lock label — needed for a `docker save`/`load` or third-party image. |
 
 If you point this at your own registry you need none of these beyond
@@ -184,7 +184,7 @@ returns to the shared image.
 
 ## With a Area51 account
 
-The hosted registry is gated, so fetching *our* image needs a free account. This is the only
+The hosted registry is gated, so fetching _our_ image needs a free account. This is the only
 part of Area51 that involves an account or reports anything identifiable.
 
 ```bash
@@ -205,7 +205,7 @@ email carries an unsubscribe link, which is how you change your mind today.
 
 **What is never collected:** anything about your agents — no groups, channels, messages, prompts,
 files, or API keys. Nothing calls home once the image is local; the host runs a local tag and has
-no notion of a registry. We also cannot tell whether you ever *run* the image, only that you
+no notion of a registry. We also cannot tell whether you ever _run_ the image, only that you
 acquired one.
 
 The credential lives at `~/.config/area51/`, mode `0600`, and can do exactly one thing: ask for
@@ -218,14 +218,14 @@ account-takeover bugs happen — and there is no way to merge them today. Pick o
 
 ## Troubleshooting
 
-| Symptom | Cause |
-|---|---|
-| `./container/build.sh` exits 3 | Pinned install. `pull` to refresh, `build` to force local. |
-| Setup never offers the pull option | The option needs a Claude install and an `agent-image` pin in `versions.json`. Existing installs can follow [the migration above](#existing-installs-switch-to-the-hardened-image). |
-| Pull fails: lockfile mismatch | The image was built against a different `container/agent-runner/bun.lock`. Refresh the pin or build locally. |
-| Pull fails: architecture mismatch | The reference names one architecture and it isn't this daemon's. Use a multi-arch index, or the reference for this architecture. |
-| "No agent-image reference for linux/…" | The pin is per-platform and has no entry for this machine. Build locally, or set `AREA51_AGENT_IMAGE_REF`. |
-| Pull fails: auth | `--status` shows whether the credential helper is wired; `--force` re-runs sign-in. |
-| Signed in, but `--status` says "build here" | Re-run sign-in with `--force`. |
-| Sign-in code expired | It lives 5 minutes. Run it again. |
-| "No Area51 registry at &lt;url&gt;" | `AREA51_REGISTRY_API` is unset or wrong. The default host resolves but is not a registry, so this is a configuration error, not an outage. |
+| Symptom                                     | Cause                                                                                                                                                                               |
+| ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `./container/build.sh` exits 3              | Pinned install. `pull` to refresh, `build` to force local.                                                                                                                          |
+| Setup never offers the pull option          | The option needs a Claude install and an `agent-image` pin in `versions.json`. Existing installs can follow [the migration above](#existing-installs-switch-to-the-hardened-image). |
+| Pull fails: lockfile mismatch               | The image was built against a different `container/agent-runner/bun.lock`. Refresh the pin or build locally.                                                                        |
+| Pull fails: architecture mismatch           | The reference names one architecture and it isn't this daemon's. Use a multi-arch index, or the reference for this architecture.                                                    |
+| "No agent-image reference for linux/…"      | The pin is per-platform and has no entry for this machine. Build locally, or set `AREA51_AGENT_IMAGE_REF`.                                                                          |
+| Pull fails: auth                            | `--status` shows whether the credential helper is wired; `--force` re-runs sign-in.                                                                                                 |
+| Signed in, but `--status` says "build here" | Re-run sign-in with `--force`.                                                                                                                                                      |
+| Sign-in code expired                        | It lives 5 minutes. Run it again.                                                                                                                                                   |
+| "No Area51 registry at &lt;url&gt;"         | `AREA51_REGISTRY_API` is unset or wrong. The default host resolves but is not a registry, so this is a configuration error, not an outage.                                          |

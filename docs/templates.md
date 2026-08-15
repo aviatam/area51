@@ -110,15 +110,15 @@ and defaults sensibly:
 └── README.md                    # recommended: per-template docs
 ```
 
-| Path                                                  | Loaded as                                                                                                    | Required |
-| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ | -------- |
-| `plugin.json`                                          | Plugin identity: exact 1.0.0 `$schema`, spec-valid `name`, optional metadata and `extensions`               | **Yes**  |
-| `skills/<name>/`                                       | A skill, auto-triggered by its `description` (SKILL.md frontmatter needs `name` + `description`)            | No       |
-| `mcp.json` → `mcpServers`                              | MCP tool servers (validated, then written to container config)                                               | No       |
-| `ai.area51.agent/context/instructions.md`           | The agent's persona, prepended to its `CLAUDE.md`/`AGENTS.md` every spawn (system-prompt tier, any provider) | No       |
-| `ai.area51.agent/context/**/*.md` (others)          | Extra context, copied into the agent's workspace with the same layout relative to `instructions.md`          | No       |
-| `ai.area51.agent/tasks/*.md`                        | Recurring scheduled tasks, created paused pending user activation                                            | No       |
-| `extensions["ai.area51.agent"].agentName` (manifest) | Display name for the stamped group; defaults to the template folder leaf                                    | No       |
+| Path                                                 | Loaded as                                                                                                    | Required |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ | -------- |
+| `plugin.json`                                        | Plugin identity: exact 1.0.0 `$schema`, spec-valid `name`, optional metadata and `extensions`                | **Yes**  |
+| `skills/<name>/`                                     | A skill, auto-triggered by its `description` (SKILL.md frontmatter needs `name` + `description`)             | No       |
+| `mcp.json` → `mcpServers`                            | MCP tool servers (validated, then written to container config)                                               | No       |
+| `ai.area51.agent/context/instructions.md`            | The agent's persona, prepended to its `CLAUDE.md`/`AGENTS.md` every spawn (system-prompt tier, any provider) | No       |
+| `ai.area51.agent/context/**/*.md` (others)           | Extra context, copied into the agent's workspace with the same layout relative to `instructions.md`          | No       |
+| `ai.area51.agent/tasks/*.md`                         | Recurring scheduled tasks, created paused pending user activation                                            | No       |
+| `extensions["ai.area51.agent"].agentName` (manifest) | Display name for the stamped group; defaults to the template folder leaf                                     | No       |
 
 Failure boundaries follow the spec: an invalid `plugin.json` (or a containment
 or size violation, below) rejects the whole template; a malformed `mcp.json`
@@ -183,12 +183,12 @@ The plugin (including its `ai.area51.agent` extension) is the **source of
 truth** for everything it stamps. Restamping resets those surfaces to the new
 template version and touches nothing else:
 
-| Reset to the template | Never touched |
-|---|---|
-| `plugins/<name>/` (replaced wholesale) | Memory, sessions, wiring |
-| Skills overlay (per skill: updated, added, or removed) | Skills the agent authored itself |
-| Plugin-owned MCP servers (swapped as a set) | MCP servers you added via `add-mcp-server` |
-| Persona (`instructions.prepend.md`) and context files | Other workspace files |
+| Reset to the template                                         | Never touched                                  |
+| ------------------------------------------------------------- | ---------------------------------------------- |
+| `plugins/<name>/` (replaced wholesale)                        | Memory, sessions, wiring                       |
+| Skills overlay (per skill: updated, added, or removed)        | Skills the agent authored itself               |
+| Plugin-owned MCP servers (swapped as a set)                   | MCP servers you added via `add-mcp-server`     |
+| Persona (`instructions.prepend.md`) and context files         | Other workspace files                          |
 | Tasks (definitions update by name; dropped tasks are deleted) | Task pause/resume state, `plugin-data/<name>/` |
 
 The dry-run plan lists every surface with its action and flags files whose
@@ -391,8 +391,8 @@ one value the lint always accepts. Static header credentials on a
 plugin-stamped server are unsupported by design — the ownership guard refuses
 `add-mcp-server`/`remove-mcp-server` for plugin-owned names, so there is no
 after-the-fact edit path. Authentication belongs in the credentials proxy; if
-an endpoint truly needs a static header, the operator adds a *separately
-named*, user-owned server with `area51 groups config add-mcp-server --headers`.
+an endpoint truly needs a static header, the operator adds a _separately
+named_, user-owned server with `area51 groups config add-mcp-server --headers`.
 
 ### Approval-gating sensitive actions
 
@@ -409,7 +409,7 @@ for a worked example.
 
 Templates ship in the separate
 [`aviatam/area51-templates`](https://github.com/aviatam/area51-templates)
-repo, not this one. To add one: fork that repo, drop a plugin directory at
+repo, not this one. To add one: create a branch there, drop a plugin directory at
 `<category>/<template>/` with at least `plugin.json` and (registry policy) a
 persona at `ai.area51.agent/context/instructions.md`, run that repo's
 `node scripts/check-templates.mjs`, test it end to end (copy it under

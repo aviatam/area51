@@ -6,7 +6,7 @@ This is an engineering licensing review, not legal advice.
 
 ## Summary
 
-Area51 can be used commercially if it keeps the required upstream notices. There is no need to remove Area51 or Incus licensing to commercialize it, and removing required notices would create avoidable license compliance risk.
+Area51 can be used commercially if it keeps the required third-party notices. There is no need to remove Area51 or Incus licensing to commercialize it, and removing required notices would create avoidable license compliance risk.
 
 ## Upstream Projects
 
@@ -15,9 +15,9 @@ Area51 can be used commercially if it keeps the required upstream notices. There
 
 ## Area51 Integration Approach
 
-This fork currently does not vendor Incus source code. It generates Incus CLI/API operations from Area51-side TypeScript. That is the cleanest commercial path:
+Area51 currently does not vendor Incus source code. It generates Incus CLI/API operations from Area51-side TypeScript. That is the cleanest commercial path:
 
-- keep this fork under MIT or a commercial/private license while preserving upstream MIT notices for Area51-derived files
+- keep Area51 under MIT or a commercial/private license while preserving required notices for derived files
 - keep Incus as an external runtime dependency
 - if Incus source is copied later, preserve Apache-2.0 headers/notices and add a NOTICE file if required by copied material
 
@@ -38,8 +38,8 @@ Do not strip:
 
 ## Recommended Commercial Path
 
-1. Brand the fork as Area51 in product, binary, docs, and package metadata.
-2. Keep upstream license notices in the repository and release artifacts.
+1. Brand the product as Area51 in product, binary, docs, and package metadata.
+2. Keep required license notices in the repository and release artifacts.
 3. Use Incus through CLI/API calls instead of copying Incus source.
 4. Add a `NOTICE` file before distributing if any Apache-2.0 Incus source or notice-bearing dependency content is vendored.
-5. Ask counsel before removing attribution, relicensing upstream-derived files as closed-source only, or embedding Incus code directly.
+5. Ask counsel before removing attribution, relicensing derived files as closed-source only, or embedding Incus code directly.
