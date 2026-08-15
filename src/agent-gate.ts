@@ -89,7 +89,7 @@ interface ContainerConfig {
 
 const DEFAULT_REQUIRED_SECRETS = ['ANTHROPIC_API_KEY'];
 const MINIMUM_OVERALL = 80;
-const IGNORED_DIRS = new Set(['.git', 'node_modules', 'dist', '.nanoclaw']);
+const IGNORED_DIRS = new Set(['.git', 'node_modules', 'dist']);
 
 const BLOCKED_NPM_PACKAGES = [
   {
@@ -336,6 +336,7 @@ function walkGroupFiles(groupDir: string): string[] {
       if (entry.isDirectory() && IGNORED_DIRS.has(entry.name)) continue;
       const absolute = path.join(dir, entry.name);
       const relative = path.relative(groupDir, absolute).replace(/\\/g, '/');
+      if (relative.startsWith('.nanoclaw/agent-gate/quarantine')) continue;
       if (entry.isDirectory()) {
         walk(absolute);
       } else if (entry.isFile()) {
@@ -367,12 +368,13 @@ function isPolicyFile(file: string): boolean {
 
 function isScenarioFile(file: string): boolean {
   const lower = file.toLowerCase();
+  const basename = path.basename(lower);
   return (
     lower.startsWith('.nanoclaw/agent-gate/scenarios/') ||
     lower.startsWith('.agentgym/') ||
     lower.includes('/scenarios/') ||
-    lower.includes('prompt-injection') ||
-    lower.includes('refund')
+    basename.includes('prompt-injection') ||
+    basename.includes('refund')
   );
 }
 

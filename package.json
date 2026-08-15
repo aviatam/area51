@@ -6,6 +6,7 @@
   "packageManager": "pnpm@10.33.0",
   "main": "dist/index.js",
   "bin": {
+    "area51": "bin/area51",
     "ncl": "bin/ncl"
   },
   "scripts": {

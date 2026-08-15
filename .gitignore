@@ -37,6 +37,7 @@ groups/*
 
 # Skills system (local per-installation state)
 .nanoclaw/
+.area51/
 
 agents-sdk-docs
 .agents
