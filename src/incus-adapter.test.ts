@@ -30,6 +30,13 @@ describe('Incus adapter', () => {
 
     expect(executor).toHaveBeenCalledWith(['project', 'create', 'area51-support']);
     expect(executor).toHaveBeenCalledWith(['project', 'set', 'area51-support', 'restricted=true']);
+    expect(executor).toHaveBeenCalledWith(['project', 'set', 'area51-support', 'restricted.devices.disk=allow']);
+    expect(executor).toHaveBeenCalledWith([
+      'project',
+      'set',
+      'area51-support',
+      `restricted.devices.disk.paths=${plan.mounts.map((mount) => mount.source).join(',')}`,
+    ]);
     expect(executor).toHaveBeenCalledWith([
       'launch',
       'images:debian/12/cloud',

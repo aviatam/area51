@@ -1,0 +1,48 @@
+name: Incus Live E2E
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: incus-live-e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  incus-live:
+    name: Live Incus daemon smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6.0.10
+
+      - name: Setup Node
+        uses: actions/setup-node@v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Incus
+        run: |
+          set -euxo pipefail
+          sudo apt-get update
+          sudo apt-get install -y incus acl
+          sudo incus admin init --minimal
+          sudo setfacl -m "u:${USER}:rw" /var/lib/incus/unix.socket
+          incus version
+
+      - name: Live Incus E2E
+        env:
+          AREA51_INCUS_E2E_IMAGE: images:alpine/3.20
+        run: pnpm run test:incus:e2e

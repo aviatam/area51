@@ -39,6 +39,8 @@ export function applyIncusRuntimePlan(plan: IncusRuntimePlan, options: IncusAdap
     ['project', 'create', plan.project],
     ['project', 'set', plan.project, 'restricted=true'],
     ['project', 'set', plan.project, 'limits.instances=3'],
+    ['project', 'set', plan.project, 'restricted.devices.disk=allow'],
+    ['project', 'set', plan.project, `restricted.devices.disk.paths=${allowedDiskPaths(plan)}`],
   ];
 
   for (const profile of plan.profiles.filter((profile) => profile !== 'default')) {
@@ -164,6 +166,10 @@ function assertSafeName(value: string, label: string): void {
 
 function mountDeviceName(containerPath: string): string {
   return containerPath.replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-|-$/g, '') || 'mount';
+}
+
+function allowedDiskPaths(plan: IncusRuntimePlan): string {
+  return [...new Set(plan.mounts.map((mount) => path.resolve(mount.source)))].join(',');
 }
 
 function sanitizeConfigValue(value: string): string {
