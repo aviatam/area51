@@ -91,6 +91,7 @@ export function applyIncusRuntimePlan(plan: IncusRuntimePlan, options: IncusAdap
       plan.project,
     ];
     if (mount.readonly) argv.splice(8, 0, 'readonly=true');
+    if (!mount.readonly && plan.instanceKind === 'container') argv.splice(8, 0, 'shift=true');
     commands.push(argv);
   }
   commands.push(['start', plan.instance, '--project', plan.project]);

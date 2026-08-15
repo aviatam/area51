@@ -142,8 +142,9 @@ function buildLaunchCommands(input: {
   for (const mount of input.mounts) {
     const device = mount.path.replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-|-$/g, '') || 'mount';
     const readonly = mount.readonly ? ' readonly=true' : '';
+    const shift = !mount.readonly && input.instanceKind === 'container' ? ' shift=true' : '';
     commands.push(
-      `incus config device add ${input.instance} ${device} disk source="${mount.source}" path=${mount.path}${readonly} --project ${input.project}`,
+      `incus config device add ${input.instance} ${device} disk source="${mount.source}" path=${mount.path}${readonly}${shift} --project ${input.project}`,
     );
   }
   commands.push(`incus start ${input.instance} --project ${input.project}`);

@@ -61,6 +61,19 @@ describe('Incus adapter', () => {
         'device',
         'add',
         'area51-support-agent',
+        'workspace',
+        'disk',
+        `source=${plan.mounts.find((mount) => mount.path === '/workspace')?.source}`,
+        'path=/workspace',
+        'shift=true',
+      ]),
+    );
+    expect(executor).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        'config',
+        'device',
+        'add',
+        'area51-support-agent',
         'workspace-agent',
         'disk',
         `source=${plan.mounts.find((mount) => mount.path === '/workspace/agent')?.source}`,

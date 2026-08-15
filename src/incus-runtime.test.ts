@@ -52,6 +52,7 @@ describe('buildIncusRuntimePlan', () => {
       { source: '/srv/area51/groups/demo/CLAUDE.md', path: '/workspace/agent/CLAUDE.md', readonly: true },
     ]);
     expect(plan.commands.launch.join('\n')).toContain('readonly=true');
+    expect(plan.commands.launch.join('\n')).toContain('shift=true');
   });
 
   it('can scope live instances by session while keeping the project stable', () => {
