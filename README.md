@@ -170,7 +170,7 @@ Docker remains useful for local compatibility. Incus is the stronger Area51 runt
 
 Runtime Policy is host-owned: the agent cannot select its own isolation level or mount the Incus socket. Local mode can stay on Docker for trusted low-risk work. Production mode prefers Incus containers. Maximum mode uses Incus VMs. Compromised-package or quarantine evidence fails closed into Incus quarantine when Incus is available, or blocks when policy requires Incus and it is unavailable.
 
-Area51 currently generates the Incus execution plan in the demo. A live Linux runtime adapter can apply the same commands through the Incus CLI or REST API.
+Area51 currently generates the Incus execution plan in the demo and ships a safe Incus adapter that applies those plans with argv-based CLI calls, not shell-interpolated command strings. The adapter is dependency-injected in tests so CI verifies the command contract without requiring a privileged Incus daemon on shared runners. A dedicated Linux runner with Incus installed can run the same adapter against a real daemon for end-to-end production validation.
 
 ## Requirements
 

@@ -40,6 +40,8 @@ The Incus plan maps that same group to:
 
 The demo is intentionally runnable on machines without an Incus daemon. It verifies that Area51 can produce the exact Incus operations, the real Agent Gate artifacts, and a deterministic runtime policy decision. On a Linux host with Incus installed, the `incus-runtime-plan.json` commands are the implementation path for a live runner.
 
+The Incus adapter applies the same plan with argv-based CLI calls. It never runs generated shell strings, and its executor is injectable so tests can prove every command without needing a privileged Incus daemon in GitHub's shared runners.
+
 ## Runtime Policy
 
 Runtime Policy is host-owned. Agents can request work, but they do not choose Docker, Incus, VM isolation, or quarantine for themselves.
@@ -60,6 +62,17 @@ Policy outputs:
 - `allow` on `incus-vm` for maximum isolation
 - `quarantine` for compromised package evidence when Incus is available
 - `block` when policy requires Incus but Incus is unavailable
+
+## Live Incus Validation
+
+The repository can validate the adapter contract on every operating system. A real end-to-end Incus run additionally needs a Linux machine where:
+
+- Incus is installed and initialized
+- the Area51 host user can call `incus` successfully
+- the Incus socket is not mounted into agent runtimes
+- the runner can create projects, profiles, instances, snapshots, and disk devices
+
+On a self-hosted runner with those permissions, the same adapter can be exercised against the real daemon. Shared GitHub runners are still useful for the safety contract because they verify the exact argv sent to Incus and the fail-closed policy behavior.
 
 ## Commercial Licensing
 
