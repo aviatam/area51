@@ -40,7 +40,9 @@ jobs:
           sudo apt-get install -y incus acl
           sudo incus admin init --minimal
           sudo setfacl -m "u:${USER}:rw" /var/lib/incus/unix.socket
-          echo "AREA51_INCUS_STORAGE_POOL=$(incus storage list --format csv -c n | head -n 1)" >> "$GITHUB_ENV"
+          sudo mkdir -p /var/lib/incus/storage-pools/area51-ci
+          incus storage create area51-ci dir source=/var/lib/incus/storage-pools/area51-ci
+          echo "AREA51_INCUS_STORAGE_POOL=area51-ci" >> "$GITHUB_ENV"
           incus version
 
       - name: Live Incus E2E
