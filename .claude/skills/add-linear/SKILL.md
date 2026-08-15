@@ -7,7 +7,7 @@ description: Add Linear channel integration via Chat SDK. Issue comment threads 
 
 Adds Linear support via the Chat SDK bridge. The agent participates in issue
 comment threads. Every comment on a Linear issue triggers the agent — no
-@-mention needed. NanoClaw doesn't ship channels in trunk — this skill copies the
+@-mention needed. Area51 doesn't ship channels in trunk — this skill copies the
 Linear adapter in from the `channels` branch.
 
 The mechanical steps under **Apply** carry `nc:` directive fences: an agent reads
@@ -20,8 +20,8 @@ re-run; anything a parser can't apply falls back to the prose beside it.
 **Recommended:** Create a Linear **OAuth application** so the agent posts as an app identity, not as you. This prevents the adapter from filtering your own comments as self-messages.
 
 1. Go to [Linear Settings > API > OAuth Applications](https://linear.app/settings/api/applications/new)
-2. Create an app (e.g. "NanoClaw Bot")
-   - Developer URL: your repo URL (e.g. `https://github.com/your-org/nanoclaw`)
+2. Create an app (e.g. "Area51 Bot")
+   - Developer URL: your repo URL (e.g. `https://github.com/your-org/area51`)
    - Callback URL: `http://localhost`
 3. After creating, click the app and enable **Client credentials** under grant types
 4. Copy the **Client ID** and **Client Secret**
@@ -91,7 +91,7 @@ Linear app and webhook setup is human and interactive — these steps are prose
 ### 1. Set up a webhook
 
 1. Go to **Linear Settings** > **API** > **Webhooks** > **New webhook**
-2. Label: `NanoClaw`
+2. Label: `Area51`
 3. URL: `https://your-domain/webhook/linear` (the shared webhook server, default port 3000)
 4. Team: select the team you want to monitor
 5. Events: check **Comment**
@@ -127,7 +127,7 @@ Paste the webhook signing secret from the webhook you just created.
 Enter the Linear team key (e.g. `ENG`, `NAN`) — Settings > Teams.
 ```
 ```nc:prompt linear_bot_username
-Enter the bot display name (e.g. `NanoClaw Bot`).
+Enter the bot display name (e.g. `Area51 Bot`).
 ```
 ```nc:env-set
 LINEAR_CLIENT_ID={{linear_client_id}}
@@ -147,22 +147,22 @@ LINEAR_API_KEY=lin_api_...
 
 Linear is team-routed: the assistant watches one team and answers *every* comment
 on its issues (it can't be @-mentioned). Wire the team you set up to an agent —
-pick which one should answer (`ncl groups list` shows their folders). The host
-service must be running — `ncl` connects to it over a Unix socket.
+pick which one should answer (`area51 groups list` shows their folders). The host
+service must be running — `area51` connects to it over a Unix socket.
 
 The sender policy depends on the workspace: a private workspace can use `public`
 (only workspace members can comment anyway); a public workspace should use
 `strict` so only registered members may talk to the agent.
 
 ```nc:prompt agent_folder
-Which agent should answer Linear comments? Enter its folder (run `ncl groups list`).
+Which agent should answer Linear comments? Enter its folder (run `area51 groups list`).
 ```
 ```nc:prompt linear_sender_policy normalize:lower validate:^(public|strict)$
 Is this a private or public Linear workspace? Enter `public` for a private workspace (only members can comment) or `strict` for a public workspace (only registered members may talk to the agent).
 ```
 ```nc:run effect:wire
-ncl messaging-groups create --channel-type linear --platform-id linear:{{linear_team_key}} --is-group 1 --unknown-sender-policy {{linear_sender_policy}} --name {{linear_team_key}}
-ncl wirings create --channel-type linear --platform-id linear:{{linear_team_key}} --agent-group {{agent_folder}} --engage-mode pattern --engage-pattern . --session-mode per-thread
+area51 messaging-groups create --channel-type linear --platform-id linear:{{linear_team_key}} --is-group 1 --unknown-sender-policy {{linear_sender_policy}} --name {{linear_team_key}}
+area51 wirings create --channel-type linear --platform-id linear:{{linear_team_key}} --agent-group {{agent_folder}} --engage-mode pattern --engage-pattern . --session-mode per-thread
 ```
 
 The explicit `pattern` engage mode with pattern `.` matches the Linear adapter's
@@ -178,7 +178,7 @@ If you're in the middle of `/setup`, return to the setup flow now.
 
 Otherwise, restart the service to pick up the new channel.
 
-Run from your NanoClaw project root:
+Run from your Area51 project root:
 
 ```bash
 source setup/lib/install-slug.sh

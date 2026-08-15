@@ -21,7 +21,7 @@ vi.mock('../lib/bright-select.js', async (importActual) => {
   return { ...actual, brightSelect: vi.fn(async () => bs.answers.shift() ?? 'continue') };
 });
 
-afterEach(() => delete process.env.NANOCLAW_TEMPLATE_AGENT_ID);
+afterEach(() => delete process.env.AREA51_TEMPLATE_AGENT_ID);
 
 // Drives the real add-slack skill through the adapter with every side effect
 // injected (no real ncl/git/clack/init-first-agent): confirms it runs the skill
@@ -29,7 +29,7 @@ afterEach(() => delete process.env.NANOCLAW_TEMPLATE_AGENT_ID);
 // the result, and hands them to the shared wire with a composed user-id.
 describe('runChannelSkill adapter (Option A)', () => {
   it('resolves via the skill, then wires through init-first-agent', async () => {
-    process.env.NANOCLAW_TEMPLATE_AGENT_ID = 'ag-template';
+    process.env.AREA51_TEMPLATE_AGENT_ID = 'ag-template';
     const root = mkdtempSync(join(tmpdir(), 'rcs-'));
     mkdirSync(join(root, 'src/channels'), { recursive: true });
     writeFileSync(join(root, 'src/channels/index.ts'), '// barrel\n');
@@ -77,8 +77,8 @@ describe('runChannelSkill adapter (Option A)', () => {
       role: 'owner',
       agentGroupId: 'ag-template',
     });
-    // the adapter no longer emits any ncl wiring itself — that's init-first-agent's job
-    expect(cmds.some((c) => c.startsWith('ncl '))).toBe(false);
+    // the adapter no longer emits any area51 wiring itself — that's init-first-agent's job
+    expect(cmds.some((c) => c.startsWith('area51 '))).toBe(false);
     // clears the template pick exactly when the wire consumed the stamped
     // agent — goes red if the post-wire clear in run-channel-skill.ts is removed
     expect(pickCleared).toBe(1);
@@ -208,7 +208,7 @@ describe('runChannelSkill adapter (Option A)', () => {
         if (c.includes(' app create ')) {
           // the --json shape teams.cli@3.0.2 prints (credentials keys are UPPERCASE)
           return JSON.stringify({
-            appName: 'NanoClaw',
+            appName: 'Area51',
             teamsAppId: 'tapp-123',
             botId: '12345678-1234-1234-1234-123456789abc',
             installLink: INSTALL_LINK,
@@ -235,7 +235,7 @@ describe('runChannelSkill adapter (Option A)', () => {
         return { ok: true, fields: { STATUS: 'success' } };
       },
       resolveRemote: () => 'origin',
-      inputs: { public_url: 'https://acme.example', app_name: 'NanoClaw', wire_owner: 'yes', signout: 'yes' },
+      inputs: { public_url: 'https://acme.example', app_name: 'Area51', wire_owner: 'yes', signout: 'yes' },
       confirm: async (m) => {
         log.push(`confirm:${m}`);
         return true;
@@ -253,7 +253,7 @@ describe('runChannelSkill adapter (Option A)', () => {
     // …create got the collected public URL on the real /webhook/teams route,
     // the prompted name, and the unconditional single-tenant default…
     expect(log.some((c) => c.includes('--endpoint "https://acme.example/webhook/teams"'))).toBe(true);
-    expect(log.some((c) => c.includes('--name "NanoClaw"') && c.includes('--sign-in-audience myOrg'))).toBe(true);
+    expect(log.some((c) => c.includes('--name "Area51"') && c.includes('--sign-in-audience myOrg'))).toBe(true);
     // …the mascot icons were applied to the created app (captured teams app id,
     // both committed assets) before the install-link operator…
     expect(
@@ -334,7 +334,7 @@ describe('runChannelSkill adapter (Option A)', () => {
       resolveRemote: () => 'origin',
       inputs: {
         public_url: 'https://acme.example',
-        app_name: 'NanoClaw',
+        app_name: 'Area51',
         wire_owner: 'no',
         wire_target: 'other-account',
         target_aad_id: TARGET_AAD,
@@ -392,7 +392,7 @@ describe('runChannelSkill adapter (Option A)', () => {
       resolveRemote: () => 'origin',
       inputs: {
         public_url: 'https://acme.example',
-        app_name: 'NanoClaw',
+        app_name: 'Area51',
         wire_owner: 'no',
         wire_target: 'logged-in-account',
         signout: 'yes',
@@ -470,7 +470,7 @@ describe('runChannelSkill adapter (Option A)', () => {
       agentName: 'Nano',
       role: 'owner',
     });
-    // no template pick in play (NANOCLAW_TEMPLATE_AGENT_ID unset): a fresh-agent
+    // no template pick in play (AREA51_TEMPLATE_AGENT_ID unset): a fresh-agent
     // wire must leave the persisted pick alone
     expect(pickCleared).toBe(0);
   });

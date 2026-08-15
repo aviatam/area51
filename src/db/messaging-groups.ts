@@ -193,7 +193,7 @@ export function createMessagingGroupAgent(mga: MessagingGroupAgent): void {
  * has been deleted out from under the wiring.
  *
  * Split out from `createMessagingGroupAgent` so callers that already wrote
- * the `messaging_group_agents` row directly (e.g. the generic ncl CRUD path)
+ * the `messaging_group_agents` row directly (e.g. the generic area51 CRUD path)
  * can still get the companion destination without re-inserting the wiring.
  *
  * ⚠️  DESTINATION PROJECTION NOTE: this function only writes the central
@@ -202,7 +202,7 @@ export function createMessagingGroupAgent(mga: MessagingGroupAgent): void {
  * src/modules/agent-to-agent/db/agent-destinations.ts). In practice this is
  * fine because the only real callers are one-shot setup paths
  * (setup/register.ts, scripts/init-first-agent.ts, /manage-channels skill,
- * ncl wirings create) that run in a separate process from the host. Any
+ * area51 wirings create) that run in a separate process from the host. Any
  * already-running container for `mga.agent_group_id` will keep serving the
  * stale projection until its next wake (idle timeout or next inbound
  * message) at which point spawnContainer's writeDestinations call refreshes

@@ -6,11 +6,11 @@
  * the first inbound message from another WeChat account auto-creates a
  * `messaging_groups` row. This script finds that row, asks the operator
  * which agent group to wire it to, and creates the wiring via
- * `ncl wirings create` — engage mode/pattern and priority come from the
+ * `area51 wirings create` — engage mode/pattern and priority come from the
  * WeChat adapter's declared channel defaults, not from SQL baked into this
  * script, so it can't drift against schema migrations.
  *
- * PREREQUISITE: the NanoClaw host service must be RUNNING — `ncl` talks to
+ * PREREQUISITE: the Area51 host service must be RUNNING — `area51` talks to
  * it over a Unix socket and has no offline mode.
  *
  * Usage (from the project root):
@@ -74,7 +74,7 @@ function parseArgs(argv: string[]): Args {
   return args;
 }
 
-/** Run one ncl command against the running host and return its parsed data. */
+/** Run one area51 command against the running host and return its parsed data. */
 function ncl(...cliArgs: string[]): unknown {
   const res = spawnSync('pnpm', ['exec', 'tsx', 'src/cli/client.ts', ...cliArgs, '--json'], {
     cwd: PROJECT_ROOT,
@@ -87,12 +87,12 @@ function ncl(...cliArgs: string[]): unknown {
   } catch {
     // No frame — transport-level failure (host not running), reported on stderr.
   }
-  if (frame && !frame.ok) throw new Error(`ncl ${cliArgs.join(' ')} failed: ${frame.error?.message}`);
+  if (frame && !frame.ok) throw new Error(`area51 ${cliArgs.join(' ')} failed: ${frame.error?.message}`);
   if (!frame || res.status !== 0) {
     const detail = (res.stderr || res.stdout || '').trim();
     throw new Error(
-      `ncl ${cliArgs.join(' ')} failed:\n${detail}\n\n` +
-      'Is the NanoClaw host service running? ncl connects to it over a Unix socket.',
+      `area51 ${cliArgs.join(' ')} failed:\n${detail}\n\n` +
+      'Is the Area51 host service running? area51 connects to it over a Unix socket.',
     );
   }
   return frame.data;

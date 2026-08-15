@@ -42,7 +42,7 @@ interface WireArgs {
 }
 
 async function resolveAgentName(): Promise<string> {
-  const preset = process.env.NANOCLAW_AGENT_NAME?.trim();
+  const preset = process.env.AREA51_AGENT_NAME?.trim();
   if (preset) return preset;
   const answer = ensureAnswer(
     await p.text({
@@ -218,7 +218,7 @@ export async function runChannelSkill(
   // A skill-resolved engage pattern (WhatsApp shared-mode "@<name> only"
   // self-chat) rides along to init-first-agent's --engage-pattern; unset means
   // the wiring's own DM default applies.
-  const templateAgentGroupId = process.env.NANOCLAW_TEMPLATE_AGENT_ID?.trim() || undefined;
+  const templateAgentGroupId = process.env.AREA51_TEMPLATE_AGENT_ID?.trim() || undefined;
   const ok = await wire({
     channel,
     userId: `${channel}:${ownerHandle}`,

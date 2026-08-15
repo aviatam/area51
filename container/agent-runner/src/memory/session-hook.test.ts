@@ -12,7 +12,7 @@ describe('memory SessionStart contract', () => {
       legacyCommands: ['bun /app/src/memory-hook.ts'],
       sources: ['startup', 'clear', 'compact'],
     });
-    const base = fs.mkdtempSync(path.join(os.tmpdir(), 'nanoclaw-memory-hook-contract-'));
+    const base = fs.mkdtempSync(path.join(os.tmpdir(), 'area51-memory-hook-contract-'));
     try {
       fs.mkdirSync(path.join(base, 'memory', 'system'), { recursive: true });
       fs.writeFileSync(path.join(base, 'memory', 'index.md'), '# Memory Index\n');

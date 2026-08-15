@@ -5,7 +5,7 @@ description: Add Webex channel integration via Chat SDK.
 
 # Add Webex Channel
 
-Adds Cisco Webex support via the Chat SDK bridge. NanoClaw doesn't ship channels
+Adds Cisco Webex support via the Chat SDK bridge. Area51 doesn't ship channels
 in trunk — this skill copies the Webex adapter in from the `channels` branch.
 
 The mechanical steps under **Apply** carry `nc:` directive fences: an agent
@@ -83,7 +83,7 @@ they're done.
 
 Capture the two values, then write them. `prompt` only *asks* and binds the
 answer to a name; a separate directive consumes it — so the same prompts could
-feed `ncl` or the OneCLI vault instead of `.env` by swapping only the consumer.
+feed `area51` or the OneCLI vault instead of `.env` by swapping only the consumer.
 Here they go to `.env` (set-if-absent — a value you've already filled in is
 never overwritten):
 
@@ -127,4 +127,4 @@ If you're in the middle of `/setup`, return to the setup flow now. Otherwise run
 
 **Events arrive but are rejected.** Signature mismatch: the secret set at webhook creation must equal `WEBEX_WEBHOOK_SECRET` exactly. Recreate the webhook with a known secret and update `.env` to match.
 
-**Adapter installed but silent.** Run `pnpm exec vitest run src/channels/webex-registration.test.ts` — red means the barrel import or the `@bitbasti/chat-adapter-webex` install drifted, so re-run the Apply steps. If green, restart the service so it loads the adapter and the tokens, then watch `logs/nanoclaw.log` for the webhook hit.
+**Adapter installed but silent.** Run `pnpm exec vitest run src/channels/webex-registration.test.ts` — red means the barrel import or the `@bitbasti/chat-adapter-webex` install drifted, so re-run the Apply steps. If green, restart the service so it loads the adapter and the tokens, then watch `logs/area51.log` for the webhook hit.

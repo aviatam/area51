@@ -1,12 +1,12 @@
 # Host lifecycle migration
 
-NanoClaw now has one host lifecycle registry. The legacy shutdown hooks in
+Area51 now has one host lifecycle registry. The legacy shutdown hooks in
 `src/response-registry.ts` have been removed, and all host modules register
 startup and shutdown work through `src/host-lifecycle.ts`.
 
 ## Detect affected custom modules
 
-Search custom NanoClaw source for the removed exports:
+Search custom Area51 source for the removed exports:
 
 ```bash
 rg -n "onShutdown|getShutdownCallbacks" src
@@ -51,7 +51,7 @@ Code that inspected `getShutdownCallbacks()` in a registration test should use
 
 ## Verify the migration
 
-Confirm that no removed calls remain, then build and test NanoClaw:
+Confirm that no removed calls remain, then build and test Area51:
 
 ```bash
 rg -n "onShutdown|getShutdownCallbacks" src
@@ -64,7 +64,7 @@ registered cleanup should run once in reverse registration order.
 
 ## Roll back
 
-This change does not migrate stored data. To roll back, return NanoClaw to the
+This change does not migrate stored data. To roll back, return Area51 to the
 previous revision and restore the custom module's `response-registry.ts`
-import. Rebuild and restart NanoClaw using the same procedure used for the
+import. Rebuild and restart Area51 using the same procedure used for the
 update, then verify a graceful shutdown again.

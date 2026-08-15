@@ -5,7 +5,7 @@ resources as JSON and it derives the dashboard at runtime: one tab per
 resource, a generic table over whatever columns the rows have. New resource →
 new tab; new column → new table column; **zero code changes**.
 
-It ships pre-wired for NanoClaw's `ncl` CLI (agent groups, sessions, messaging
+It ships pre-wired for Area51's `area51` CLI (agent groups, sessions, messaging
 groups, wirings, users, roles, …) plus `docker`, but the same config shape
 works for any list-as-JSON CLI.
 
@@ -15,9 +15,9 @@ works for any list-as-JSON CLI.
 - **Read-only by construction** — the server can only `execFile` the configured
   argv templates; `{resource}` is the sole substitution and is validated
   against the discovered/static resource allowlist. Never a shell.
-- **Standalone** — no imports from NanoClaw source; the core is extractable to
-  its own repo. The NanoClaw-specific knowledge lives entirely in the config
-  and in the `views/ncl-overview.js` view plugin.
+- **Standalone** — no imports from Area51 source; the core is extractable to
+  its own repo. The Area51-specific knowledge lives entirely in the config
+  and in the `views/area51-overview.js` view plugin.
 
 ## Run
 
@@ -29,7 +29,7 @@ PORT=4690 BIND=127.0.0.1 node server.js               # env overrides
 ```
 
 Run it from `tools/clidash/`; the example config uses paths relative to the
-NanoClaw root two levels up, so it works out of the box once `ncl` is built.
+Area51 root two levels up, so it works out of the box once `area51` is built.
 
 ## Configure (`clidash.config.json`)
 
@@ -39,10 +39,10 @@ NanoClaw root two levels up, so it works out of the box once `ncl` is built.
   "bind": "127.0.0.1",          // never a public interface; a tailnet IP at most
   "refreshSeconds": 60,
   "clis": {
-    "ncl": {
-      "bin": "bin/ncl",                                        // relative to cwd below
-      "cwd": "../..",                                           // the NanoClaw root
-      "discover": { "args": ["help"], "parser": "ncl-help" },   // runtime resource discovery
+    "area51": {
+      "bin": "bin/area51",                                        // relative to cwd below
+      "cwd": "../..",                                           // the Area51 root
+      "discover": { "args": ["help"], "parser": "area51-help" },   // runtime resource discovery
       "list": ["{resource}", "list", "--json"],                 // argv template
       "output": "json",          // or "jsonlines" (docker/kubectl style)
       "unwrap": "data"           // dot-path into a response envelope
@@ -58,10 +58,10 @@ NanoClaw root two levels up, so it works out of the box once `ncl` is built.
 ```
 
 `{resource}` may appear as a whole argv element or inside one — e.g. a remote
-CLI via ssh: `"list": ["-i", "key.pem", "user@host", "ncl {resource} list --json"]`.
+CLI via ssh: `"list": ["-i", "key.pem", "user@host", "area51 {resource} list --json"]`.
 
 Per-CLI `env` (merged over the server's env) and `cwd` are supported. See
-`clidash.config.example.json` for the full NanoClaw config, including the
+`clidash.config.example.json` for the full Area51 config, iarea51uding the
 `enrich`/`badges`/`summary` table decorations and the `activity`/`logs`/`docs`
 sections.
 
@@ -75,7 +75,7 @@ sections.
 
 View plugins are the only per-CLI *code*, and optional: a default-exported
 async function receiving `{ fetch }` (bound to that CLI) returning JSON.
-`views/ncl-overview.js` joins groups + sessions + messaging-groups + wirings
+`views/area51-overview.js` joins groups + sessions + messaging-groups + wirings
 into per-agent status cards (green <15m / amber <2h / red older).
 
 ## Test
@@ -97,8 +97,8 @@ auth boundary. Example systemd user service:
 Description=clidash read-only CLI dashboard
 
 [Service]
-WorkingDirectory=%h/nanoclaw/tools/clidash
-ExecStart=/usr/bin/node %h/nanoclaw/tools/clidash/server.js
+WorkingDirectory=%h/area51/tools/clidash
+ExecStart=/usr/bin/node %h/area51/tools/clidash/server.js
 Environment=BIND=127.0.0.1
 Restart=on-failure
 

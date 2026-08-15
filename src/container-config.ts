@@ -54,7 +54,7 @@ export interface McpStdioServerConfig {
   /**
    * Name of the plugin that stamped this server. Ownership marker: plugin-owned
    * servers reject CLI/self-mod edits and are swapped wholesale on restamp
-   * (`ncl groups create --template`). Internal — never CLI input, and not
+   * (`area51 groups create --template`). Internal — never CLI input, and not
    * re-attached by sanitizeStoredMcpServers, so it never reaches container.json.
    */
   plugin?: string;
@@ -254,7 +254,7 @@ export interface ContainerConfig {
 
 /**
  * Effective timezone for an agent group: per-group override → install global.
- * The ncl write path validates, but a hand-edited DB value must not silently
+ * The area51 write path validates, but a hand-edited DB value must not silently
  * flip scheduling to UTC — an invalid override falls back to the global tz,
  * same as no override.
  */

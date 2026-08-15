@@ -18,16 +18,16 @@ function inventory(overrides: Partial<Inventory> = {}): Inventory {
     projectRoot: '/proj',
     containerRuntime: 'docker',
     service: {
-      launchdPlist: '/home/u/Library/LaunchAgents/com.nanoclaw-v2-abcd1234.plist',
+      launchdPlist: '/home/u/Library/LaunchAgents/com.area51-v2-abcd1234.plist',
       containerIds: ['c1', 'c2'],
-      image: 'nanoclaw-agent-v2-abcd1234:latest',
-      nclSymlink: '/home/u/.local/bin/ncl',
+      image: 'area51-agent-v2-abcd1234:latest',
+      area51Symlink: '/home/u/.local/bin/area51',
     },
     data: [
       item('/proj/data', 'Database & conversations'),
       item('/proj/logs', 'Logs'),
       item('/proj/.env', 'Secrets / API keys (.env)'),
-      item('/proj/start-nanoclaw.sh', 'Start script'),
+      item('/proj/start-area51.sh', 'Start script'),
     ],
     runtime: [
       // node_modules deliberately FIRST — the planner must still order it last.
@@ -126,7 +126,7 @@ describe('buildRemovalPlan declined groups', () => {
       user: false,
       onecliDelete: [],
     });
-    for (const kind of ['unload-service', 'pkill-host', 'rm-containers', 'rmi', 'rm-ncl-symlink']) {
+    for (const kind of ['unload-service', 'pkill-host', 'rm-containers', 'rmi', 'rm-area51-symlink']) {
       expect(kinds(actions)).not.toContain(kind);
     }
   });
@@ -150,7 +150,7 @@ describe('buildRemovalPlan conditional actions', () => {
     expect(actionKinds).toContain('pkill-host');
     const rm = actions.find((a) => a.kind === 'rm-containers');
     expect(rm && rm.kind === 'rm-containers' ? rm.labelFilter : '').toBe(
-      'nanoclaw-install=abcd1234',
+      'area51-install=abcd1234',
     );
   });
 });

@@ -5,12 +5,12 @@ import { fileURLToPath } from 'url';
 
 /**
  * Provider is a DB property of a group, set only via
- * `ncl groups config update --provider`. The group-creation contract that a
+ * `area51 groups config update --provider`. The group-creation contract that a
  * fork's coding agent and its skills depend on must carry zero provider
  * vocabulary — no `--provider` flag passed to, parsed by, or threaded through
  * any creation path. These guards go red if that flag creeps back in.
  *
- * (Prose references to the ncl surface in comments are fine — we assert the
+ * (Prose references to the area51 surface in comments are fine — we assert the
  * absence of the `'--provider'` arg *literal*, not the substring.)
  */
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -40,9 +40,9 @@ describe('creation is provider-agnostic', () => {
 });
 
 describe('setup carries the picked provider to creation via a setup-run env var', () => {
-  it('picked-provider stashes/reads the pick in the NANOCLAW_PICKED_PROVIDER env var', () => {
+  it('picked-provider stashes/reads the pick in the AREA51_PICKED_PROVIDER env var', () => {
     const src = read('setup/lib/picked-provider.ts');
-    expect(src).toContain('NANOCLAW_PICKED_PROVIDER');
+    expect(src).toContain('AREA51_PICKED_PROVIDER');
     // The pick is set into process.env so child creation scripts inherit it —
     // an in-process module global can't cross the process boundary.
     expect(src).toMatch(/process\.env\[/);
@@ -62,7 +62,7 @@ describe('setup carries the picked provider to creation via a setup-run env var'
   for (const [file, pattern] of Object.entries(applyPattern)) {
     it(`${file} applies the env-carried provider to container_configs.provider`, () => {
       const src = read(file);
-      expect(src).toContain('NANOCLAW_PICKED_PROVIDER');
+      expect(src).toContain('AREA51_PICKED_PROVIDER');
       expect(src).toMatch(pattern);
     });
   }

@@ -19,7 +19,7 @@ import type { Session } from '../../types.js';
 // Asia/Tokyo is UTC+9 with no DST: "0 9 * * *" must land at 00:00:00Z sharp.
 vi.mock('../../config.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../config.js')>();
-  return { ...actual, TIMEZONE: 'Asia/Tokyo', GROUPS_DIR: '/tmp/nanoclaw-recurrence-test/groups' };
+  return { ...actual, TIMEZONE: 'Asia/Tokyo', GROUPS_DIR: '/tmp/area51-recurrence-test/groups' };
 });
 
 // The auto-pause note goes through the shared appendRunLog helper, which
@@ -36,7 +36,7 @@ vi.mock('../../db/container-configs.js', () => ({
   getContainerConfig: () => ({ timezone: containerConfigState.timezone }),
 }));
 
-const TEST_DIR = '/tmp/nanoclaw-recurrence-test';
+const TEST_DIR = '/tmp/area51-recurrence-test';
 const DB_PATH = path.join(TEST_DIR, 'inbound.db');
 
 function freshDb() {
@@ -220,7 +220,7 @@ describe('handleRecurrence — script-failure backoff (streak derived from faile
     await handleRecurrence(db, fakeSession());
 
     const next = clone(db);
-    expect(next.status).toBe('paused'); // `ncl tasks resume` revives in place
+    expect(next.status).toBe('paused'); // `area51 tasks resume` revives in place
     expect(next.recurrence).toBe('* * * * *');
     const original = db.prepare(`SELECT recurrence FROM messages_in WHERE id = ?`).get(liveId) as {
       recurrence: string | null;
@@ -238,7 +238,7 @@ describe('handleRecurrence — script-failure backoff (streak derived from faile
     expect(fs.existsSync(logFile)).toBe(true);
     const content = fs.readFileSync(logFile, 'utf8');
     expect(content).toContain('auto-paused after 8 consecutive script failures');
-    expect(content).toContain('ncl tasks resume task-s-0');
+    expect(content).toContain('area51 tasks resume task-s-0');
     expect(content).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2} — /m); // appendRunLog's local-time stamp
   });
 });

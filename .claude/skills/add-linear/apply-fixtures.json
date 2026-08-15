@@ -1,5 +1,5 @@
 {
-  "notes": "Conformance fixtures for scripts/skill-conformance.test.ts — shaped fake values only, never real credentials. The effect:wire ncl runs carry no capture, so the exec stub's no-op answer is fine.",
+  "notes": "Conformance fixtures for scripts/skill-conformance.test.ts — shaped fake values only, never real credentials. The effect:wire area51 runs carry no capture, so the exec stub's no-op answer is fine.",
   "scenarios": [
     {
       "name": "workspace",
@@ -8,7 +8,7 @@
         "linear_client_secret": "fake-client-secret",
         "linear_webhook_secret": "fake-webhook-secret",
         "linear_team_key": "ENG",
-        "linear_bot_username": "nanoclaw",
+        "linear_bot_username": "area51",
         "agent_folder": "main",
         "linear_sender_policy": "public"
       }

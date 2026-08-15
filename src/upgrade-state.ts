@@ -1,6 +1,6 @@
 /**
  * Upgrade marker — the record that an install reached its current version
- * through a sanctioned path (setup / `/update-nanoclaw` / `/migrate-nanoclaw`).
+ * through a sanctioned path (setup / `/update-area51` / `/migrate-area51`).
  *
  * The startup tripwire (enforceUpgradeTripwire) refuses to run if the marker
  * is missing or its version doesn't match the running code — i.e. if the
@@ -96,7 +96,7 @@ export function enforceUpgradeTripwire(): void {
     [
       '',
       '='.repeat(64),
-      'NanoClaw stopped: update did not go through the supported path',
+      'Area51 stopped: update did not go through the supported path',
       '='.repeat(64),
       'This install was updated outside the sanctioned upgrade flow',
       '(no upgrade marker, or the marker version does not match the code).',
@@ -106,14 +106,14 @@ export function enforceUpgradeTripwire(): void {
       '',
       "IF YOU'RE A HUMAN: you most likely ran `git pull` directly. Don't",
       'fix this by hand — open Claude Code in this folder and run',
-      '/update-nanoclaw, which repairs the install and clears this stop.',
+      '/update-area51, which repairs the install and clears this stop.',
       '',
-      'CODING AGENT: if you just ran /update-nanoclaw, /migrate-nanoclaw, or',
+      'CODING AGENT: if you just ran /update-area51, /migrate-area51, or',
       'setup and it completed successfully, clear this automatically by running:',
       '',
       `  ${FIX_COMMAND}`,
       '',
-      'then restart NanoClaw. If the upgrade did NOT complete, stop and',
+      'then restart Area51. If the upgrade did NOT complete, stop and',
       'investigate instead of clearing.',
       '',
       'Details: docs/upgrade-recovery.md',

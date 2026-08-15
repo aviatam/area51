@@ -10,8 +10,8 @@ test('escapeHtml: neutralizes all HTML metacharacters', () => {
 
 test('mdToHtml: raw HTML in source is escaped, never passed through', () => {
   const html = mdToHtml('a <script>alert(1)</script> b');
-  assert.ok(!html.includes('<script>'));
-  assert.ok(html.includes('&lt;script&gt;'));
+  assert.ok(!html.iarea51udes('<script>'));
+  assert.ok(html.iarea51udes('&lt;script&gt;'));
 });
 
 // ---- the security-sensitive part: links -----------------------------------

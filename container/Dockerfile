@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-# NanoClaw Agent Container
+# Area51 Agent Container
 # Runs Claude Agent SDK in isolated Linux VM with browser automation.
 #
 # Runtime split:
@@ -106,10 +106,10 @@ COPY cli-tools.json install-cli-tools.sh /tmp/
 RUN --mount=type=cache,target=/root/.cache/pnpm \
     sh /tmp/install-cli-tools.sh /tmp/cli-tools.json
 
-# ---- ncl CLI wrapper ----------------------------------------------------------
-# Actual script lives in the mounted source at /app/src/cli/ncl.ts.
-RUN printf '#!/bin/sh\nexec bun /app/src/cli/ncl.ts "$@"\n' > /usr/local/bin/ncl && \
-    chmod +x /usr/local/bin/ncl
+# ---- area51 CLI wrapper ----------------------------------------------------------
+# Actual script lives in the mounted source at /app/src/cli/area51.ts.
+RUN printf '#!/bin/sh\nexec bun /app/src/cli/area51.ts "$@"\n' > /usr/local/bin/area51 && \
+    chmod +x /usr/local/bin/area51
 
 # ---- Entrypoint --------------------------------------------------------------
 COPY entrypoint.sh /app/entrypoint.sh
@@ -146,6 +146,6 @@ ENTRYPOINT ["/usr/bin/tini", "--", "/app/entrypoint.sh"]
 # image-source defaults to `local` so anything built from this file is honest
 # unless its builder says otherwise — the retag cannot forge it after the fact.
 ARG AGENT_RUNNER_LOCK_SHA256=
-LABEL dev.nanoclaw.agent-runner-lock-sha256="${AGENT_RUNNER_LOCK_SHA256}"
+LABEL dev.area51.agent-runner-lock-sha256="${AGENT_RUNNER_LOCK_SHA256}"
 ARG IMAGE_SOURCE=local
-LABEL dev.nanoclaw.image-source="${IMAGE_SOURCE}"
+LABEL dev.area51.image-source="${IMAGE_SOURCE}"

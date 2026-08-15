@@ -1,5 +1,5 @@
 /**
- * NanoClaw — main entry point.
+ * Area51 — main entry point.
  *
  * Thin orchestrator: init DB, run migrations, start channel adapters,
  * start delivery polls, start sweep, handle shutdown.
@@ -47,7 +47,7 @@ import './channels/index.js';
 // append registry-based modules. Imported for side effects (registrations).
 import './modules/index.js';
 
-// CLI command barrel — populates the `ncl` registry before the CLI server
+// CLI command barrel — populates the `area51` registry before the CLI server
 // accepts connections.
 import './cli/commands/index.js';
 import './cli/delivery-action.js';
@@ -61,13 +61,13 @@ import {
 } from './channels/channel-registry.js';
 
 async function main(): Promise<void> {
-  log.info('NanoClaw starting');
+  log.info('Area51 starting');
 
   // 0. Circuit breaker — backoff on rapid restarts
   await enforceStartupBackoff();
 
   // 0.5 Upgrade tripwire — refuse to start if this install was updated
-  // outside the sanctioned path (raw `git pull` instead of /update-nanoclaw).
+  // outside the sanctioned path (raw `git pull` instead of /update-area51).
   enforceUpgradeTripwire();
 
   // 1. Init central DB
@@ -161,10 +161,10 @@ async function main(): Promise<void> {
   startHostSweep();
   log.info('Host sweep started');
 
-  // 8. Start the `ncl` CLI socket server (data/ncl.sock).
+  // 8. Start the `area51` CLI socket server (data/area51.sock).
   await startCliServer();
 
-  log.info('NanoClaw running');
+  log.info('Area51 running');
 }
 
 /** Graceful shutdown. */

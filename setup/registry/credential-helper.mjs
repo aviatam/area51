@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * docker-credential-nanoclaw — vends a short-lived password for the gated
+ * docker-credential-area51 — vends a short-lived password for the gated
  * agent-image registry, one pull at a time.
  *
  * Docker execs this once per `docker pull`, argv `["get"]`, with the bare
@@ -11,7 +11,7 @@
  * Two properties are load-bearing:
  *
  * **Zero repo dependency.** Docker spawns this from an arbitrary cwd, and
- * uninstalling NanoClaw deletes the checkout while this file stays on PATH.
+ * uninstalling Area51 deletes the checkout while this file stays on PATH.
  * Node builtins only, nothing resolved relative to the tree, no cwd assumption.
  *
  * **Stdout is a protocol channel, not a log.** The docker CLI reads stdout and
@@ -31,10 +31,10 @@ import { arch, homedir, platform } from 'node:os';
 import { join } from 'node:path';
 
 /** Also the marker the installer greps for before deleting a binary. */
-const HELPER_ID = 'nanoclaw-docker-credential-helper';
+const HELPER_ID = 'area51-docker-credential-helper';
 const HELPER_VERSION = '1.0.0';
 
-const CONFIG_DIR = join(homedir(), '.config', 'nanoclaw');
+const CONFIG_DIR = join(homedir(), '.config', 'area51');
 /**
  * Written by sign-in. `{ api, token }` are required — the broker base and the
  * opaque bearer. `registry` (the one host this install serves) and `host_id`
@@ -75,7 +75,7 @@ class HelperError extends Error {
 
 function note(line) {
   try {
-    process.stderr.write(`docker-credential-nanoclaw: ${line}\n`);
+    process.stderr.write(`docker-credential-area51: ${line}\n`);
   } catch (_err) {
     // stderr can be closed or a broken pipe; diagnostics are best-effort.
   }
@@ -121,7 +121,7 @@ function readAuth() {
   } catch (err) {
     if (err && err.code === 'ENOENT') return null;
     throw new HelperError(
-      'nanoclaw: could not read the NanoClaw registry credential',
+      'area51: could not read the Area51 registry credential',
       `${AUTH_FILE}: ${errText(err)}`,
     );
   }
@@ -130,8 +130,8 @@ function readAuth() {
     return parsed && typeof parsed === 'object' ? parsed : null;
   } catch (err) {
     throw new HelperError(
-      'nanoclaw: the NanoClaw registry credential file is not valid JSON',
-      `${AUTH_FILE}: ${errText(err)} — re-run \`nanoclaw login\``,
+      'area51: the Area51 registry credential file is not valid JSON',
+      `${AUTH_FILE}: ${errText(err)} — re-run \`area51 login\``,
     );
   }
 }
@@ -148,7 +148,7 @@ function equalConstantTime(a, b) {
 }
 
 /**
- * Refuse to mint outside a NanoClaw pull.
+ * Refuse to mint outside a Area51 pull.
  *
  * This file sits 0755 on PATH and answers `get` with a live 12-hour registry
  * password, so by itself it is a standing oracle: any process running as this
@@ -164,14 +164,14 @@ function equalConstantTime(a, b) {
 function requirePullNonce() {
   const refuse = (detail) =>
     new HelperError(
-      'nanoclaw: refusing to mint a registry credential outside a NanoClaw pull',
+      'area51: refusing to mint a registry credential outside a Area51 pull',
       detail,
     );
 
-  const provided = (process.env.NANOCLAW_PULL_NONCE ?? '').trim();
+  const provided = (process.env.AREA51_PULL_NONCE ?? '').trim();
   if (!provided) {
     throw refuse(
-      'NANOCLAW_PULL_NONCE is unset. container/pull.sh sets it for the pull it runs; nothing else should be asking for a registry credential.',
+      'AREA51_PULL_NONCE is unset. container/pull.sh sets it for the pull it runs; nothing else should be asking for a registry credential.',
     );
   }
 
@@ -194,13 +194,13 @@ function requirePullNonce() {
     );
   }
   if (!expected || !equalConstantTime(provided, expected)) {
-    throw refuse('NANOCLAW_PULL_NONCE does not match the current pull');
+    throw refuse('AREA51_PULL_NONCE does not match the current pull');
   }
 }
 
 /** Optional, client-asserted, and recorded by the broker as a hint only. */
 function pullDigest() {
-  const ref = (process.env.NANOCLAW_PULL_REF ?? '').trim();
+  const ref = (process.env.AREA51_PULL_REF ?? '').trim();
   const match = ref.match(/@(sha256:[0-9a-f]{64})$/);
   return match ? match[1] : undefined;
 }
@@ -225,20 +225,20 @@ function brokerBase(auth) {
   const raw = configured ? configured.trim() : '';
   if (!raw) {
     throw new HelperError(
-      'nanoclaw: no credential broker configured for this machine',
-      `${AUTH_FILE} names no broker — re-run \`nanoclaw login\``,
+      'area51: no credential broker configured for this machine',
+      `${AUTH_FILE} names no broker — re-run \`area51 login\``,
     );
   }
   let url;
   try {
     url = new URL(raw);
   } catch (err) {
-    throw new HelperError('nanoclaw: the configured credential broker URL is unusable', `${raw}: ${errText(err)}`);
+    throw new HelperError('area51: the configured credential broker URL is unusable', `${raw}: ${errText(err)}`);
   }
   const loopback = url.hostname === 'localhost' || url.hostname === '127.0.0.1' || url.hostname === '::1';
   if (url.protocol !== 'https:' && !loopback) {
     throw new HelperError(
-      'nanoclaw: refusing to send the pull token to a non-HTTPS broker',
+      'area51: refusing to send the pull token to a non-HTTPS broker',
       `${raw} is not https and not loopback`,
     );
   }
@@ -273,7 +273,7 @@ function toDockerCredential(payload, serverURL) {
 
   if (typeof secret !== 'string' || !secret) {
     throw new HelperError(
-      'nanoclaw: the credential broker returned no usable registry password',
+      'area51: the credential broker returned no usable registry password',
       'expected { credential: { username, password } } or { credential: "<password>" }',
     );
   }
@@ -310,7 +310,7 @@ async function mint(auth, serverURL) {
   } catch (err) {
     if (err instanceof HelperError) throw err;
     throw new HelperError(
-      'nanoclaw: could not reach the NanoClaw credential broker',
+      'area51: could not reach the Area51 credential broker',
       `${errText(err)} — check network access, then retry`,
     );
   }
@@ -330,19 +330,19 @@ async function mint(auth, serverURL) {
   const detail = `HTTP ${res.status} from the broker: ${text.slice(0, 500)}`;
   if (res.status === 401 || res.status === 403) {
     throw new HelperError(
-      `nanoclaw: this machine is not signed in, or its image access was revoked — run \`nanoclaw login\`${suffix}`,
+      `area51: this machine is not signed in, or its image access was revoked — run \`area51 login\`${suffix}`,
       detail,
     );
   }
   if (res.status === 429) {
     // Quota exhaustion is a product behaviour, not an incident. Say what it is
     // and stop; the operator's fallback is ./container/build.sh.
-    throw new HelperError(`nanoclaw: image-pull quota reached for this account${suffix}`, detail);
+    throw new HelperError(`area51: image-pull quota reached for this account${suffix}`, detail);
   }
   if (res.status >= 500) {
-    throw new HelperError(`nanoclaw: the credential broker is temporarily unavailable${suffix}`, detail);
+    throw new HelperError(`area51: the credential broker is temporarily unavailable${suffix}`, detail);
   }
-  throw new HelperError(`nanoclaw: the credential broker refused this request (HTTP ${res.status})${suffix}`, detail);
+  throw new HelperError(`area51: the credential broker refused this request (HTTP ${res.status})${suffix}`, detail);
 }
 
 async function get(serverURL) {
@@ -350,7 +350,7 @@ async function get(serverURL) {
 
   const auth = readAuth();
   if (!auth) {
-    note(`no ${AUTH_FILE} — run \`nanoclaw login\` if this machine should pull the hardened agent image`);
+    note(`no ${AUTH_FILE} — run \`area51 login\` if this machine should pull the hardened agent image`);
     throw new HelperError(ERR_NOT_FOUND);
   }
 
@@ -369,7 +369,7 @@ async function get(serverURL) {
 
   if (typeof auth.token !== 'string' || !auth.token) {
     throw new HelperError(
-      'nanoclaw: the NanoClaw registry credential is incomplete — run `nanoclaw login`',
+      'area51: the Area51 registry credential is incomplete — run `area51 login`',
       `${AUTH_FILE} has no token`,
     );
   }
@@ -445,6 +445,6 @@ dispatch(process.argv.slice(2)).then(
       return;
     }
     note(errText(err));
-    finish(1, 'nanoclaw: the credential helper failed unexpectedly');
+    finish(1, 'area51: the credential helper failed unexpectedly');
   },
 );

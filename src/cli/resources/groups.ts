@@ -110,7 +110,7 @@ registerResource({
         '+ optional persona, context, and paused recurring tasks). When a group already carries the plugin, ' +
         'this instead shows the in-place update plan for it — every plugin-owned surface that would change, ' +
         'flagging local customizations that would be lost; memory, plugin-data/, user-added MCP servers, wiring, ' +
-        'and sessions are never touched. Pass --yes to apply the update (then run `ncl groups restart`), ' +
+        'and sessions are never touched. Pass --yes to apply the update (then run `area51 groups restart`), ' +
         '--id <group-id> to pick among several stamped groups, or --new to stamp another agent regardless. ' +
         'Without --template, use --folder <slug> (required) and --name <display name>; with --template the ' +
         "folder derives from the agent name (--name overrides the template's own). " +
@@ -166,7 +166,7 @@ registerResource({
         createAgentGroup(group);
         // Provision the workspace folder and the `container_configs` row that
         // `getContainerConfig` and the spawn path require. Without this, a
-        // group created via `ncl groups create` would throw "Container config
+        // group created via `area51 groups create` would throw "Container config
         // not found" on first spawn and stay broken until the host restart
         // backfill ran (#2415). The template branch above provisions its own
         // config + folder in `createAgentFromTemplate`; this covers the bare
@@ -334,7 +334,7 @@ registerResource({
     'config update': {
       access: 'approval',
       description:
-        'Update container config scalar fields. Changes are saved but do NOT take effect until you run `ncl groups restart`. ' +
+        'Update container config scalar fields. Changes are saved but do NOT take effect until you run `area51 groups restart`. ' +
         'Use --id <group-id> and any of: --provider, --model, --effort, --image-tag, --assistant-name, --max-messages-per-prompt, --cli-scope, ' +
         '--timezone (IANA id like "Europe/Lisbon"; "" clears back to the install default; scheduled-task times follow it immediately, message display after restart).',
       handler: async (args) => {
@@ -388,7 +388,7 @@ registerResource({
     'config add-mcp-server': {
       access: 'approval',
       description:
-        'Add an MCP server to a group. Requires `ncl groups restart` to take effect. ' +
+        'Add an MCP server to a group. Requires `area51 groups restart` to take effect. ' +
         'Use --id <group-id> --name <server-name> with either --command <cmd> [--args <json-array>] [--env <json-object>] ' +
         'or --url <url> [--headers <json-object>] (HTTPS, or plain HTTP for localhost / host.docker.internal).',
       handler: async (args) => {
@@ -406,7 +406,7 @@ registerResource({
         if (owner) {
           throw new Error(
             `MCP server "${name}" is owned by plugin "${owner}" — ` +
-              'update the plugin and restamp it (`ncl groups create --template <ref> --yes`) instead of editing it directly',
+              'update the plugin and restamp it (`area51 groups create --template <ref> --yes`) instead of editing it directly',
           );
         }
         servers[name] = parseMcpServerConfig({
@@ -424,7 +424,7 @@ registerResource({
     'config remove-mcp-server': {
       access: 'approval',
       description:
-        'Remove an MCP server from a group. Requires `ncl groups restart` to take effect. Use --id <group-id> --name <server-name>.',
+        'Remove an MCP server from a group. Requires `area51 groups restart` to take effect. Use --id <group-id> --name <server-name>.',
       handler: async (args) => {
         const id = args.id as string;
         if (!id) throw new Error('--id is required');
@@ -452,7 +452,7 @@ registerResource({
     'config add-package': {
       access: 'approval',
       description:
-        'Add a package to a group. Requires `ncl groups restart --rebuild` to take effect. Use --id <group-id> and --apt <pkg> or --npm <pkg>.',
+        'Add a package to a group. Requires `area51 groups restart --rebuild` to take effect. Use --id <group-id> and --apt <pkg> or --npm <pkg>.',
       handler: async (args) => {
         const id = args.id as string;
         if (!id) throw new Error('--id is required');
@@ -488,7 +488,7 @@ registerResource({
     'config remove-package': {
       access: 'approval',
       description:
-        'Remove a package from a group. Requires `ncl groups restart --rebuild` to take effect. Use --id <group-id> and --apt <pkg> or --npm <pkg>.',
+        'Remove a package from a group. Requires `area51 groups restart --rebuild` to take effect. Use --id <group-id> and --apt <pkg> or --npm <pkg>.',
       handler: async (args) => {
         const id = args.id as string;
         if (!id) throw new Error('--id is required');
@@ -523,7 +523,7 @@ registerResource({
       description:
         "Mount a host directory into a group's containers. OPERATOR-ONLY — never runnable from " +
         'inside a container (mounting host paths is a filesystem-access boundary). Requires ' +
-        '`ncl groups restart` to take effect. Use --id <group-id> --host <host-path> --container <container-path> [--ro].',
+        '`area51 groups restart` to take effect. Use --id <group-id> --host <host-path> --container <container-path> [--ro].',
       handler: async (args) => {
         const id = args.id as string;
         if (!id) throw new Error('--id is required');
@@ -544,14 +544,14 @@ registerResource({
           existing.push(mount);
           updateContainerConfigJson(id, 'additional_mounts', existing);
         }
-        return { added: mount, note: `Run \`ncl groups restart --id ${id}\` for the mount to take effect.` };
+        return { added: mount, note: `Run \`area51 groups restart --id ${id}\` for the mount to take effect.` };
       },
     },
     'config remove-mount': {
       access: 'approval',
       hostOnly: true,
       description:
-        'Remove a host mount from a group. OPERATOR-ONLY. Requires `ncl groups restart` to take effect. ' +
+        'Remove a host mount from a group. OPERATOR-ONLY. Requires `area51 groups restart` to take effect. ' +
         'Use --id <group-id> --host <host-path> --container <container-path>.',
       handler: async (args) => {
         const id = args.id as string;
@@ -566,7 +566,7 @@ registerResource({
         const existing = JSON.parse(row.additional_mounts) as AdditionalMountConfig[];
         const filtered = existing.filter((m) => !(m.hostPath === hostPath && m.containerPath === containerPath));
         updateContainerConfigJson(id, 'additional_mounts', filtered);
-        return { removed: { hostPath, containerPath }, note: `Run \`ncl groups restart --id ${id}\` to apply.` };
+        return { removed: { hostPath, containerPath }, note: `Run \`area51 groups restart --id ${id}\` to apply.` };
       },
     },
   },

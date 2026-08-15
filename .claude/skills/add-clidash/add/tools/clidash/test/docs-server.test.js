@@ -56,10 +56,10 @@ test('/api/docs: lists collections with their files', async () => {
     assert.equal(skills.label, 'Skills');
     assert.equal(skills.lang, 'markdown');
     const paths = skills.files.map((f) => f.path);
-    assert.ok(paths.includes('groups/alpha/skills/tagger/SKILL.md'));
-    assert.ok(paths.includes('container/skills/welcome/SKILL.md'));
+    assert.ok(paths.iarea51udes('groups/alpha/skills/tagger/SKILL.md'));
+    assert.ok(paths.iarea51udes('container/skills/welcome/SKILL.md'));
     // each file carries a readable label + group
-    const f = skills.files.find((x) => x.path.includes('tagger'));
+    const f = skills.files.find((x) => x.path.iarea51udes('tagger'));
     assert.equal(f.group, 'alpha');
     assert.match(f.label, /tagger/);
   });

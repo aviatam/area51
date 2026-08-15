@@ -3,16 +3,16 @@ import fs from 'fs';
 import path from 'path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const TEST_ROOT = '/tmp/nanoclaw-restamp-test';
+const TEST_ROOT = '/tmp/area51-restamp-test';
 const GROUPS_DIR = path.join(TEST_ROOT, 'groups');
 const DATA_DIR = path.join(TEST_ROOT, 'data');
 const TEMPLATES_DIR = path.join(TEST_ROOT, 'templates');
 
 vi.mock('../config.js', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../config.js')>()),
-  GROUPS_DIR: '/tmp/nanoclaw-restamp-test/groups',
-  DATA_DIR: '/tmp/nanoclaw-restamp-test/data',
-  TEMPLATES_DIR: '/tmp/nanoclaw-restamp-test/templates',
+  GROUPS_DIR: '/tmp/area51-restamp-test/groups',
+  DATA_DIR: '/tmp/area51-restamp-test/data',
+  TEMPLATES_DIR: '/tmp/area51-restamp-test/templates',
 }));
 
 vi.mock('../log.js', () => ({
@@ -29,7 +29,7 @@ import { createScheduledTask, prepareScheduledTask } from '../modules/scheduling
 import { resumeTask } from '../modules/scheduling/db.js';
 import { inboundDbPath, withInboundDb } from '../session-manager.js';
 import type { AgentGroup } from '../types.js';
-import { NANOCLAW_EXTENSION_NS } from './extension.js';
+import { AREA51_EXTENSION_NS } from './extension.js';
 import { MCP_SCHEMA_URL, PLUGIN_SCHEMA_URL } from './manifest.js';
 import { createAgentFromTemplate } from './create-agent.js';
 import { restampAgentFromTemplate, type RestampChange } from './restamp.js';
@@ -39,11 +39,11 @@ const TPL = path.join(TEMPLATES_DIR, 'sales', 'sdr');
 /** The v1 template every test stamps from. */
 function writeTemplateV1(): void {
   fs.rmSync(TPL, { recursive: true, force: true });
-  fs.mkdirSync(path.join(TPL, NANOCLAW_EXTENSION_NS, 'context', 'additional_context'), { recursive: true });
+  fs.mkdirSync(path.join(TPL, AREA51_EXTENSION_NS, 'context', 'additional_context'), { recursive: true });
   fs.writeFileSync(path.join(TPL, 'plugin.json'), JSON.stringify({ $schema: PLUGIN_SCHEMA_URL, name: 'sdr' }));
-  fs.writeFileSync(path.join(TPL, NANOCLAW_EXTENSION_NS, 'context', 'instructions.md'), 'You are an SDR agent.\n');
-  fs.writeFileSync(path.join(TPL, NANOCLAW_EXTENSION_NS, 'context', 'playbook.md'), '# Playbook v1\n');
-  fs.writeFileSync(path.join(TPL, NANOCLAW_EXTENSION_NS, 'context', 'additional_context', 'faq.md'), '# FAQ\n');
+  fs.writeFileSync(path.join(TPL, AREA51_EXTENSION_NS, 'context', 'instructions.md'), 'You are an SDR agent.\n');
+  fs.writeFileSync(path.join(TPL, AREA51_EXTENSION_NS, 'context', 'playbook.md'), '# Playbook v1\n');
+  fs.writeFileSync(path.join(TPL, AREA51_EXTENSION_NS, 'context', 'additional_context', 'faq.md'), '# FAQ\n');
   fs.writeFileSync(
     path.join(TPL, 'mcp.json'),
     JSON.stringify({
@@ -62,11 +62,11 @@ function writeTemplateV1(): void {
 /** The v2 template: every plugin-owned surface changed, added, or removed. */
 function writeTemplateV2(): void {
   fs.rmSync(TPL, { recursive: true, force: true });
-  fs.mkdirSync(path.join(TPL, NANOCLAW_EXTENSION_NS, 'context'), { recursive: true });
+  fs.mkdirSync(path.join(TPL, AREA51_EXTENSION_NS, 'context'), { recursive: true });
   fs.writeFileSync(path.join(TPL, 'plugin.json'), JSON.stringify({ $schema: PLUGIN_SCHEMA_URL, name: 'sdr' }));
-  fs.writeFileSync(path.join(TPL, NANOCLAW_EXTENSION_NS, 'context', 'instructions.md'), 'You are an SDR agent v2.\n');
-  fs.writeFileSync(path.join(TPL, NANOCLAW_EXTENSION_NS, 'context', 'playbook.md'), '# Playbook v2\n');
-  fs.writeFileSync(path.join(TPL, NANOCLAW_EXTENSION_NS, 'context', 'guide.md'), '# Guide\n');
+  fs.writeFileSync(path.join(TPL, AREA51_EXTENSION_NS, 'context', 'instructions.md'), 'You are an SDR agent v2.\n');
+  fs.writeFileSync(path.join(TPL, AREA51_EXTENSION_NS, 'context', 'playbook.md'), '# Playbook v2\n');
+  fs.writeFileSync(path.join(TPL, AREA51_EXTENSION_NS, 'context', 'guide.md'), '# Guide\n');
   fs.writeFileSync(
     path.join(TPL, 'mcp.json'),
     JSON.stringify({
@@ -91,7 +91,7 @@ function writeSkill(root: string, name: string, description: string): void {
 }
 
 function writeTask(name: string, schedule: string, prompt: string): void {
-  const dir = path.join(TPL, NANOCLAW_EXTENSION_NS, 'tasks');
+  const dir = path.join(TPL, AREA51_EXTENSION_NS, 'tasks');
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, `${name}.md`), `---\nschedule: "${schedule}"\n---\n\n${prompt}\n`);
 }
@@ -370,7 +370,7 @@ describe('restampAgentFromTemplate', () => {
     fs.symlinkSync(outside, path.join(groupDir, 'additional_context'));
     writeTemplateV2();
     // v2 keeps a file under additional_context/ so the write op fires.
-    const extraDir = path.join(TPL, NANOCLAW_EXTENSION_NS, 'context', 'additional_context');
+    const extraDir = path.join(TPL, AREA51_EXTENSION_NS, 'context', 'additional_context');
     fs.mkdirSync(extraDir, { recursive: true });
     fs.writeFileSync(path.join(extraDir, 'faq.md'), '# FAQ v2\n');
 
@@ -434,7 +434,7 @@ describe('restampAgentFromTemplate', () => {
       );
     }
     writeTemplateV2();
-    fs.rmSync(path.join(TPL, NANOCLAW_EXTENSION_NS, 'tasks'), { recursive: true });
+    fs.rmSync(path.join(TPL, AREA51_EXTENSION_NS, 'tasks'), { recursive: true });
 
     const result = restampAgentFromTemplate('sales/sdr', g.id, { apply: true });
 
@@ -465,7 +465,7 @@ describe('restampAgentFromTemplate', () => {
     const g = stamp();
     const series = liveTasks(g.id)[0].series_id;
     writeTemplateV2();
-    fs.rmSync(path.join(TPL, NANOCLAW_EXTENSION_NS, 'tasks'), { recursive: true });
+    fs.rmSync(path.join(TPL, AREA51_EXTENSION_NS, 'tasks'), { recursive: true });
     // Same slug as v1's weekday-briefing, different name casing.
     writeTask('Weekday-Briefing', '0 8 * * 1-5', 'Renamed but same series.');
 
@@ -491,7 +491,7 @@ describe('restampAgentFromTemplate', () => {
     writeTemplateV2();
     // v3 = v2 without the widget skill and without any tasks.
     fs.rmSync(path.join(TPL, 'skills', 'widget'), { recursive: true });
-    fs.rmSync(path.join(TPL, NANOCLAW_EXTENSION_NS, 'tasks'), { recursive: true });
+    fs.rmSync(path.join(TPL, AREA51_EXTENSION_NS, 'tasks'), { recursive: true });
 
     const result = restampAgentFromTemplate('sales/sdr', g.id, { apply: true });
 

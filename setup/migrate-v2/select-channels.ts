@@ -4,7 +4,7 @@
  * Writes selected channel names (one per line) to the file path given as
  * the first argument. Clack renders to the terminal normally.
  *
- * If NANOCLAW_CHANNELS env var is set (comma-separated names), skips the
+ * If AREA51_CHANNELS env var is set (comma-separated names), skips the
  * prompt and writes those directly.
  *
  * Usage: pnpm exec tsx setup/migrate-v2/select-channels.ts <output-file>
@@ -39,8 +39,8 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  // Non-interactive: NANOCLAW_CHANNELS="telegram,discord"
-  const envChannels = process.env.NANOCLAW_CHANNELS?.trim();
+  // Non-interactive: AREA51_CHANNELS="telegram,discord"
+  const envChannels = process.env.AREA51_CHANNELS?.trim();
   if (envChannels) {
     const names = envChannels.split(',').map((s) => s.trim()).filter((s) => VALID_NAMES.has(s));
     fs.writeFileSync(outFile, names.join('\n') + '\n');

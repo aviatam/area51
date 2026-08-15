@@ -1,10 +1,10 @@
 # The skills model
 
-How NanoClaw stays customizable without breaking its forks. This is the full version; [customizing.md](customizing.md) is the short one, and [skill-guidelines.md](skill-guidelines.md) is the authoritative checklist for writing a skill.
+How Area51 stays customizable without breaking its forks. This is the full version; [customizing.md](customizing.md) is the short one, and [skill-guidelines.md](skill-guidelines.md) is the authoritative checklist for writing a skill.
 
 ## The problem
 
-People fork NanoClaw and change the code. When we ship updates, their changes collide with ours and `git merge` turns into a fight. The more someone customized, the worse it gets. We can't grow the core without breaking everyone downstream.
+People fork Area51 and change the code. When we ship updates, their changes collide with ours and `git merge` turns into a fight. The more someone customized, the worse it gets. We can't grow the core without breaking everyone downstream.
 
 ## The bet
 
@@ -104,7 +104,7 @@ The point isn't to slow you down at edit time. It's that nothing counts as part 
 
 ## Upgrading
 
-**Every update goes through `/update-nanoclaw`, never a raw `git pull`.** You don't know what an update contains until it lands; it might carry a breaking change with a migration. So the command inspects what's coming and runs the proper process: back up, pull the changes in, apply migrations, run tests, fix what broke, and flag when a fresh rebuild is needed instead.
+**Every update goes through `/update-area51`, never a raw `git pull`.** You don't know what an update contains until it lands; it might carry a breaking change with a migration. So the command inspects what's coming and runs the proper process: back up, pull the changes in, apply migrations, run tests, fix what broke, and flag when a fresh rebuild is needed instead.
 
 Two different moves, two different rules. Your **fork pulls trunk**: that's a normal pull, run by the update command, and it's safe precisely because your changes live beside the core as skills rather than inside it. A **skill never merges**: it installs by fetching files and copying them in. If a skill's instructions say `git merge`, it isn't built to this model.
 

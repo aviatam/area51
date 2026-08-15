@@ -3,20 +3,20 @@
   "manifestVersion": "1.16",
   "version": "1.0.0",
   "id": "00000000-0000-0000-0000-000000000000",
-  "packageName": "com.nanoclaw.bot",
+  "packageName": "com.area51.bot",
   "developer": {
-    "name": "NanoClaw",
-    "websiteUrl": "https://nanoclaw.invalid",
-    "privacyUrl": "https://nanoclaw.invalid",
-    "termsOfUseUrl": "https://nanoclaw.invalid"
+    "name": "Area51",
+    "websiteUrl": "https://area51.invalid",
+    "privacyUrl": "https://area51.invalid",
+    "termsOfUseUrl": "https://area51.invalid"
   },
   "name": {
-    "short": "NanoClaw",
-    "full": "NanoClaw Assistant"
+    "short": "Area51",
+    "full": "Area51 Assistant"
   },
   "description": {
     "short": "Your personal assistant in Teams.",
-    "full": "NanoClaw personal assistant."
+    "full": "Area51 personal assistant."
   },
   "icons": {
     "outline": "outline.png",
@@ -32,5 +32,5 @@
     }
   ],
   "permissions": ["identity", "messageTeamMembers"],
-  "validDomains": ["nanoclaw.invalid"]
+  "validDomains": ["area51.invalid"]
 }

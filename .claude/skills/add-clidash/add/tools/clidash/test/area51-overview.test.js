@@ -1,10 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import overview from '../views/ncl-overview.js';
+import overview from '../views/area51-overview.js';
 
 const minutesAgo = (m) => new Date(Date.now() - m * 60_000).toISOString();
 
-// Shapes mirror real `ncl <resource> list --json` output.
+// Shapes mirror real `area51 <resource> list --json` output.
 function makeFixtures({ alphaLastActive, bravoLastActive }) {
   return {
     groups: [

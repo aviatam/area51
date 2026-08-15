@@ -97,5 +97,5 @@ them, and migration preserves their contents.
   the agent to (it is instructed to prune and update on correction).
 - The default templates live at
   `container/agent-runner/src/memory/templates/`, mirroring the generated
-  memory tree. NanoClaw copies a template only when that memory file is missing.
+  memory tree. Area51 copies a template only when that memory file is missing.
   It never overwrites an existing memory file.

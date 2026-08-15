@@ -3,7 +3,7 @@
  * per connection, calls dispatch() with caller='host', writes the response
  * frame, closes.
  *
- * Lives at data/ncl.sock (separate from data/cli.sock, which the existing
+ * Lives at data/area51.sock (separate from data/cli.sock, which the existing
  * chat-style CLI channel adapter owns). Socket file is chmod 0600 — only
  * the user that started the host can connect.
  */
@@ -25,7 +25,7 @@ export async function startCliServer(socketPath: string = DEFAULT_SOCKET_PATH): 
   } catch (err) {
     const e = err as NodeJS.ErrnoException;
     if (e.code !== 'ENOENT') {
-      log.warn('Failed to unlink stale ncl socket (will try to bind anyway)', { socketPath, err });
+      log.warn('Failed to unlink stale area51 socket (will try to bind anyway)', { socketPath, err });
     }
   }
 
@@ -37,9 +37,9 @@ export async function startCliServer(socketPath: string = DEFAULT_SOCKET_PATH): 
       try {
         fs.chmodSync(socketPath, 0o600);
       } catch (err) {
-        log.warn('Failed to chmod ncl socket (continuing)', { socketPath, err });
+        log.warn('Failed to chmod area51 socket (continuing)', { socketPath, err });
       }
-      log.info('ncl CLI server listening', { socketPath });
+      log.info('area51 CLI server listening', { socketPath });
       resolve();
     });
   });
@@ -65,7 +65,7 @@ function handleConnection(conn: net.Socket): void {
     }
   });
   conn.on('error', (err) => {
-    log.warn('ncl CLI server connection error', { err });
+    log.warn('area51 CLI server connection error', { err });
   });
 }
 
@@ -87,7 +87,7 @@ async function handleFrame(conn: net.Socket, line: string): Promise<void> {
     return;
   }
 
-  // Host caller — connecting to data/ncl.sock requires file-system access
+  // Host caller — connecting to data/area51.sock requires file-system access
   // to a 0600 socket owned by the host user, so we treat the socket path
   // itself as the auth boundary.
   const ctx: CallerContext = { caller: 'host' };
@@ -100,7 +100,7 @@ function write(conn: net.Socket, frame: ResponseFrame): void {
     conn.write(JSON.stringify(frame) + '\n');
     conn.end();
   } catch (err) {
-    log.warn('Failed to write ncl CLI response', { err });
+    log.warn('Failed to write area51 CLI response', { err });
   }
 }
 

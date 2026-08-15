@@ -1,17 +1,17 @@
 ---
 name: init-first-agent
-description: Walk the operator through wiring the first NanoClaw agent to a DM channel — resolve the operator's channel identity, select or create the agent, and trigger a welcome DM via the normal delivery path. Use after channel credentials are configured and the service is running.
+description: Walk the operator through wiring the first Area51 agent to a DM channel — resolve the operator's channel identity, select or create the agent, and trigger a welcome DM via the normal delivery path. Use after channel credentials are configured and the service is running.
 ---
 
 # Init First Agent
 
-Wire the first NanoClaw agent to a channel and verify end-to-end delivery by having the agent DM the operator. Everything the skill does is idempotent — rerunning is safe.
+Wire the first Area51 agent to a channel and verify end-to-end delivery by having the agent DM the operator. Everything the skill does is idempotent — rerunning is safe.
 
 ## Prerequisites
 
 - **Service running.** Check: `launchctl list | grep "$(. setup/lib/install-slug.sh && launchd_label)"` (macOS) or `systemctl --user status "$(. setup/lib/install-slug.sh && systemd_unit)"` (Linux). If stopped, tell the user to run `/setup` first.
 - **Target channel installed.** At least one `/add-<channel>` skill has run, credentials are in `.env`, and the adapter is uncommented in `src/channels/index.ts`.
-- **Adapter connected.** Tail `logs/nanoclaw.log` — look for a recent `channel setup` / `adapter connected` line for the target channel.
+- **Adapter connected.** Tail `logs/area51.log` — look for a recent `channel setup` / `adapter connected` line for the target channel.
 
 ## 1. Pick the channel
 
@@ -57,7 +57,7 @@ Wait for the user's confirmation. Then look up the most recent DM messaging grou
 pnpm exec tsx scripts/q.ts data/v2.db "SELECT id, platform_id, name, created_at FROM messaging_groups WHERE channel_type='${CHANNEL}' AND is_group=0 ORDER BY created_at DESC LIMIT 5"
 ```
 
-Show the top rows to the user and confirm which `platform_id` is theirs (usually the most recent). Record as `PLATFORM_ID`. If none appeared, check `logs/nanoclaw.log` for `unknown_sender` drops — the adapter might be rejecting inbound due to connection or permission issues.
+Show the top rows to the user and confirm which `platform_id` is theirs (usually the most recent). Record as `PLATFORM_ID`. If none appeared, check `logs/area51.log` for `unknown_sender` drops — the adapter might be rejecting inbound due to connection or permission issues.
 
 ### 3b. Telegram pair-code path (if the user prefers not to DM first)
 
@@ -74,8 +74,8 @@ Parse the `PAIR_TELEGRAM_ISSUED` status block for `CODE` and follow the `REMINDE
 List the existing agent groups and their wirings through the admin CLI:
 
 ```bash
-ncl groups list --json
-ncl wirings list --json
+area51 groups list --json
+area51 wirings list --json
 ```
 
 If setup already installed a template, it appears in the groups result even when it has no wiring. Show the user each group's name, folder, and id, and note which groups already appear as `agent_group_id` values in the wirings result.
@@ -103,7 +103,7 @@ When an existing group was selected, append its exact id:
   --agent-group-id "${AGENT_GROUP_ID}"
 ```
 
-The new group is created on the instance default provider (`DEFAULT_AGENT_PROVIDER` in `.env`, or `claude` when unset). To put it on a different provider, switch after creation with `ncl groups config update --id <group-id> --provider <name>`. Add `--welcome "System instruction: ..."` to override the default welcome prompt.
+The new group is created on the instance default provider (`DEFAULT_AGENT_PROVIDER` in `.env`, or `claude` when unset). To put it on a different provider, switch after creation with `area51 groups config update --id <group-id> --provider <name>`. Add `--welcome "System instruction: ..."` to override the default welcome prompt.
 
 The script:
 1. Upserts the `users` row and grants `owner` role if no owner exists.
@@ -127,14 +127,14 @@ Wait for the user's reply. If they confirm receipt, the skill is done.
 If they say it didn't arrive, then diagnose using the DB directly (no waiting loops required — the message either delivered or it didn't):
 
 - `pnpm exec tsx scripts/q.ts data/v2-sessions/<agent-group-id>/<session-id>/outbound.db "SELECT id, status, created_at FROM messages_out ORDER BY created_at DESC LIMIT 5"` — check for stuck `pending` rows. Replace `<agent-group-id>` and `<session-id>` with the values from the script's output.
-- `grep -E 'Unauthorized channel destination|container.*exited|error' logs/nanoclaw.log | tail -20` — look for ACL rejections or container crashes.
+- `grep -E 'Unauthorized channel destination|container.*exited|error' logs/area51.log | tail -20` — look for ACL rejections or container crashes.
 - `ls data/v2-sessions/<agent-group-id>/*/outbound.db` — confirm the session exists.
 
 ## Troubleshooting
 
 **"Missing required args"** — the script wants `--channel`, `--user-id`, `--platform-id`, `--display-name` at minimum. Re-check the command you assembled.
 
-**No `messaging_groups` row appears after the user DMs (step 3a)** — auto-created rows are stamped with the channel adapter's declared `unknown_sender_policy` (two-level model: adapter declaration → per-row override; `strict` only when the adapter has no declaration). Under `strict` the router silently drops messages from unknown senders but still creates the `messaging_groups` row; under `request_approval` an approval card goes to an admin instead. If the row is missing entirely, the adapter isn't receiving the inbound message. Check `logs/nanoclaw.log` for adapter errors (auth, gateway disconnect, rate limit).
+**No `messaging_groups` row appears after the user DMs (step 3a)** — auto-created rows are stamped with the channel adapter's declared `unknown_sender_policy` (two-level model: adapter declaration → per-row override; `strict` only when the adapter has no declaration). Under `strict` the router silently drops messages from unknown senders but still creates the `messaging_groups` row; under `request_approval` an approval card goes to an admin instead. If the row is missing entirely, the adapter isn't receiving the inbound message. Check `logs/area51.log` for adapter errors (auth, gateway disconnect, rate limit).
 
 **Owner already exists** — `hasAnyOwner()` returned true, so the grant is skipped silently. That's fine; the script still creates the agent and wiring. Reassigning ownership needs a separate flow (not this skill).
 

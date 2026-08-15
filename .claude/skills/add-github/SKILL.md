@@ -6,7 +6,7 @@ description: Add GitHub channel integration via Chat SDK. PR and issue comment t
 # Add GitHub Channel
 
 Adds GitHub support via the Chat SDK bridge. The agent participates in PR and
-issue comment threads. NanoClaw doesn't ship channels in trunk — this skill
+issue comment threads. Area51 doesn't ship channels in trunk — this skill
 copies the GitHub adapter in from the `channels` branch.
 
 The mechanical steps under **Apply** carry `nc:` directive fences: an agent
@@ -94,7 +94,7 @@ On each repo (logged in as the repo owner/admin):
 
 Capture the three values, then write them. `prompt` only *asks* and binds the
 answer to a name; a separate directive consumes it — so the same prompts could
-feed `ncl` or the OneCLI vault instead of `.env` by swapping only the consumer.
+feed `area51` or the OneCLI vault instead of `.env` by swapping only the consumer.
 Here they go to `.env` (set-if-absent — a value you've already filled in is
 never overwritten):
 
@@ -121,16 +121,16 @@ Ask the user: **Is this a private or public repo?**
 - **Private repo** — use `unknown_sender_policy: 'public'`. Only collaborators can comment anyway, so it's safe to let all comments through.
 - **Public repo** — use `unknown_sender_policy: 'strict'`. Only registered members can trigger the agent, preventing strangers from consuming agent resources. Add trusted collaborators as members (see below).
 
-Run `/manage-channels` to wire the GitHub channel to an agent group, or create the rows directly with `ncl`. **The host service must be running** — `ncl` connects to it over a Unix socket:
+Run `/manage-channels` to wire the GitHub channel to an agent group, or create the rows directly with `area51`. **The host service must be running** — `area51` connects to it over a Unix socket:
 
 ```bash
 # Create messaging group (one per repo)
-ncl messaging-groups create --channel-type github --platform-id "github:owner/repo" \
+area51 messaging-groups create --channel-type github --platform-id "github:owner/repo" \
   --name "owner/repo" --is-group 1 --unknown-sender-policy <policy>
 
 # Wire to agent group (engage mode/pattern default to the GitHub adapter's
 # declared channel defaults; grab the mg id from the create output above)
-ncl wirings create --messaging-group-id <mg-id> --agent-group-id <your-agent-group-id> \
+area51 wirings create --messaging-group-id <mg-id> --agent-group-id <your-agent-group-id> \
   --session-mode per-thread
 ```
 
@@ -142,10 +142,10 @@ When using `strict`, add each GitHub user who should be able to trigger the agen
 
 ```bash
 # Add user (kind = 'github', id = 'github:<numeric-user-id>')
-ncl users create --id "github:<user-id>" --kind github --display-name "<username>"
+area51 users create --id "github:<user-id>" --kind github --display-name "<username>"
 
 # Grant membership to the agent group
-ncl members add --user "github:<user-id>" --group "<agent-group-id>"
+area51 members add --user "github:<user-id>" --group "<agent-group-id>"
 ```
 
 To find a GitHub user's numeric ID: `gh api users/<username> --jq .id`
@@ -158,7 +158,7 @@ If you're in the middle of `/setup`, return to the setup flow now.
 
 Otherwise, restart the service to pick up the new channel.
 
-Run from your NanoClaw project root:
+Run from your Area51 project root:
 
 ```bash
 source setup/lib/install-slug.sh

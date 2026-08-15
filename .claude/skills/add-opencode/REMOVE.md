@@ -77,7 +77,7 @@ Switch any group still on OpenCode back to the default provider — set `"provid
 
 ## 7. Rebuild and restart
 
-Run from your NanoClaw project root:
+Run from your Area51 project root:
 
 ```bash
 pnpm run build && ./container/build.sh

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Build the NanoClaw agent container image.
+# Build the Area51 agent container image.
 #
 # Usage: ./container/build.sh [pull] [tag]
 #
@@ -18,8 +18,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$SCRIPT_DIR"
 
-# Derive the image name from the project root so two NanoClaw installs on the
-# same host don't overwrite each other's `nanoclaw-agent:latest` tag. Matches
+# Derive the image name from the project root so two Area51 installs on the
+# same host don't overwrite each other's `area51-agent:latest` tag. Matches
 # setup/lib/install-slug.sh + src/install-slug.ts.
 # shellcheck source=../setup/lib/install-slug.sh
 source "$PROJECT_ROOT/setup/lib/install-slug.sh"
@@ -76,13 +76,13 @@ CONTAINER_RUNTIME="${CONTAINER_RUNTIME:-docker}"
 # refuses, and the image's own lock label is what tells the two apart.
 OVERLAY="false"
 if [ -z "$PULL" ]; then
-    HARDENED="${NANOCLAW_HARDENED_IMAGE:-}"
+    HARDENED="${AREA51_HARDENED_IMAGE:-}"
     if [ -z "$HARDENED" ] && [ -f "$PROJECT_ROOT/.env" ]; then
-        HARDENED="$(grep '^NANOCLAW_HARDENED_IMAGE=' "$PROJECT_ROOT/.env" | tail -n1 | cut -d= -f2- | tr -d '"' | tr -d "'" | tr -d '[:space:]')"
+        HARDENED="$(grep '^AREA51_HARDENED_IMAGE=' "$PROJECT_ROOT/.env" | tail -n1 | cut -d= -f2- | tr -d '"' | tr -d "'" | tr -d '[:space:]')"
     fi
     if [ "$(printf '%s' "${HARDENED:-false}" | tr '[:upper:]' '[:lower:]')" = "true" ]; then
         IMAGE_LOCK="$(${CONTAINER_RUNTIME} image inspect \
-            --format '{{index .Config.Labels "dev.nanoclaw.agent-runner-lock-sha256"}}' \
+            --format '{{index .Config.Labels "dev.area51.agent-runner-lock-sha256"}}' \
             "${IMAGE_NAME}:${TAG}" 2>/dev/null || true)"
         if [ -n "$LOCK_SHA" ] && [ "$IMAGE_LOCK" = "$LOCK_SHA" ]; then
             OVERLAY="true"
@@ -109,18 +109,18 @@ fi
 # An explicit `build` on a pinned install is a decision, not a one-off. Record
 # it, because the line above promises this "leaves the pulled-image path" and
 # until now it did not: .env still said hardened, so the next bare build refused
-# again and the next /update-nanoclaw would `pull` straight over the image just
+# again and the next /update-area51 would `pull` straight over the image just
 # built. One command, one consistent end state.
 #
 # Excludes the overlay path, which also sets PULL=false but is the opposite
 # decision: it keeps the published image and layers on it, so dropping the
 # install off the pinned path there would be exactly wrong.
 if [ "$PULL" = "false" ] && [ "$OVERLAY" = "false" ] && [ -f "$PROJECT_ROOT/.env" ]; then
-    CURRENT="$(grep '^NANOCLAW_HARDENED_IMAGE=' "$PROJECT_ROOT/.env" | tail -n1 | cut -d= -f2- | tr -d '"' | tr -d "'" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+    CURRENT="$(grep '^AREA51_HARDENED_IMAGE=' "$PROJECT_ROOT/.env" | tail -n1 | cut -d= -f2- | tr -d '"' | tr -d "'" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
     if [ "$CURRENT" = "true" ]; then
-        sed -i.bak 's/^NANOCLAW_HARDENED_IMAGE=.*/NANOCLAW_HARDENED_IMAGE=false/' "$PROJECT_ROOT/.env"
+        sed -i.bak 's/^AREA51_HARDENED_IMAGE=.*/AREA51_HARDENED_IMAGE=false/' "$PROJECT_ROOT/.env"
         rm -f "$PROJECT_ROOT/.env.bak"
-        echo "This install now builds its own agent image (NANOCLAW_HARDENED_IMAGE=false)."
+        echo "This install now builds its own agent image (AREA51_HARDENED_IMAGE=false)."
         echo "Sign in again, or set it back to true, to return to the pulled image."
     fi
 fi
@@ -147,7 +147,7 @@ if [ -n "$LOCK_SHA" ]; then
 fi
 
 if [ "$PULL" = "true" ]; then
-    echo "Pulling NanoClaw agent container image..."
+    echo "Pulling Area51 agent container image..."
     # Not exec'd: pull.sh runs as a child so `set -e` still carries its exit
     # code and the trailing notes below print on both paths.
     bash "$SCRIPT_DIR/pull.sh" "$TAG"
@@ -173,12 +173,12 @@ elif [ "$OVERLAY" = "true" ]; then
         echo "RUN sh /tmp/install-cli-tools.sh /tmp/cli-tools.json && \\"
         echo "    rm -f /tmp/cli-tools.json /tmp/install-cli-tools.sh"
         echo "USER node"
-        echo "LABEL dev.nanoclaw.unhardened-additions=\"cli-tools.json\""
+        echo "LABEL dev.area51.unhardened-additions=\"cli-tools.json\""
     } > "$OVERLAY_DOCKERFILE"
 
     ${CONTAINER_RUNTIME} build -f "$OVERLAY_DOCKERFILE" -t "${IMAGE_NAME}:${TAG}" .
 else
-    echo "Building NanoClaw agent container image..."
+    echo "Building Area51 agent container image..."
     echo "Image: ${IMAGE_NAME}:${TAG}"
 
     ${CONTAINER_RUNTIME} build "${BUILD_ARGS[@]}" -t "${IMAGE_NAME}:${TAG}" .

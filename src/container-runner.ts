@@ -145,7 +145,7 @@ async function spawnContainer(session: Session): Promise<void> {
   const { provider, contribution } = resolveProviderContribution(session, agentGroup, containerConfig);
 
   const mounts = buildMounts(agentGroup, session, containerConfig, provider, contribution);
-  const containerName = `nanoclaw-v2-${agentGroup.folder}-${Date.now()}`;
+  const containerName = `area51-v2-${agentGroup.folder}-${Date.now()}`;
   // OneCLI agent identifier is always the agent group id — stable across
   // sessions and reversible via getAgentGroup() for approval routing.
   const agentIdentifier = agentGroup.id;
@@ -487,7 +487,7 @@ async function buildContainerArgs(
   args.push(...hardeningArgs(CONTAINER_PIDS_LIMIT));
 
   // Environment — only vars read by code we don't own.
-  // Everything NanoClaw-specific is in container.json (read by runner at startup).
+  // Everything Area51-specific is in container.json (read by runner at startup).
   args.push('-e', `TZ=${containerConfig.timezone ?? TIMEZONE}`);
 
   // Provider-contributed env vars (e.g. XDG_DATA_HOME, OPENCODE_*, NO_PROXY).
@@ -596,14 +596,14 @@ export async function buildAgentGroupImage(agentGroupId: string): Promise<void> 
 
   // Overwrite the provenance label rather than letting it be inherited.
   //
-  // `dev.nanoclaw.image-source` is documented as the one claim a retag cannot
+  // `dev.area51.image-source` is documented as the one claim a retag cannot
   // forge, and --status treats it as the trustworthy answer. But a derived
   // build inherits the base's labels, so without this a group that has just
   // added arbitrary apt/npm packages would keep asserting `hardened` — the
   // vendor's claim, over bytes the vendor never saw. `derived` is the honest
   // answer, and `derived-from` says what it was layered onto.
-  dockerfile += 'LABEL dev.nanoclaw.image-source="derived"\n';
-  if (baseId) dockerfile += `LABEL dev.nanoclaw.derived-from="${baseId}"\n`;
+  dockerfile += 'LABEL dev.area51.image-source="derived"\n';
+  if (baseId) dockerfile += `LABEL dev.area51.derived-from="${baseId}"\n`;
 
   const imageTag = `${CONTAINER_IMAGE_BASE}:${agentGroupId}`;
 

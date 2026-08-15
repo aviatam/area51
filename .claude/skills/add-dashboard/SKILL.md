@@ -1,16 +1,16 @@
 ---
 name: add-dashboard
-description: Add a monitoring dashboard to NanoClaw. Installs @nanoco/nanoclaw-dashboard and a pusher that sends periodic JSON snapshots.
+description: Add a monitoring dashboard to Area51. Installs @nanoco/area51-dashboard and a pusher that sends periodic JSON snapshots.
 ---
 
-# /add-dashboard — NanoClaw Dashboard
+# /add-dashboard — Area51 Dashboard
 
 Adds a local monitoring dashboard showing agent groups, sessions, channels, users, token usage, context windows, message activity, and real-time logs.
 
 ## Architecture
 
 ```
-NanoClaw (pusher)              Dashboard (npm package)
+Area51 (pusher)              Dashboard (npm package)
 ┌──────────┐    POST JSON      ┌──────────────┐
 │ collects │ ────────────────→ │ /api/ingest  │
 │ DB data  │   every 60s       │ in-memory    │
@@ -25,7 +25,7 @@ NanoClaw (pusher)              Dashboard (npm package)
 ### 1. Install the npm package
 
 ```bash
-pnpm install @nanoco/nanoclaw-dashboard
+pnpm install @nanoco/area51-dashboard
 ```
 
 ### 2. Copy the pusher module and its tests
@@ -45,7 +45,7 @@ Copy all three resource files into `src/`. The tests ship with the skill and run
 
 This is the skill's one integration point, and it's deliberately minimal and self-contained: all the startup logic lives in `dashboard-pusher.ts`, and the import is **colocated** with the call so the whole edit is a single block in one place — there's no separate top-of-file import to add (or to remember to remove).
 
-Add this block inside `main()`, just before the `log.info('NanoClaw running')` line:
+Add this block inside `main()`, just before the `log.info('Area51 running')` line:
 
 ```typescript
   // Dashboard (optional; no-ops without DASHBOARD_SECRET)
@@ -66,7 +66,7 @@ Generate the secret: `node -e "console.log('nc-' + require('crypto').randomBytes
 
 ### 5. Build, test, and restart
 
-Run from your NanoClaw project root:
+Run from your Area51 project root:
 
 ```bash
 pnpm run build
@@ -76,7 +76,7 @@ systemctl --user restart $(systemd_unit)              # Linux
 # or: launchctl kickstart -k gui/$(id -u)/$(launchd_label)  # macOS
 ```
 
-Run `build` **before** the tests: it's what guards the `@nanoco/nanoclaw-dashboard` dependency. `dashboard-pusher.ts` reaches the package through `await import('@nanoco/nanoclaw-dashboard')`, so if step 4 was skipped, `pnpm run build` fails with `TS2307: Cannot find module`. The behavior test deliberately *mocks* that package — its `startDashboard` binds a real dashboard port, a side effect we don't want in a test — so the test alone would pass with the dependency missing. Build is therefore the leg that verifies the dependency is installed; keep it ahead of the tests in the validate step.
+Run `build` **before** the tests: it's what guards the `@nanoco/area51-dashboard` dependency. `dashboard-pusher.ts` reaches the package through `await import('@nanoco/area51-dashboard')`, so if step 4 was skipped, `pnpm run build` fails with `TS2307: Cannot find module`. The behavior test deliberately *mocks* that package — its `startDashboard` binds a real dashboard port, a side effect we don't want in a test — so the test alone would pass with the dependency missing. Build is therefore the leg that verifies the dependency is installed; keep it ahead of the tests in the validate step.
 
 ### 6. Verify (runtime smoke check)
 
@@ -106,7 +106,7 @@ Open `http://localhost:3100/dashboard` in a browser.
 - **"No data yet"**: Wait 60s for first push, or check logs for push errors
 - **401 errors**: Verify `DASHBOARD_SECRET` matches in `.env`
 - **Port conflict**: Change `DASHBOARD_PORT` in `.env`
-- **No logs**: Check `logs/nanoclaw.log` exists
+- **No logs**: Check `logs/area51.log` exists
 
 ## Removal
 
@@ -114,7 +114,7 @@ Reverse the apply steps. Safe to re-run even if some pieces are already gone.
 
 ```bash
 rm -f src/dashboard-pusher.ts src/dashboard-pusher.test.ts src/dashboard-wiring.test.ts
-pnpm uninstall @nanoco/nanoclaw-dashboard 2>/dev/null || true
+pnpm uninstall @nanoco/area51-dashboard 2>/dev/null || true
 ```
 
 Then, by hand, remove the single dashboard block the skill added to `main()` in `src/index.ts` (the `// Dashboard (optional…)` comment, the `await import('./dashboard-pusher.js')` line, and the `await startDashboard();` call), and remove `DASHBOARD_SECRET` and `DASHBOARD_PORT` from `.env`.

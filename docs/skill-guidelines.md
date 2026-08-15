@@ -1,6 +1,6 @@
 # Skill guidelines
 
-The authoritative checklist for writing a NanoClaw skill: the bar that conformance tooling and registry review will hold every skill to. [customizing.md](customizing.md) is the short introduction; [skills-model.md](skills-model.md) explains why the model works this way. This document evolves with the system; when a rule here proves wrong, fix the rule.
+The authoritative checklist for writing a Area51 skill: the bar that conformance tooling and registry review will hold every skill to. [customizing.md](customizing.md) is the short introduction; [skills-model.md](skills-model.md) explains why the model works this way. This document evolves with the system; when a rule here proves wrong, fix the rule.
 
 ---
 
@@ -14,7 +14,7 @@ A skill provides one independently useful customization and has one cohesive rea
 
 ### 2. Open for extension, closed for modification
 
-A skill extends NanoClaw through skill-owned files and existing extension points, keeping working core code unchanged whenever possible. When an edit is unavoidable, make the **smallest possible reach-in**. Adding a file or a dependency never breaks on upgrade; reaching into existing code is the only thing that does, so the integration surface *is* the upgrade risk.
+A skill extends Area51 through skill-owned files and existing extension points, keeping working core code unchanged whenever possible. When an edit is unavoidable, make the **smallest possible reach-in**. Adding a file or a dependency never breaks on upgrade; reaching into existing code is the only thing that does, so the integration surface *is* the upgrade risk.
 
 Follows from this:
 
@@ -102,7 +102,7 @@ Lifecycle hooks are operational boundaries: an `onHostStart` error aborts host s
 
 ## Testing
 
-**What the standard requires: integration with the NanoClaw system.**
+**What the standard requires: integration with the Area51 system.**
 
 - **Required:** a test for every functional integration point, and, where an added file consumes core (core APIs, data shapes, registries), a test that exercises that consumption against the real core. That's the leg that catches core drift.
 - **Optional, the creator's call:** unit tests of the skill's own internal logic, or its behavior against an external service. Often good practice; not what defines a maintainable skill, because they don't protect against upstream changes.
@@ -152,7 +152,7 @@ You do *not* need to test the dependency's own API contract; that's optional ext
 
 ### When there is genuinely nothing to test in-tree
 
-Some skills' only functional integration is a runtime operator action with no source footprint: registering an MCP server through `ncl`, or a mount through the sanctioned query wrapper (until the `ncl` add-mount verb lands). There's no line in the tree whose deletion a test could catch, so a registration test is structurally inapplicable. **State this explicitly in SKILL.md** rather than inventing a hollow test; conformance is then anatomy plus the dependency guard. This is a conformant outcome, valid only when the reach-in has no in-tree representation. (A raw-SQL write into core's schema to achieve the same thing is a smell, not a workaround.)
+Some skills' only functional integration is a runtime operator action with no source footprint: registering an MCP server through `area51`, or a mount through the sanctioned query wrapper (until the `area51` add-mount verb lands). There's no line in the tree whose deletion a test could catch, so a registration test is structurally inapplicable. **State this explicitly in SKILL.md** rather than inventing a hollow test; conformance is then anatomy plus the dependency guard. This is a conformant outcome, valid only when the reach-in has no in-tree representation. (A raw-SQL write into core's schema to achieve the same thing is a smell, not a workaround.)
 
 ### Test rules
 
@@ -170,7 +170,7 @@ Each with its fix. These are patterns to remove, not to test around: a drift-pro
 1. **A separate VERIFY.md.** Delete it; tests are the verification. Fold any genuinely useful manual smoke check into SKILL.md's next steps.
 2. **REMOVE.md soft-disable** (comments out an import; leaves copied files behind). DELETE the import line and `rm` every file the skill copied.
 3. **REMOVE.md incomplete** (misses env vars, the package uninstall, copied tests). Reverse *every* change; read the env vars from the skill's own credentials section, don't guess.
-4. **Raw SQL against a core DB** (read or write). Use a core helper or an `ncl` verb; the in-tree query wrapper is the sanctioned last resort. Never the `sqlite3` binary.
+4. **Raw SQL against a core DB** (read or write). Use a core helper or an `area51` verb; the in-tree query wrapper is the sanctioned last resort. Never the `sqlite3` binary.
 5. **Credential threading** (`-e KEY=…` or a stdin secrets payload into the container). OneCLI gateway only; it injects credentials per request.
 6. **Branch-merge install** (`git merge` of a registry branch or any code branch). Install by additive fetch: `git fetch origin <branch>`, then `git show origin/<branch>:path > path` per file. For an update/reapply workflow, re-run each installed skill's additive apply, never merge.
 7. **Diff-against-past framing** ("earlier versions…", "this is now redundant") and **documenting non-steps** ("no X needed"). Write present-tense DO steps only. A skill reads as a standalone artifact with no memory of its own edits.

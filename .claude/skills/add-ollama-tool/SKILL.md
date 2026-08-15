@@ -72,7 +72,7 @@ Edit `container/agent-runner/src/index.ts`. Find the `mcpServers` object that cu
 
 ```ts
   const mcpServers: Record<string, { command: string; args: string[]; env: Record<string, string> }> = {
-    nanoclaw: {
+    area51: {
       command: 'bun',
       args: ['run', mcpServerPath],
       env: {},
@@ -80,11 +80,11 @@ Edit `container/agent-runner/src/index.ts`. Find the `mcpServers` object that cu
   };
 ```
 
-Add an `ollama` entry alongside `nanoclaw`:
+Add an `ollama` entry alongside `area51`:
 
 ```ts
   const mcpServers: Record<string, { command: string; args: string[]; env: Record<string, string> }> = {
-    nanoclaw: {
+    area51: {
       command: 'bun',
       args: ['run', mcpServerPath],
       env: {},
@@ -220,7 +220,7 @@ OLLAMA_HOST=http://your-ollama-host:11434
 
 ### Restart the service
 
-Run from your NanoClaw project root:
+Run from your Area51 project root:
 
 ```bash
 source setup/lib/install-slug.sh
@@ -249,7 +249,7 @@ If `OLLAMA_ADMIN_TOOLS=true` was set, tell the user:
 ### Check logs if needed
 
 ```bash
-tail -f logs/nanoclaw.log | grep -i ollama
+tail -f logs/area51.log | grep -i ollama
 ```
 
 Look for:

@@ -1,7 +1,7 @@
 # Claude Agent SDK Deep Dive
 
 Notes from reading the type surface of `@anthropic-ai/claude-agent-sdk` to
-understand how `query()` works, how nanoclaw drives it (streaming input, hooks,
+understand how `query()` works, how area51 drives it (streaming input, hooks,
 resume), and where the observable behaviour lives.
 
 **Verified against `@anthropic-ai/claude-agent-sdk@0.3.197`** (`sdk.d.ts`,
@@ -28,7 +28,7 @@ Agent Runner (claude.ts)
 ```
 
 The SDK resolves a native Claude Code binary (overridable via
-`options.pathToClaudeCodeExecutable`, which nanoclaw sets to `/pnpm/claude`) and
+`options.pathToClaudeCodeExecutable`, which area51 sets to `/pnpm/claude`) and
 spawns it as a child process. Communication is JSON-lines over the child's
 stdin/stdout. The `Transport` / `SpawnOptions` / `SpawnedProcess` interfaces and
 the `spawnClaudeCodeProcess` option (for spawning into a VM/container) confirm
@@ -52,7 +52,7 @@ export declare function query(_params: {
 
 The full `Options` type (`sdk.d.ts` ~line 1256). This surface grew a lot since
 0.2.x; the table below covers the members that matter for SDK consumers, with
-the ones nanoclaw sets marked ✱.
+the ones area51 sets marked ✱.
 
 | Property | Type | Notes |
 |----------|------|-------|
@@ -120,7 +120,7 @@ type PermissionMode =
 // 'auto'    — a model classifier approves/denies prompts
 ```
 
-nanoclaw runs `'bypassPermissions'` + `allowDangerouslySkipPermissions: true`.
+area51 runs `'bypassPermissions'` + `allowDangerouslySkipPermissions: true`.
 
 ### SettingSource — default flipped since 0.2.x
 
@@ -134,7 +134,7 @@ type SettingSource = 'user' | 'project' | 'local';
 **In 0.3.x, when `settingSources` is omitted the SDK loads ALL sources** (matches
 CLI defaults). Pass `[]` to disable filesystem settings (isolation mode). Must
 include `'project'` to load CLAUDE.md. This inverts the 0.2.x behaviour, where
-omitting the option loaded nothing. nanoclaw sets it explicitly to
+omitting the option loaded nothing. area51 sets it explicitly to
 `['project', 'user', 'local']`, so it is unaffected by the flip — but any code
 that relied on "omitted = isolated" is now loading real settings.
 
@@ -173,9 +173,9 @@ Each non-sdk variant also accepts `tools?: McpServerToolPolicy[]`,
 `alwaysLoad?: boolean` (skip tool-search deferral — include all of this server's
 tools in the turn-1 prompt).
 
-nanoclaw derives MCP allow patterns from the `mcpServers` map. Server names are
+area51 derives MCP allow patterns from the `mcpServers` map. Server names are
 sanitized by the SDK when forming tool prefixes: any char outside `[A-Za-z0-9_-]`
-becomes `_`, so the allowlist must mirror that (nanoclaw's `mcpAllowPattern`
+becomes `_`, so the allowlist must mirror that (area51's `mcpAllowPattern`
 does).
 
 ### SdkBeta
@@ -210,7 +210,7 @@ type PermissionResult =
 ```
 
 `updatedInput` on the allow branch is now optional (it was required in 0.2.x).
-nanoclaw does not use `canUseTool` — it gates tools with `allowedTools` /
+area51 does not use `canUseTool` — it gates tools with `allowedTools` /
 `disallowedTools` plus a `PreToolUse` hook.
 
 ## SDKMessage Types
@@ -233,7 +233,7 @@ nanoclaw does not use `canUseTool` — it gates tools with `allowedTools` /
 | `system` / `hook_started` \| `hook_progress` \| `hook_response` | Hook lifecycle (with `includeHookEvents`) |
 | `auth_status`, `tool_use_summary`, `permission_denied`, `commands_changed`, `prompt_suggestion`, … | Other lifecycle/informational events |
 
-nanoclaw's provider translates `init`, `result`, `api_retry`,
+area51's provider translates `init`, `result`, `api_retry`,
 `rate_limit_event`, `compact_boundary`, and `task_notification`. Note the
 `rate_limit_event` shape: it is `{ type: 'rate_limit_event', ... }`, **not**
 `{ type: 'system', subtype: 'rate_limit_event' }`.
@@ -270,7 +270,7 @@ type SDKResultError = {
 ```
 
 `result` (the final text) exists only on the success variant; error subtypes
-carry their text in `errors[]`. nanoclaw surfaces either so a non-retryable
+carry their text in `errors[]`. area51 surfaces either so a non-retryable
 billing/quota error still reaches the user.
 
 ### SDKAssistantMessage
@@ -338,7 +338,7 @@ type SDKUserMessage = {
 };
 ```
 
-nanoclaw pushes minimal `SDKUserMessage`s (`{ type:'user', message:{ role:'user',
+area51 pushes minimal `SDKUserMessage`s (`{ type:'user', message:{ role:'user',
 content }, parent_tool_use_id:null, session_id:'' }`) — the required fields are
 `type`, `message`, `parent_tool_use_id`; `session_id`/`uuid` are optional.
 
@@ -385,7 +385,7 @@ choice changes session lifecycle:
   `task_notification` events continue to flow through the generator. You control
   when the session ends by ending the iterable.
 
-nanoclaw always uses the `AsyncIterable` form. Its `MessageStream` class is a
+area51 always uses the `AsyncIterable` form. Its `MessageStream` class is a
 push-based async iterable: `push(text)` enqueues an `SDKUserMessage`, `end()`
 closes it. This is how new inbound messages are streamed into a live session
 instead of spawning a fresh CLI per message, and it keeps the CLI alive so
@@ -411,7 +411,7 @@ Every `result` is meaningful — capture each one, not just the first.
 > internals (an `isSingleUserTurn` flag, a specific teammate-shutdown prompt).
 > Those symbol-level details can't be re-verified from the 0.3.x `.d.ts` and
 > have been dropped; the string-vs-iterable *behaviour* above is what the public
-> `query()` signature and nanoclaw's usage actually depend on.
+> `query()` signature and area51's usage actually depend on.
 
 ## Hook Events
 
@@ -430,7 +430,7 @@ type HookEvent =
 
 The list roughly doubled since 0.2.x (`PostToolBatch`, `PostCompact`,
 `PermissionDenied`, `Setup`, the `Task*`/`Teammate*`/`Worktree*`/`Cwd*`/`File*`
-families, etc.). nanoclaw registers `PreToolUse`, `PostToolUse`,
+families, etc.). area51 registers `PreToolUse`, `PostToolUse`,
 `PostToolUseFailure`, and `PreCompact`.
 
 ### Hook configuration & return
@@ -468,7 +468,7 @@ type SyncHookJSONOutput = {
 };
 ```
 
-nanoclaw's `preToolUseHook` returns `{ decision: 'block', stopReason }` to reject
+area51's `preToolUseHook` returns `{ decision: 'block', stopReason }` to reject
 a disallowed tool, and `{ continue: true }` otherwise — both valid
 `SyncHookJSONOutput`.
 
@@ -505,7 +505,7 @@ type SubagentStopHookInput = BaseHookInput & {
 };
 ```
 
-`PreCompactHookInput` (which nanoclaw uses to archive transcripts before
+`PreCompactHookInput` (which area51 uses to archive transcripts before
 compaction) is `BaseHookInput & { hook_event_name: 'PreCompact'; … }`, so
 `transcript_path` and `session_id` are available on it.
 
@@ -513,7 +513,7 @@ compaction) is `BaseHookInput & { hook_event_name: 'PreCompact'; … }`, so
 
 The `Query` object (`sdk.d.ts` ~line 2204) exposes a large control channel.
 Methods marked "streaming input mode only" require the `AsyncIterable` prompt
-form nanoclaw uses.
+form area51 uses.
 
 ```typescript
 interface Query extends AsyncGenerator<SDKMessage, void> {
@@ -590,7 +590,7 @@ type SandboxSettings = {
 `credentials` blocking, and TLS-terminate config since 0.2.x. When
 `allowUnsandboxedCommands` is true the model may set
 `dangerouslyDisableSandbox: true` on a Bash call, which falls back to the
-`canUseTool` handler. nanoclaw does not use the SDK sandbox (it runs each agent
+`canUseTool` handler. area51 does not use the SDK sandbox (it runs each agent
 in its own container).
 
 ## MCP Server Helpers
@@ -625,7 +625,7 @@ function createSdkMcpServer(options: {
 }): McpSdkServerConfigWithInstance;
 ```
 
-nanoclaw wires its MCP servers as stdio/process servers (via `mcpServers`), not
+area51 wires its MCP servers as stdio/process servers (via `mcpServers`), not
 in-process SDK servers, so subagents inherit them.
 
 ## Key Files (in the published tarball)

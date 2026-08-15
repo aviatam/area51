@@ -66,7 +66,7 @@ If it prints `Wire it`, add the setup call right after `set -e`, before the `cat
 
 ```bash
 #!/bin/bash
-# NanoClaw agent container entrypoint.
+# Area51 agent container entrypoint.
 #
 # ...existing header comment...
 
@@ -97,14 +97,14 @@ pnpm exec vitest run src/mnemon-dockerfile.test.ts src/mnemon-entrypoint.test.ts
 
 ```bash
 ./container/build.sh
-docker run --rm --entrypoint mnemon nanoclaw-agent:latest --version
+docker run --rm --entrypoint mnemon area51-agent:latest --version
 ```
 
 ## Phase 3: Restart and Verify
 
 ### Restart the service
 
-Run from your NanoClaw project root:
+Run from your Area51 project root:
 
 ```bash
 source setup/lib/install-slug.sh
@@ -117,13 +117,13 @@ systemctl --user restart $(systemd_unit)              # Linux
 After the next container starts, check that setup ran:
 
 ```bash
-docker logs $(docker ps --filter name=nanoclaw-v2 --format '{{.Names}}' | head -1) 2>&1 | grep -i mnemon
+docker logs $(docker ps --filter name=area51-v2 --format '{{.Names}}' | head -1) 2>&1 | grep -i mnemon
 ```
 
 Then inspect the hooks inside the running container:
 
 ```bash
-docker exec $(docker ps --filter name=nanoclaw-v2 --format '{{.Names}}' | head -1) \
+docker exec $(docker ps --filter name=area51-v2 --format '{{.Names}}' | head -1) \
   cat /home/node/.claude/settings.json | grep -A5 mnemon
 ```
 
@@ -136,7 +136,7 @@ Have a conversation with the agent, then start a new session and reference somet
 Mnemon writes to `/home/node/.claude/mnemon/` inside the container, which maps to the per-agent-group `.claude/` directory on the host. To find the exact host path:
 
 ```bash
-docker inspect $(docker ps --filter name=nanoclaw-v2 --format '{{.Names}}' | head -1) \
+docker inspect $(docker ps --filter name=area51-v2 --format '{{.Names}}' | head -1) \
   --format '{{range .Mounts}}{{if eq .Destination "/home/node/.claude"}}{{.Source}}{{end}}{{end}}'
 ```
 

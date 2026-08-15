@@ -1,4 +1,4 @@
-/** Setup-only discovery for the fixed NanoClaw template registry. */
+/** Setup-only discovery for the fixed Area51 template registry. */
 import { execFileSync } from 'child_process';
 import fs from 'fs';
 import os from 'os';
@@ -8,7 +8,7 @@ import { resolveLocalTemplate } from '../src/templates/local-dir.js';
 import type { AgentGroup } from '../src/types.js';
 import { upsertEnvVar } from './set-env.js';
 
-export const DEFAULT_TEMPLATES_SOURCE = 'https://github.com/nanocoai/nanoclaw-templates';
+export const DEFAULT_TEMPLATES_SOURCE = 'https://github.com/aviatam/area51-templates';
 
 // The template pick lives in process.env for this run AND in .env for the
 // next: the wizard re-execs itself (`sg docker`, fail-retry) and a rerun over
@@ -20,13 +20,13 @@ export const DEFAULT_TEMPLATES_SOURCE = 'https://github.com/nanocoai/nanoclaw-te
 // existing group through its plugin carrier — groupsCarryingPlugin — instead
 // of creating a duplicate), so a stale id can never override a fresh choice.
 export function applyTemplatePick(ref: string): void {
-  process.env.NANOCLAW_TEMPLATE_PATH = ref;
-  upsertEnvVar('NANOCLAW_TEMPLATE_PATH', ref);
+  process.env.AREA51_TEMPLATE_PATH = ref;
+  upsertEnvVar('AREA51_TEMPLATE_PATH', ref);
 }
 
 export function clearTemplatePick(): void {
-  delete process.env.NANOCLAW_TEMPLATE_PATH;
-  upsertEnvVar('NANOCLAW_TEMPLATE_PATH', '');
+  delete process.env.AREA51_TEMPLATE_PATH;
+  upsertEnvVar('AREA51_TEMPLATE_PATH', '');
 }
 
 export interface TemplateEntry {
@@ -79,7 +79,7 @@ const MARKER = 'plugin.json';
 const LEGACY_MARKER = 'context/instructions.md';
 
 export function cloneRegistry(): ClonedRegistry {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nanoclaw-tpl-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'area51-tpl-'));
   try {
     execFileSync('git', ['clone', '--depth', '1', '--', DEFAULT_TEMPLATES_SOURCE, dir], {
       stdio: 'pipe',
@@ -107,7 +107,7 @@ export function listTemplatesFromDir(dir: string): TemplateEntry[] {
 
   // A context/instructions.md outside any plugin is the pre-plugin template
   // layout. Fail with a pointer instead of silently listing nothing. (The
-  // same file INSIDE a plugin — e.g. ai.nanoco.nanoclaw/context/ — is fine.)
+  // same file INSIDE a plugin — e.g. ai.nanoco.area51/context/ — is fine.)
   const legacy = rels
     .filter((rel) => rel === LEGACY_MARKER || rel.endsWith(`/${LEGACY_MARKER}`))
     .map((rel) => (rel === LEGACY_MARKER ? '.' : rel.slice(0, -(LEGACY_MARKER.length + 1))))
@@ -115,7 +115,7 @@ export function listTemplatesFromDir(dir: string): TemplateEntry[] {
   if (legacy.length > 0) {
     throw new Error(
       `Templates predate the plugin format (no ${MARKER}): ${legacy.join(', ')}. ` +
-        'Re-fetch the template library (and update NanoClaw if fetching does not help).',
+        'Re-fetch the template library (and update Area51 if fetching does not help).',
     );
   }
 
@@ -146,7 +146,7 @@ export function copyTemplate(srcDir: string, ref: string, destDir: string): stri
 }
 
 /**
- * Stamp the setup-selected template through the same ncl command used after
+ * Stamp the setup-selected template through the same area51 command used after
  * setup. `groups create --template` decides what happens: a fresh stamp when
  * no group carries the plugin, or (on a rerun over a partial install) a
  * dry-run update plan for the group that does. The plan goes to
@@ -171,7 +171,7 @@ export async function installTemplateAgent(options: TemplateAgentInstallOptions)
     const applied = parseReplacePlan(
       await options.runNcl('groups-create', { template: options.ref, id: plan.group.id, yes: true }),
     );
-    if (!applied?.applied) throw new Error('ncl did not apply the template update');
+    if (!applied?.applied) throw new Error('area51 did not apply the template update');
     group = applied.group;
   } else {
     group = parseAgentGroup(first);
@@ -194,7 +194,7 @@ function parseReplacePlan(value: unknown): (TemplateReplacePlan & { applied: boo
   if (!isRecord(value) || !('changes' in value)) return undefined;
   const { applied, group, changes, note } = value;
   if (typeof applied !== 'boolean' || !Array.isArray(changes) || typeof note !== 'string') {
-    throw new Error('ncl returned an invalid template update plan');
+    throw new Error('area51 returned an invalid template update plan');
   }
   return { applied, group: parseAgentGroup(group), changes: changes.map(parseTemplateChange), note };
 }
@@ -206,14 +206,14 @@ function parseTemplateChange(value: unknown): TemplateChange {
     typeof value.name !== 'string' ||
     typeof value.action !== 'string'
   ) {
-    throw new Error('ncl returned an invalid template update plan');
+    throw new Error('area51 returned an invalid template update plan');
   }
   const { surface, name, action, customized } = value;
   return { surface, name, action, ...(customized === true ? { customized: true } : {}) };
 }
 
 function parseAgentGroup(value: unknown): AgentGroup {
-  if (!isRecord(value)) throw new Error('ncl returned an invalid agent group');
+  if (!isRecord(value)) throw new Error('area51 returned an invalid agent group');
   const { id, name, folder, agent_provider: provider, created_at: createdAt } = value;
   if (
     typeof id !== 'string' ||
@@ -224,7 +224,7 @@ function parseAgentGroup(value: unknown): AgentGroup {
     (provider != null && typeof provider !== 'string') ||
     typeof createdAt !== 'string'
   ) {
-    throw new Error('ncl returned an invalid agent group');
+    throw new Error('area51 returned an invalid agent group');
   }
   return { id, name, folder, agent_provider: provider ?? null, created_at: createdAt };
 }

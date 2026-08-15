@@ -12,7 +12,7 @@
 
 set -euo pipefail
 
-echo "=== NANOCLAW SETUP: INSTALL_CLAUDE ==="
+echo "=== AREA51 SETUP: INSTALL_CLAUDE ==="
 
 if command -v claude >/dev/null 2>&1; then
   echo "STATUS: already-installed"

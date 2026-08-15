@@ -17,7 +17,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 // Override DATA_DIR for tests
 vi.mock('./config.js', async () => {
   const actual = await vi.importActual('./config.js');
-  return { ...actual, DATA_DIR: '/tmp/nanoclaw-test-host-sweep-grace' };
+  return { ...actual, DATA_DIR: '/tmp/area51-test-host-sweep-grace' };
 });
 
 // Mock container runner to prevent actual Docker spawning
@@ -33,7 +33,7 @@ import { isContainerRunning, killContainer, wakeContainer } from './container-ru
 import { startHostSweep, stopHostSweep } from './host-sweep.js';
 import { initSessionFolder, openOutboundDbRw, writeSessionMessage } from './session-manager.js';
 
-const TEST_DIR = '/tmp/nanoclaw-test-host-sweep-grace';
+const TEST_DIR = '/tmp/area51-test-host-sweep-grace';
 const AG = 'ag-test';
 const SESS = 'sess-test';
 // Mirrors SWEEP_INTERVAL_MS in host-sweep.ts — identifies the sweep's

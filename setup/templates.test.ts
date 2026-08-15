@@ -4,15 +4,15 @@ import path from 'path';
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const CONTRACT_ROOT = '/tmp/nanoclaw-setup-templates-contract';
+const CONTRACT_ROOT = '/tmp/area51-setup-templates-contract';
 
 // The contract test drives the REAL dispatch pipeline; point its filesystem
 // at a scratch root so stamping never touches the checkout.
 vi.mock('../src/config.js', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../src/config.js')>()),
-  GROUPS_DIR: '/tmp/nanoclaw-setup-templates-contract/groups',
-  DATA_DIR: '/tmp/nanoclaw-setup-templates-contract/data',
-  TEMPLATES_DIR: '/tmp/nanoclaw-setup-templates-contract/templates',
+  GROUPS_DIR: '/tmp/area51-setup-templates-contract/groups',
+  DATA_DIR: '/tmp/area51-setup-templates-contract/data',
+  TEMPLATES_DIR: '/tmp/area51-setup-templates-contract/templates',
 }));
 
 vi.mock('../src/container-runner.js', () => ({
@@ -33,7 +33,7 @@ vi.mock('../src/log.js', () => ({
 
 import { closeDb, initTestDb, runMigrations } from '../src/db/index.js';
 import { MCP_SCHEMA_URL, PLUGIN_SCHEMA_URL } from '../src/templates/manifest.js';
-import { NANOCLAW_EXTENSION_NS } from '../src/templates/extension.js';
+import { AREA51_EXTENSION_NS } from '../src/templates/extension.js';
 import { dispatch } from '../src/cli/dispatch.js';
 // Side-effect import: registers the `groups-*` commands for the contract test.
 import '../src/cli/resources/groups.js';
@@ -61,11 +61,11 @@ describe('setup template library', () => {
     const destination = path.join(root, 'destination');
     fs.mkdirSync(path.join(source, 'sales', 'sdr'), { recursive: true });
     fs.writeFileSync(path.join(source, 'sales', 'sdr', 'plugin.json'), '{"name":"sdr"}');
-    // A context/instructions.md INSIDE a plugin (the NanoClaw extension dir)
+    // A context/instructions.md INSIDE a plugin (the Area51 extension dir)
     // must not trip the legacy detection.
-    fs.mkdirSync(path.join(source, 'sales', 'sdr', 'ai.nanoco.nanoclaw', 'context'), { recursive: true });
+    fs.mkdirSync(path.join(source, 'sales', 'sdr', 'ai.nanoco.area51', 'context'), { recursive: true });
     fs.writeFileSync(
-      path.join(source, 'sales', 'sdr', 'ai.nanoco.nanoclaw', 'context', 'instructions.md'),
+      path.join(source, 'sales', 'sdr', 'ai.nanoco.area51', 'context', 'instructions.md'),
       'Sell well.',
     );
     fs.mkdirSync(path.join(source, 'sales', 'sdr', '.git'), { recursive: true });
@@ -87,7 +87,7 @@ describe('setup template library', () => {
     expect(() => listTemplatesFromDir(source)).toThrow(/predate the plugin format.*sales\/sdr.*Re-fetch/s);
   });
 
-  it('creates through ncl and applies the provider', async () => {
+  it('creates through area51 and applies the provider', async () => {
     const created: AgentGroup = {
       id: 'ag-new',
       name: 'SDR',
@@ -194,7 +194,7 @@ describe('setup template library', () => {
     expect(calls).toEqual(['groups-create']);
   });
 
-  it('keeps setup and ncl on the same template stamper', () => {
+  it('keeps setup and area51 on the same template stamper', () => {
     const setup = fs.readFileSync(path.join(process.cwd(), 'setup', 'templates.ts'), 'utf8');
     const wiring = fs.readFileSync(path.join(process.cwd(), 'scripts', 'init-first-agent.ts'), 'utf8');
     const groups = fs.readFileSync(path.join(process.cwd(), 'src/cli/resources/groups.ts'), 'utf8');
@@ -208,8 +208,8 @@ describe('setup template library', () => {
       path.join(process.cwd(), '.claude', 'skills', 'init-first-agent', 'SKILL.md'),
       'utf8',
     );
-    expect(skill).toContain('ncl groups list --json');
-    expect(skill).toContain('ncl wirings list --json');
+    expect(skill).toContain('area51 groups list --json');
+    expect(skill).toContain('area51 wirings list --json');
     expect(skill).toContain('--agent-group-id "${AGENT_GROUP_ID}"');
   });
 });
@@ -221,32 +221,32 @@ describe('template pick persistence', () => {
   it('applyTemplatePick and clearTemplatePick round-trip both carriers', () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'tpl-pick-'));
     const prevCwd = process.cwd();
-    const prevEnv = process.env.NANOCLAW_TEMPLATE_PATH;
+    const prevEnv = process.env.AREA51_TEMPLATE_PATH;
     process.chdir(root);
     try {
       applyTemplatePick('sales/sdr');
-      expect(process.env.NANOCLAW_TEMPLATE_PATH).toBe('sales/sdr');
-      expect(fs.readFileSync(path.join(root, '.env'), 'utf8')).toMatch(/^NANOCLAW_TEMPLATE_PATH=sales\/sdr$/m);
+      expect(process.env.AREA51_TEMPLATE_PATH).toBe('sales/sdr');
+      expect(fs.readFileSync(path.join(root, '.env'), 'utf8')).toMatch(/^AREA51_TEMPLATE_PATH=sales\/sdr$/m);
 
       clearTemplatePick();
-      expect(process.env.NANOCLAW_TEMPLATE_PATH).toBeUndefined();
-      expect(fs.readFileSync(path.join(root, '.env'), 'utf8')).toMatch(/^NANOCLAW_TEMPLATE_PATH=$/m);
+      expect(process.env.AREA51_TEMPLATE_PATH).toBeUndefined();
+      expect(fs.readFileSync(path.join(root, '.env'), 'utf8')).toMatch(/^AREA51_TEMPLATE_PATH=$/m);
     } finally {
       process.chdir(prevCwd);
-      if (prevEnv === undefined) delete process.env.NANOCLAW_TEMPLATE_PATH;
-      else process.env.NANOCLAW_TEMPLATE_PATH = prevEnv;
+      if (prevEnv === undefined) delete process.env.AREA51_TEMPLATE_PATH;
+      else process.env.AREA51_TEMPLATE_PATH = prevEnv;
       fs.rmSync(root, { recursive: true, force: true });
     }
   });
 });
 
-describe('setup templates ncl contract (real dispatch)', () => {
+describe('setup templates area51 contract (real dispatch)', () => {
   beforeEach(() => {
     fs.rmSync(CONTRACT_ROOT, { recursive: true, force: true });
     const tpl = path.join(CONTRACT_ROOT, 'templates', 'sales', 'sdr');
-    fs.mkdirSync(path.join(tpl, NANOCLAW_EXTENSION_NS, 'context'), { recursive: true });
+    fs.mkdirSync(path.join(tpl, AREA51_EXTENSION_NS, 'context'), { recursive: true });
     fs.writeFileSync(path.join(tpl, 'plugin.json'), JSON.stringify({ $schema: PLUGIN_SCHEMA_URL, name: 'sdr' }));
-    fs.writeFileSync(path.join(tpl, NANOCLAW_EXTENSION_NS, 'context', 'instructions.md'), 'You are an SDR agent.\n');
+    fs.writeFileSync(path.join(tpl, AREA51_EXTENSION_NS, 'context', 'instructions.md'), 'You are an SDR agent.\n');
     fs.writeFileSync(
       path.join(tpl, 'mcp.json'),
       JSON.stringify({

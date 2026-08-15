@@ -1,17 +1,17 @@
 ---
-name: update-nanoclaw
-description: Efficiently bring upstream NanoClaw updates into a customized install, with preview, selective cherry-pick, and low token usage.
+name: update-area51
+description: Efficiently bring upstream Area51 updates into a customized install, with preview, selective cherry-pick, and low token usage.
 ---
 
 # About
 
-Your NanoClaw fork drifts from upstream as you customize it. This skill pulls upstream changes into your install without losing your modifications.
+Your Area51 fork drifts from upstream as you customize it. This skill pulls upstream changes into your install without losing your modifications.
 
-Run `/update-nanoclaw` in Claude Code.
+Run `/update-area51` in Claude Code.
 
 ## How it works
 
-**Preflight**: checks for clean working tree (`git status --porcelain`). If `upstream` remote is missing, asks you for the URL (defaults to `https://github.com/nanocoai/nanoclaw.git`) and adds it. Detects the upstream branch name (`main` or `master`).
+**Preflight**: checks for clean working tree (`git status --porcelain`). If `upstream` remote is missing, asks you for the URL (defaults to `https://github.com/aviatam/area51.git`) and adds it. Detects the upstream branch name (`main` or `master`).
 
 **Backup**: creates a timestamped backup branch and tag (`backup/pre-update-<hash>-<timestamp>`, `pre-update-<hash>-<timestamp>`) before touching anything. Safe to run multiple times.
 
@@ -51,7 +51,7 @@ Only opens files with actual conflicts. Uses `git log`, `git diff`, and `git sta
 ---
 
 # Goal
-Help a user with a customized NanoClaw install safely incorporate upstream changes without a fresh reinstall and without blowing tokens.
+Help a user with a customized Area51 install safely incorporate upstream changes without a fresh reinstall and without blowing tokens.
 
 # Operating principles
 - Never proceed with a dirty working tree.
@@ -62,9 +62,9 @@ Help a user with a customized NanoClaw install safely incorporate upstream chang
 
 # Step 0a: Refresh this skill first
 The update process itself evolves, so run its newest version before doing anything else:
-- Ensure the `upstream` remote exists (default `https://github.com/nanocoai/nanoclaw.git`) and fetch: `git fetch upstream --prune`. Detect the upstream branch (`main` or `master`).
+- Ensure the `upstream` remote exists (default `https://github.com/aviatam/area51.git`) and fetch: `git fetch upstream --prune`. Detect the upstream branch (`main` or `master`).
 - Read the upstream skill without changing the working tree:
-  `git show upstream/<branch>:.claude/skills/update-nanoclaw/SKILL.md`.
+  `git show upstream/<branch>:.claude/skills/update-area51/SKILL.md`.
 - If it differs from the local copy, **follow the upstream version from the top**
   instead of this one. The merge will bring that version into the checkout.
 
@@ -77,7 +77,7 @@ If output is non-empty:
 Confirm remotes:
 - `git remote -v`
 If `upstream` is missing:
-- Ask the user for the upstream repo URL (default: `https://github.com/nanocoai/nanoclaw.git`).
+- Ask the user for the upstream repo URL (default: `https://github.com/aviatam/area51.git`).
 - Add it: `git remote add upstream <user-provided-url>`
 - Then: `git fetch upstream --prune`
 
@@ -123,7 +123,7 @@ Bucket the upstream changed files:
 - **Version pins** (`versions.json`): a changed `onecli-gateway` / `onecli-cli` value requires upgrading the OneCLI gateway/CLI to match — see Step 5.5
 - **Other**: docs, tests, setup scripts, misc
 
-**Large drift check:** If the upstream commit count and age suggest the user has a lot of catching up to do, mention that `/migrate-nanoclaw` might be a better fit — it extracts customizations and reapplies them on clean upstream instead of merging. Offer it as an option but don't push.
+**Large drift check:** If the upstream commit count and age suggest the user has a lot of catching up to do, mention that `/migrate-area51` might be a better fit — it extracts customizations and reapplies them on clean upstream instead of merging. Offer it as an option but don't push.
 
 Present these buckets to the user and ask them to choose one path using AskUserQuestion:
 - A) **Full update**: merge all upstream changes
@@ -208,7 +208,7 @@ Check which areas changed to determine what to validate:
 
 **Container image** (only if any `container/` files are in CHANGED_FILES, or the `agent-image` pin moved):
 
-Which command depends on where this install gets its image — check `.env` for `NANOCLAW_HARDENED_IMAGE=true`.
+Which command depends on where this install gets its image — check `.env` for `AREA51_HARDENED_IMAGE=true`.
 
 - **Builds locally** (the default; flag absent or not `true`): `./container/build.sh`
 - **Pulls a pinned image** (flag is `true`): `./container/build.sh pull`. Never the bare form — it exits `3` on a pinned install rather than silently replacing the pulled bytes with a local build.
@@ -267,9 +267,9 @@ If one or more `[BREAKING]` lines are found:
 - Keep every skipped, failed, or incomplete migration in the unresolved list, then
   proceed to Step 7.
 
-# Step 7: Skill updates (part of updating NanoClaw)
+# Step 7: Skill updates (part of updating Area51)
 
-Updating your installed skills is **part of** updating NanoClaw, not an optional
+Updating your installed skills is **part of** updating Area51, not an optional
 extra. Channel and provider code ships on long-lived branches (`channels`,
 `providers`) that the host merge above doesn't touch — so stopping here leaves
 that code on whatever version you installed, which is how an important upstream
@@ -285,7 +285,7 @@ Detect whether anything is installed: read `src/channels/index.ts` and
 
 **Hand-off — default in, minimal opt-out.** Use AskUserQuestion (single-select).
 Name the installed skills in the question so the choice is concrete:
-- Question: "Skill updates are part of this NanoClaw update — your installed
+- Question: "Skill updates are part of this Area51 update — your installed
   channels/providers (<list the detected ones>) ride separate branches the host
   update didn't touch. Continue into `/update-skills` to bring them up to date?"
 - Option 1 (Recommended): "Continue into skill updates" — description: "Runs
@@ -314,7 +314,7 @@ land. If the user's install has Slack, Discord, or WhatsApp, tell them:
    and land in the main DM view, matching the DM session (which was already
    flat). Group/channel threading is unchanged. To keep the old in-thread DM
    behavior for a specific wiring, override it per wiring:
-   `ncl wirings update <wiring-id> --threads true`.
+   `area51 wirings update <wiring-id> --threads true`.
 2. **Shared-identity channels stop raising stranger approval cards.** On
    channels where the linked account is the operator's personal identity, the
    mechanics differ by channel: WhatsApp personal-number mode suppresses the
@@ -335,7 +335,7 @@ Proceed to Step 7.9.
 # Step 7.9: Stamp the upgrade marker (required)
 After validation has **succeeded**, record that this install reached the new version through the supported path. Without this, the startup tripwire stops the host on its next start.
 
-- `pnpm exec tsx scripts/upgrade-state.ts set "" update-nanoclaw`
+- `pnpm exec tsx scripts/upgrade-state.ts set "" update-area51`
   - The empty version argument stamps the current `package.json` version.
 
 If validation did NOT succeed, do not stamp — leave the tripwire to catch the broken state.
@@ -369,7 +369,7 @@ Restart anyway.
 Tell the user:
 - To rollback: `git reset --hard <backup-tag-from-step-1>`
 - Backup branch also exists: `backup/pre-update-<HASH>-<TIMESTAMP>`
-- Restart the service to apply changes. The unit/label names are per-install — derive them with `setup/lib/install-slug.sh`. Run from your NanoClaw project root:
+- Restart the service to apply changes. The unit/label names are per-install — derive them with `setup/lib/install-slug.sh`. Run from your Area51 project root:
   - **macOS (Darwin)**: `source setup/lib/install-slug.sh && launchctl kickstart -k gui/$(id -u)/$(launchd_label)`
   - **Linux**: `source setup/lib/install-slug.sh && systemctl --user restart $(systemd_unit)` (or, if you want to confirm the unit name first: `systemctl --user list-units --type=service | grep "$(. setup/lib/install-slug.sh && systemd_unit)"`)
   - **Manual** (no service found): restart `pnpm run dev`
@@ -377,5 +377,5 @@ Tell the user:
 
 ## Diagnostics
 
-1. Use the Read tool to read `.claude/skills/update-nanoclaw/diagnostics.md`.
+1. Use the Read tool to read `.claude/skills/update-area51/diagnostics.md`.
 2. Follow every step in that file before finishing.

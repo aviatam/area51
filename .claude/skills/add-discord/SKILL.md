@@ -5,7 +5,7 @@ description: Add Discord bot channel integration via Chat SDK.
 
 # Add Discord Channel
 
-Adds Discord bot support via the Chat SDK bridge. NanoClaw doesn't ship channels
+Adds Discord bot support via the Chat SDK bridge. Area51 doesn't ship channels
 in trunk — this skill copies the Discord adapter in from the `channels` branch.
 
 The mechanical steps under **Apply** carry `nc:` directive fences: an agent
@@ -69,7 +69,7 @@ server with you. Tell the user:
 
 ```nc:operator
 Create the Discord bot:
-1. Go to https://discord.com/developers/applications → New Application. Name it (e.g. "NanoClaw Assistant").
+1. Go to https://discord.com/developers/applications → New Application. Name it (e.g. "Area51 Assistant").
 2. Bot tab → Add Bot if needed → Reset Token, then copy the Bot Token (it's shown only once).
 3. Bot tab → Privileged Gateway Intents → enable Message Content Intent.
 4. OAuth2 → URL Generator → Scopes: bot; Bot Permissions: Send Messages, Read Message History, Add Reactions, Attach Files, Use Slash Commands.
@@ -163,4 +163,4 @@ this channel with `/init-first-agent` (or `/manage-channels`).
 
 **The bot is online but never sees your messages.** Two usual causes: Message Content Intent is off (Bot tab → Privileged Gateway Intents), so message bodies arrive empty and nothing triggers; or the bot doesn't share a server with you — in which case `POST /users/@me/channels` also refuses. Open the invite URL and add the bot to a server you're in, then retry.
 
-**Adapter looks installed but Discord never connects.** Run `pnpm exec vitest run src/channels/discord-registration.test.ts` — red means the barrel import or the `@chat-adapter/discord` install drifted, so re-run the Apply steps. If it's green, the service probably hasn't restarted since the credentials were stored: `bash setup/lib/restart.sh`, then check `logs/nanoclaw.error.log` for missing `DISCORD_PUBLIC_KEY` / `DISCORD_APPLICATION_ID` complaints.
+**Adapter looks installed but Discord never connects.** Run `pnpm exec vitest run src/channels/discord-registration.test.ts` — red means the barrel import or the `@chat-adapter/discord` install drifted, so re-run the Apply steps. If it's green, the service probably hasn't restarted since the credentials were stored: `bash setup/lib/restart.sh`, then check `logs/area51.error.log` for missing `DISCORD_PUBLIC_KEY` / `DISCORD_APPLICATION_ID` complaints.

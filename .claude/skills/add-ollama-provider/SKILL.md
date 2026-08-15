@@ -1,6 +1,6 @@
 ---
 name: add-ollama-provider
-description: Route a NanoClaw agent group to a local Ollama model instead of the Anthropic API. Ollama speaks the Anthropic API natively (v1/messages), so no provider code changes are needed — just env var overrides and a model setting. Use when the user wants to run their agent locally, cut API costs, or experiment with open-weight models. See docs/ollama.md for background.
+description: Route a Area51 agent group to a local Ollama model instead of the Anthropic API. Ollama speaks the Anthropic API natively (v1/messages), so no provider code changes are needed — just env var overrides and a model setting. Use when the user wants to run their agent locally, cut API costs, or experiment with open-weight models. See docs/ollama.md for background.
 ---
 
 # Add Ollama Provider
@@ -43,7 +43,7 @@ blockedHosts: raw.blockedHosts,
 
 ### 1b. Wire into container-runner
 
-In `src/container-runner.ts`, after the `NANOCLAW_MCP_SERVERS` block, add:
+In `src/container-runner.ts`, after the `AREA51_MCP_SERVERS` block, add:
 
 ```typescript
 // Per-agent-group env overrides — applied last to win over OneCLI values.
@@ -130,7 +130,7 @@ file, not from env vars. This file is bind-mounted into the container as `~/.cla
 
 ## 5. Build and restart
 
-Run from your NanoClaw project root:
+Run from your Area51 project root:
 
 ```bash
 export PATH="/opt/homebrew/bin:$PATH"
@@ -150,7 +150,7 @@ Send a message to the agent. Then confirm:
 curl -s http://localhost:11434/api/ps | grep '"name"'
 
 # Container has the right env vars
-CTR=$(docker ps --filter "name=nanoclaw-v2-<FOLDER>" --format "{{.Names}}" | head -1)
+CTR=$(docker ps --filter "name=area51-v2-<FOLDER>" --format "{{.Names}}" | head -1)
 docker inspect "$CTR" --format '{{json .HostConfig.ExtraHosts}}'
 docker exec "$CTR" env | grep ANTHROPIC
 ```

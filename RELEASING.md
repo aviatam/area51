@@ -1,4 +1,4 @@
-# Releasing NanoClaw
+# Releasing Area51
 
 Starting with v2.0.63, the goal is to publish a GitHub Release for every `package.json` version bump that lands on `main`. A maintainer prepares the release in a pull request, then runs the explicit Release workflow after it merges. The intent is _timeliness_, not strict 1:1 correlation with every bump.
 
@@ -36,9 +36,9 @@ The workflow's `GITHUB_TOKEN` cannot read the immutable-release setting because 
 
 ```bash
 gh api -H 'X-GitHub-Api-Version: 2026-03-10' \
-  repos/nanocoai/nanoclaw/immutable-releases
+  repos/aviatam/area51/immutable-releases
 
-gh api repos/nanocoai/nanoclaw/rulesets \
+gh api repos/aviatam/area51/rulesets \
   --jq '.[] | select(.target == "tag" and .enforcement == "active") | {id, name}'
 ```
 
@@ -67,10 +67,10 @@ If multiple `package.json` bumps land between two GitHub Releases (as happened b
 
 ## Channels and stability
 
-NanoClaw currently ships a single channel: every published release is a stable release.
+Area51 currently ships a single channel: every published release is a stable release.
 
 - **Latest** — the most recent release on `main`, shown as "Latest release" on the GitHub Releases page. Consumers that want auto-bump follow GitHub's `/releases/latest` pointer.
-- **Stable** — currently identical to latest. NanoClaw has no separate stable branch and no pre-release/RC channel.
+- **Stable** — currently identical to latest. Area51 has no separate stable branch and no pre-release/RC channel.
 - **Pinned** — any tagged release. Reproducible and the recommended choice for packagers and forks; published tags are not moved or retracted.
 
 If a pre-release channel is introduced later (e.g. `vX.Y.Z-rc.N`), those releases will be marked "Pre-release" on GitHub so they do not become the `latest` pointer, and this section will be updated to describe the promotion path.

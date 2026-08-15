@@ -12,7 +12,7 @@ const tmp = mkdtempSync(join(tmpdir(), 'clidash-test-'));
 function stubCli(extra = {}) {
   return {
     bin: process.execPath,
-    discover: { args: [STUB, 'help'], parser: 'ncl-help' },
+    discover: { args: [STUB, 'help'], parser: 'area51-help' },
     list: [STUB, '{resource}', 'list', '--json'],
     output: 'json',
     unwrap: 'data',
@@ -48,8 +48,8 @@ test('/api/clis: lists configured CLIs with discovered resources', async () => {
     assert.equal(body.clis[0].name, 'stub');
     assert.equal(body.clis[0].refreshSeconds, 10);
     const names = body.clis[0].resources.map((r) => r.name);
-    assert.ok(names.includes('sessions'));
-    assert.ok(names.includes('groups'));
+    assert.ok(names.iarea51udes('sessions'));
+    assert.ok(names.iarea51udes('groups'));
     assert.equal(names.length, 11);
   });
 });

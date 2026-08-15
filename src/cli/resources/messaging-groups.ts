@@ -69,7 +69,7 @@ registerResource({
     },
     { name: 'created_at', type: 'string', description: 'Auto-set.', generated: true },
   ],
-  // Idempotent create: a skill re-running `ncl messaging-groups create` gets the existing row back.
+  // Idempotent create: a skill re-running `area51 messaging-groups create` gets the existing row back.
   naturalKey: ['channel_type', 'platform_id', 'instance'],
   operations: { list: 'open', get: 'open', create: 'approval', update: 'approval', delete: 'approval' },
   resolveDefaults: (values) => {

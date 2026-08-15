@@ -130,13 +130,6 @@ export async function run(_args: string[]): Promise<void> {
 
   const hasRegisteredGroups = detectRegisteredGroups(projectRoot);
 
-  // Check for existing OpenClaw installation
-  const homedir = (await import('os')).homedir();
-  const openClawPath =
-    fs.existsSync(path.join(homedir, '.openclaw')) ? path.join(homedir, '.openclaw') :
-    fs.existsSync(path.join(homedir, '.clawdbot')) ? path.join(homedir, '.clawdbot') :
-    null;
-
   log.info(
     'Environment check complete',
     {
@@ -146,7 +139,6 @@ export async function run(_args: string[]): Promise<void> {
       hasEnv,
       hasAuth,
       hasRegisteredGroups,
-      openClawPath,
     },
   );
 
@@ -158,7 +150,6 @@ export async function run(_args: string[]): Promise<void> {
     HAS_ENV: hasEnv,
     HAS_AUTH: hasAuth,
     HAS_REGISTERED_GROUPS: hasRegisteredGroups,
-    OPENCLAW_PATH: openClawPath ?? 'none',
     STATUS: 'success',
     LOG: 'logs/setup.log',
   });

@@ -3,16 +3,16 @@ import fs from 'fs';
 import path from 'path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const TEST_ROOT = '/tmp/nanoclaw-create-agent-test';
+const TEST_ROOT = '/tmp/area51-create-agent-test';
 const GROUPS_DIR = path.join(TEST_ROOT, 'groups');
 const DATA_DIR = path.join(TEST_ROOT, 'data');
 const TEMPLATES_DIR = path.join(TEST_ROOT, 'templates');
 
 vi.mock('../config.js', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../config.js')>()),
-  GROUPS_DIR: '/tmp/nanoclaw-create-agent-test/groups',
-  DATA_DIR: '/tmp/nanoclaw-create-agent-test/data',
-  TEMPLATES_DIR: '/tmp/nanoclaw-create-agent-test/templates',
+  GROUPS_DIR: '/tmp/area51-create-agent-test/groups',
+  DATA_DIR: '/tmp/area51-create-agent-test/data',
+  TEMPLATES_DIR: '/tmp/area51-create-agent-test/templates',
 }));
 
 vi.mock('../log.js', () => ({
@@ -24,21 +24,21 @@ import { getContainerConfig } from '../db/container-configs.js';
 import { findTaskSessions } from '../db/sessions.js';
 import { PERSONA_PREPEND_FILE } from '../group-persona.js';
 import { inboundDbPath } from '../session-manager.js';
-import { NANOCLAW_EXTENSION_NS } from './extension.js';
+import { AREA51_EXTENSION_NS } from './extension.js';
 import { MCP_SCHEMA_URL, PLUGIN_SCHEMA_URL } from './manifest.js';
 import { createAgentFromTemplate } from './create-agent.js';
 
 const TPL = path.join(TEMPLATES_DIR, 'sales', 'sdr');
 
 function writeTemplate(manifestExtras: Record<string, unknown> = {}): void {
-  fs.mkdirSync(path.join(TPL, NANOCLAW_EXTENSION_NS, 'context', 'additional_context'), { recursive: true });
+  fs.mkdirSync(path.join(TPL, AREA51_EXTENSION_NS, 'context', 'additional_context'), { recursive: true });
   fs.writeFileSync(
     path.join(TPL, 'plugin.json'),
     JSON.stringify({ $schema: PLUGIN_SCHEMA_URL, name: 'sdr', ...manifestExtras }),
   );
-  fs.writeFileSync(path.join(TPL, NANOCLAW_EXTENSION_NS, 'context', 'instructions.md'), 'You are an SDR agent.\n');
-  fs.writeFileSync(path.join(TPL, NANOCLAW_EXTENSION_NS, 'context', 'playbook.md'), '# Playbook\n');
-  fs.writeFileSync(path.join(TPL, NANOCLAW_EXTENSION_NS, 'context', 'additional_context', 'faq.md'), '# FAQ\n');
+  fs.writeFileSync(path.join(TPL, AREA51_EXTENSION_NS, 'context', 'instructions.md'), 'You are an SDR agent.\n');
+  fs.writeFileSync(path.join(TPL, AREA51_EXTENSION_NS, 'context', 'playbook.md'), '# Playbook\n');
+  fs.writeFileSync(path.join(TPL, AREA51_EXTENSION_NS, 'context', 'additional_context', 'faq.md'), '# FAQ\n');
   fs.writeFileSync(
     path.join(TPL, 'mcp.json'),
     JSON.stringify({
@@ -57,7 +57,7 @@ function writeTemplate(manifestExtras: Record<string, unknown> = {}): void {
 }
 
 function writeTask(name: string, schedule: string, prompt: string, script?: string): void {
-  const dir = path.join(TPL, NANOCLAW_EXTENSION_NS, 'tasks');
+  const dir = path.join(TPL, AREA51_EXTENSION_NS, 'tasks');
   fs.mkdirSync(dir, { recursive: true });
   const scriptBlock = script
     ? `script: |\n${script
@@ -149,7 +149,7 @@ describe('createAgentFromTemplate', () => {
 
   it('derives the display name: explicit option → extension agentName → folder leaf', () => {
     fs.rmSync(TPL, { recursive: true, force: true });
-    writeTemplate({ extensions: { [NANOCLAW_EXTENSION_NS]: { agentName: 'Sales Development Rep' } } });
+    writeTemplate({ extensions: { [AREA51_EXTENSION_NS]: { agentName: 'Sales Development Rep' } } });
     const { group: named } = createAgentFromTemplate('sales/sdr');
     expect(named.name).toBe('Sales Development Rep');
 
@@ -159,7 +159,7 @@ describe('createAgentFromTemplate', () => {
     expect(fallback.name).toBe('sdr');
 
     fs.rmSync(TPL, { recursive: true, force: true });
-    writeTemplate({ extensions: { [NANOCLAW_EXTENSION_NS]: { agentName: 'Ignored' } } });
+    writeTemplate({ extensions: { [AREA51_EXTENSION_NS]: { agentName: 'Ignored' } } });
     const { group: explicit } = createAgentFromTemplate('sales/sdr', { name: 'Chosen' });
     expect(explicit.name).toBe('Chosen');
   });

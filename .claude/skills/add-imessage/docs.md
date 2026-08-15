@@ -1,13 +1,13 @@
 # iMessage — one channel, two backends
 
-NanoClaw connects to **iMessage** through a single `imessage` channel with two
+Area51 connects to **iMessage** through a single `imessage` channel with two
 pluggable backends. Pick one at install time (or force it with
 `IMESSAGE_BACKEND=local|hosted`); only one runs per install.
 
 - **Local** — the Chat SDK bridge over [`chat-adapter-imessage`][adapter],
   reading **this Mac's** signed-in iMessage account (`chat.db`). macOS only, and
   the Node binary needs Full Disk Access. No third-party service — your messages
-  never leave your machine — but NanoClaw must run on the Mac that's signed in.
+  never leave your machine — but Area51 must run on the Mac that's signed in.
 - **Hosted** — a native adapter connecting to iMessage through [Photon][photon],
   a managed service that owns the iMessage line, delivery, and
   abuse-prevention, so you don't run a Mac relay. Works on any OS. Photon's free
@@ -36,7 +36,7 @@ local. If both are set without `IMESSAGE_BACKEND`, hosted wins (with a warning).
 ## Local backend (this Mac)
 
 macOS only. The adapter reads the signed-in account's `chat.db`, which requires
-**Full Disk Access** granted to the Node binary NanoClaw runs under. During
+**Full Disk Access** granted to the Node binary Area51 runs under. During
 `/setup` (or `/add-imessage`) we open the Node binary's folder in Finder so you
 can drag it into **System Settings → Privacy & Security → Full Disk Access**.
 
@@ -54,7 +54,7 @@ The DM `platform_id` / user id is the phone or email you iMessage with
 
 Like Discord and Slack, Photon is a **persistent-connection** channel — no
 public URL, no webhook, no signing secret. The `spectrum-ts` SDK holds a
-long-lived **gRPC stream** to Photon for both directions. NanoClaw's host runs
+long-lived **gRPC stream** to Photon for both directions. Area51's host runs
 on Node and `spectrum-ts` is a TypeScript SDK, so it runs **in-process on the
 host** — no Python sidecar (as in Hermes), no loopback HTTP. `deliver()` /
 `setTyping()` call the SDK directly; a re-subscribing consumer loop drains the
@@ -63,7 +63,7 @@ inbound stream.
 ```
                        gRPC (spectrum-ts, in-process)
 ┌─────────────────────────┐  ◄───────────────►  ┌──────────────────────────┐
-│  Photon Spectrum cloud  │   app.messages       │  NanoClaw host (Node)    │
+│  Photon Spectrum cloud  │   app.messages       │  Area51 host (Node)    │
 │  (iMessage line owner)  │   space.send()       │  imessage.ts (hosted)    │
 └─────────────────────────┘                      └──────────┬───────────────┘
                                         onInbound / deliver  │  ▲
@@ -96,10 +96,10 @@ The device-login bearer token used during setup is cached in
 
 ### Setup wizard
 
-During first-time NanoClaw setup, choose **Yes, connect iMessage** and then
+During first-time Area51 setup, choose **Yes, connect iMessage** and then
 **Hosted iMessage**. That path asks for your iMessage phone number, runs the
 Photon device login and provisioning wizard, installs the pinned runtime SDK,
-restarts NanoClaw, and wires the DM to your first agent. It does not ask for a
+restarts Area51, and wires the DM to your first agent. It does not ask for a
 server URL or API key.
 
 `/add-imessage` (Hosted) provides the same flow for an existing installation.
@@ -120,7 +120,7 @@ pnpm exec tsx scripts/photon-setup.ts --phone +15551234567
    opens your browser, and polls until you approve. Talks only to Photon's
    dashboard HTTP API — it does not import `spectrum-ts`, so it works before the
    runtime SDK is installed.
-2. **Find or create** the `NanoClaw` project on the Photon dashboard.
+2. **Find or create** the `Area51` project on the Photon dashboard.
 3. **Reuse the project's current secret** (regenerating only when the API
    returns none) and write `PHOTON_PROJECT_ID` + `PHOTON_PROJECT_SECRET` to
    `.env`.
@@ -171,7 +171,7 @@ All optional, set in `.env`:
   unknown number is rejected with `Target not allowed for this project`. Text
   your agent's number once before expecting anything back (this is why the
   wiring steps start with "text the number"). A welcome DM queued before that
-  first inbound text simply fails delivery — it is not a NanoClaw bug.
+  first inbound text simply fails delivery — it is not a Area51 bug.
 - **Markdown** — replies are sent via the SDK's `markdown()` builder; iMessage
   renders bold/italics/lists/code natively. `PHOTON_MARKDOWN=false` reverts to
   plain text.
@@ -217,8 +217,8 @@ deliberate:
 | Device login times out                  | Re-run the wizard (the code expires in ~30 min; a stored token is reused)                                             |
 | No iMessage line assigned               | The line comes back on your user row — re-run the wizard with `--phone` so the row is created, then `… photon-setup.ts status` |
 | Inbound stops arriving (hosted)         | The adapter re-subscribes automatically; if it persists it's usually upstream — restart to force a fresh stream       |
-| Local: no inbound                       | Confirm Full Disk Access is granted to the Node binary NanoClaw runs under, and that it runs on the signed-in Mac     |
-| Bot silent (hosted)                     | Check `grep "Photon channel connected" logs/nanoclaw.log`, that the channel is wired, and that the service is running |
+| Local: no inbound                       | Confirm Full Disk Access is granted to the Node binary Area51 runs under, and that it runs on the signed-in Mac     |
+| Bot silent (hosted)                     | Check `grep "Photon channel connected" logs/area51.log`, that the channel is wired, and that the service is running |
 
 [photon]: https://photon.codes/
 [adapter]: https://www.npmjs.com/package/chat-adapter-imessage

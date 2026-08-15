@@ -55,13 +55,13 @@ describe('cleanupUnhealthyPeers — dead launchd registrations', () => {
 
   it('removes a plist whose target binary is gone', () => {
     const { agentsDir, projectRoot } = setup();
-    const dead = path.join(agentsDir, 'com.nanoclaw-v2-dead.plist');
+    const dead = path.join(agentsDir, 'com.area51-v2-dead.plist');
     writePlist(dead, path.join(agentsDir, 'gone', 'dist', 'index.js'));
 
     const result = cleanupUnhealthyPeers(projectRoot);
 
     expect(fs.existsSync(dead)).toBe(false);
-    expect(result.removed.map((r) => r.label)).toContain('com.nanoclaw-v2-dead');
+    expect(result.removed.map((r) => r.label)).toContain('com.area51-v2-dead');
   });
 
   it('leaves a plist whose target still exists', () => {
@@ -69,7 +69,7 @@ describe('cleanupUnhealthyPeers — dead launchd registrations', () => {
     const liveTarget = path.join(agentsDir, 'live', 'dist', 'index.js');
     fs.mkdirSync(path.dirname(liveTarget), { recursive: true });
     fs.writeFileSync(liveTarget, '// host entry');
-    const live = path.join(agentsDir, 'com.nanoclaw-v2-live.plist');
+    const live = path.join(agentsDir, 'com.area51-v2-live.plist');
     writePlist(live, liveTarget);
 
     const result = cleanupUnhealthyPeers(projectRoot);
@@ -92,7 +92,7 @@ describe('cleanupUnhealthyPeers — dead launchd registrations', () => {
 
   it('ignores an unrecognized plist (no dist/index.js target)', () => {
     const { agentsDir, projectRoot } = setup();
-    const weird = path.join(agentsDir, 'com.nanoclaw-v2-weird.plist');
+    const weird = path.join(agentsDir, 'com.area51-v2-weird.plist');
     fs.writeFileSync(weird, '<plist><dict></dict></plist>');
 
     const result = cleanupUnhealthyPeers(projectRoot);
@@ -115,13 +115,13 @@ describe('cleanupUnhealthyPeers — dead systemd registrations', () => {
 
   it('removes a unit whose target binary is gone', () => {
     const { unitDir, projectRoot } = setup();
-    const dead = path.join(unitDir, 'nanoclaw-v2-dead.service');
+    const dead = path.join(unitDir, 'area51-v2-dead.service');
     writeUnit(dead, path.join(unitDir, 'gone', 'dist', 'index.js'));
 
     const result = cleanupUnhealthyPeers(projectRoot);
 
     expect(fs.existsSync(dead)).toBe(false);
-    expect(result.removed.map((r) => r.label)).toContain('nanoclaw-v2-dead');
+    expect(result.removed.map((r) => r.label)).toContain('area51-v2-dead');
   });
 
   it("never reaps this install's own unit", () => {

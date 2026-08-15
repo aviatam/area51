@@ -7,7 +7,7 @@ import type { MessageInRow } from './db/messages-in.js';
 
 /**
  * `/upload-trace` command: upload this session's Claude Code transcript to the user's
- * own private `{hf_user}/nanoclaw-traces` dataset, browsable in the HF Agent
+ * own private `{hf_user}/area51-traces` dataset, browsable in the HF Agent
  * Trace Viewer. The transcript the Claude provider keeps under
  * `~/.claude/projects/<dir>/<sessionId>.jsonl` is already in the format the
  * viewer auto-detects, so this just locates the newest one and pushes it.
@@ -126,7 +126,7 @@ export function uploadTrace(): string {
   }
   if (!user) return 'Could not resolve your Hugging Face username.';
 
-  const repo = `${user}/nanoclaw-traces`;
+  const repo = `${user}/area51-traces`;
   // Idempotent create — ignore failure (already exists / no-op). The
   // Content-Type header is required: without it curl sends form-encoding and
   // the Hub rejects the body with 400 (expected string at "name").
@@ -138,7 +138,7 @@ export function uploadTrace(): string {
     '-H',
     'Content-Type: application/json',
     '-d',
-    JSON.stringify({ type: 'dataset', name: 'nanoclaw-traces', private: true }),
+    JSON.stringify({ type: 'dataset', name: 'area51-traces', private: true }),
   ]);
 
   const content = fs.readFileSync(file).toString('base64');

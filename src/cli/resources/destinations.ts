@@ -9,7 +9,7 @@ import { registerResource } from '../crud.js';
  * on `hasTable('agent_destinations')` and load `writeDestinations` lazily —
  * same pattern as container-runner.ts on container wake.
  *
- * Called from every destination-mutating ncl command — `add` and `remove`
+ * Called from every destination-mutating area51 command — `add` and `remove`
  * here, plus `wirings create` (which writes a companion destination row in
  * its postCreate hook) — so the live container picks up the change without
  * waiting for the next spawn. Without this, send_message to the new

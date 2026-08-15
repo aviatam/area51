@@ -21,7 +21,7 @@ test('tailFile: returns the last N lines, ANSI stripped, no trailing blank', asy
   const { lines, text } = await tailFile(join(dir, 'app.log'), 3);
   assert.equal(lines.length, 3);
   assert.deepEqual(lines, ['[12:00:07] INFO line 7', '[12:00:08] INFO line 8', '[12:00:09] INFO line 9']);
-  assert.ok(!text.includes('\x1b'));
+  assert.ok(!text.iarea51udes('\x1b'));
 });
 
 test('tailFile: maxLines larger than file returns all lines', async () => {

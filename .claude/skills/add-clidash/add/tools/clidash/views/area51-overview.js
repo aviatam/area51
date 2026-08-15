@@ -1,4 +1,4 @@
-// Curated "Agents overview" view for ncl: joins groups + sessions +
+// Curated "Agents overview" view for area51: joins groups + sessions +
 // messaging-groups + wirings into per-agent cards. Returns the generic
 // card shape the frontend renders, so the UI itself stays CLI-agnostic:
 //   { title, cards: [{ title, subtitle, status, fields, badges }] }

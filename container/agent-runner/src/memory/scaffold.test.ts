@@ -14,7 +14,7 @@ function parseFrontmatter(filePath: string): unknown {
 
 describe('ensureMemoryScaffold', () => {
   it('deterministically creates the memory tree', () => {
-    const base = fs.mkdtempSync(path.join(os.tmpdir(), 'nanoclaw-mem-'));
+    const base = fs.mkdtempSync(path.join(os.tmpdir(), 'area51-mem-'));
     try {
       ensureMemoryScaffold(base);
 
@@ -34,7 +34,7 @@ describe('ensureMemoryScaffold', () => {
   });
 
   it('never imports legacy workspace memory during normal startup', () => {
-    const base = fs.mkdtempSync(path.join(os.tmpdir(), 'nanoclaw-mem-'));
+    const base = fs.mkdtempSync(path.join(os.tmpdir(), 'area51-mem-'));
     try {
       fs.writeFileSync(path.join(base, 'CLAUDE.local.md'), '# group memory\nuser prefers terse replies\n');
 
@@ -48,7 +48,7 @@ describe('ensureMemoryScaffold', () => {
   });
 
   it('is idempotent and never clobbers the agent edits', () => {
-    const base = fs.mkdtempSync(path.join(os.tmpdir(), 'nanoclaw-mem-'));
+    const base = fs.mkdtempSync(path.join(os.tmpdir(), 'area51-mem-'));
     try {
       ensureMemoryScaffold(base);
       const indexFile = path.join(base, 'memory', 'index.md');
@@ -63,7 +63,7 @@ describe('ensureMemoryScaffold', () => {
   });
 
   it('leaves legacy memory folders and their contents untouched', () => {
-    const base = fs.mkdtempSync(path.join(os.tmpdir(), 'nanoclaw-mem-'));
+    const base = fs.mkdtempSync(path.join(os.tmpdir(), 'area51-mem-'));
     try {
       const legacyFile = path.join(base, 'memory', 'memories', 'legacy.md');
       fs.mkdirSync(path.dirname(legacyFile), { recursive: true });

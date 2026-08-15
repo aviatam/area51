@@ -22,9 +22,9 @@
 //   dep [manager:pnpm]      body: `pkg@<exact-semver>` line(s)        reinstall no-op
 //   run [effect:build|test|fetch|external|wire|restart|step|check] [capture:<spec>]  re-runnable
 //        body: shell command(s). {{vars}} are substituted in. effect:wire runs
-//        `ncl …` to wire collected input (no undo — the rows it creates are user
+//        `area51 …` to wire collected input (no undo — the rows it creates are user
 //        runtime data, not reversed on skill remove). effect:restart restarts the
-//        service so following `ncl` runs reach it; a caller that owns the restart
+//        service so following `area51` runs reach it; a caller that owns the restart
 //        (rebuild, or a setup that restarts once) skips it via ApplyOptions.
 //        skipEffects. capture:<var> binds the command's stdout into {{var}} (twin
 //        of prompt) — e.g. resolve an id from an API and feed it to a later step.
@@ -35,7 +35,7 @@
 //        an agent (a command's output has no human to re-prompt — unlike prompt).
 //        effect:step runs a long-running, operator-interactive step (a pairing
 //        code, a QR device-link) through the streaming exec: its
-//        `=== NANOCLAW SETUP: … ===` status blocks render to the operator live and
+//        `=== AREA51 SETUP: … ===` status blocks render to the operator live and
 //        `capture:<var>=<FIELD>[,<var2>=<FIELD2>…]` binds the terminal block's
 //        named fields into {{vars}} (multi-valued, structured twin of stdout
 //        capture). Degrades to an agent when no streaming exec is wired.
@@ -109,7 +109,7 @@ export interface Problem {
   message: string;
 }
 
-const FENCE = /^```(\S.*)?$/;
+const FENCE = /^```(\S.*)?\r?$/;
 const EXACT_SEMVER = /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/;
 const VAR_REF = /\{\{\s*([A-Za-z_][A-Za-z0-9_]*)\s*\}\}/g;
 const KNOWN = new Set(['copy', 'append', 'dep', 'run', 'prompt', 'operator', 'env-set', 'json-merge']);

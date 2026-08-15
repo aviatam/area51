@@ -7,7 +7,7 @@
  * existing step code keeps reading env vars unchanged.
  *
  * Default name conventions (overridable per entry):
- *   key 'fooBar' → envVar 'NANOCLAW_FOO_BAR' → flag '--foo-bar'
+ *   key 'fooBar' → envVar 'AREA51_FOO_BAR' → flag '--foo-bar'
  *
  * Surface levels:
  *   'flag'     — CLI flag + env var only (debug/internal knobs)
@@ -19,7 +19,7 @@ export type EntrySurface = 'flag' | 'flag+ui';
 interface BaseEntry {
   /** Canonical camelCase key. */
   key: string;
-  /** Override of the auto-derived NANOCLAW_<UPPER_SNAKE> env var. */
+  /** Override of the auto-derived AREA51_<UPPER_SNAKE> env var. */
   envVar?: string;
   /** Override of the auto-derived --kebab-case flag. */
   flag?: string;
@@ -118,7 +118,7 @@ export const CONFIG: Entry[] = [
   // Existing env-var knobs — flag-only so they don't clutter the UI screen.
   {
     key: 'skip',
-    envVar: 'NANOCLAW_SKIP',
+    envVar: 'AREA51_SKIP',
     label: 'Skip steps',
     help: 'Comma-separated step names to skip (debugging only).',
     surface: 'flag',
@@ -126,7 +126,7 @@ export const CONFIG: Entry[] = [
   },
   {
     key: 'displayName',
-    envVar: 'NANOCLAW_DISPLAY_NAME',
+    envVar: 'AREA51_DISPLAY_NAME',
     label: 'Display name',
     help: 'Skip the "what should your assistant call you?" prompt.',
     surface: 'flag',
@@ -134,7 +134,7 @@ export const CONFIG: Entry[] = [
   },
   {
     key: 'agentProvider',
-    envVar: 'NANOCLAW_AGENT_PROVIDER',
+    envVar: 'AREA51_AGENT_PROVIDER',
     label: 'Agent provider',
     help: 'Preselect the setup provider and skip the provider picker.',
     surface: 'flag',
@@ -142,7 +142,7 @@ export const CONFIG: Entry[] = [
   },
   {
     key: 'assistMode',
-    envVar: 'NANOCLAW_SETUP_ASSIST_MODE',
+    envVar: 'AREA51_SETUP_ASSIST_MODE',
     label: 'Assist mode',
     help: 'Use non-interactive Claude assist on failure instead of interactive handoff.',
     surface: 'flag',
@@ -154,7 +154,7 @@ export const CONFIG: Entry[] = [
   {
     key: 'uninstall',
     label: 'Uninstall',
-    help: 'Remove this NanoClaw copy (service, containers, data, vault agents). Asks per group.',
+    help: 'Remove this Area51 copy (service, containers, data, vault agents). Asks per group.',
     surface: 'flag',
     type: 'boolean',
     default: false,
@@ -181,7 +181,7 @@ export const CONFIG: Entry[] = [
 
 export function envVarFor(e: Entry): string {
   if (e.envVar) return e.envVar;
-  return `NANOCLAW_${e.key.replace(/[A-Z]/g, (c) => `_${c}`).toUpperCase()}`;
+  return `AREA51_${e.key.replace(/[A-Z]/g, (c) => `_${c}`).toUpperCase()}`;
 }
 
 export function flagFor(e: Entry): string {

@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # install-signal-cli.sh — auto-install signal-cli on the host.
 #
-# NanoClaw needs `signal-cli` on PATH to talk to Signal. Picks the right
+# Area51 needs `signal-cli` on PATH to talk to Signal. Picks the right
 # install method per platform:
 #   macOS  → `brew install signal-cli` (bottled, no Java needed)
 #   Linux  → download latest native binary from GitHub releases to
 #            ~/.local/bin/signal-cli (no Java, no sudo)
 #
-# Emits the standard NanoClaw STATUS block on success or failure so the
+# Emits the standard Area51 STATUS block on success or failure so the
 # `runQuietChild` driver can parse the outcome.
 
 set -euo pipefail
@@ -17,7 +17,7 @@ INSTALL_DIR="${HOME}/.local/bin"
 
 emit_status() {
   local status=$1 error=${2:-}
-  echo "=== NANOCLAW SETUP: INSTALL_SIGNAL_CLI ==="
+  echo "=== AREA51 SETUP: INSTALL_SIGNAL_CLI ==="
   echo "STATUS: ${status}"
   [ -n "$error" ] && echo "ERROR: ${error}"
   echo "=== END ==="

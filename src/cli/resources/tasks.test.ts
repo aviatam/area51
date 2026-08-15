@@ -6,8 +6,8 @@ vi.mock('../../config.js', async () => {
   const actual = await vi.importActual('../../config.js');
   return {
     ...actual,
-    DATA_DIR: '/tmp/nanoclaw-test-cli-tasks',
-    GROUPS_DIR: '/tmp/nanoclaw-test-cli-tasks/groups',
+    DATA_DIR: '/tmp/area51-test-cli-tasks',
+    GROUPS_DIR: '/tmp/area51-test-cli-tasks/groups',
     TIMEZONE: 'UTC',
   };
 });
@@ -19,7 +19,7 @@ vi.mock('../../container-runner.js', () => ({
   killContainer: vi.fn(),
 }));
 
-const TEST_DIR = '/tmp/nanoclaw-test-cli-tasks';
+const TEST_DIR = '/tmp/area51-test-cli-tasks';
 
 import { initTestDb, closeDb, runMigrations, createAgentGroup } from '../../db/index.js';
 import { createSession, findSessionByAgentGroup, getSessionsByAgentGroup, taskThreadId } from '../../db/sessions.js';
@@ -139,7 +139,7 @@ describe('tasks CLI resource', () => {
     expect(resp.ok).toBe(false);
     if (!resp.ok) {
       expect(resp.error.message).toContain('this task has not been scheduled');
-      expect(resp.error.message).toContain('ncl tasks create --help');
+      expect(resp.error.message).toContain('area51 tasks create --help');
       expect(resp.error.message).toContain('--dangerously-override-recurrence-limit');
     }
   });
@@ -414,7 +414,7 @@ describe('tasks CLI resource', () => {
   });
 
   // The schedule→wake primitive without a container: a task created through the
-  // real `ncl tasks create` path must land in the agent group's system session
+  // real `area51 tasks create` path must land in the agent group's system session
   // AND be counted by the same due-message query the host sweep uses to decide a
   // wake. Goes red if trigger defaulting, system-session routing, or the due
   // predicate ever drift apart.
@@ -518,7 +518,7 @@ describe('formatTasksTable', () => {
       status: 'pending',
       log: 'tasks/task-5bbe082a.md',
       created_at: '2026-01-15T08:05:30Z', // 1h before now
-      prompt: 'You are NanoClaw, wired into the company brain, your job this run is to read it',
+      prompt: 'You are Area51, wired into the company brain, your job this run is to read it',
     },
   ];
 
@@ -554,7 +554,7 @@ describe('formatTasksTable', () => {
   });
 });
 
-describe('deep verb help (ncl tasks help create)', () => {
+describe('deep verb help (area51 tasks help create)', () => {
   it('resolves through the dispatcher fallback and renders the full contract + examples', async () => {
     // Side-effect import mirrors the CLI server boot: registers <plural>-help.
     await import('../commands/index.js');
@@ -563,7 +563,7 @@ describe('deep verb help (ncl tasks help create)', () => {
     expect(resp.ok).toBe(true);
     if (resp.ok) {
       const text = resp.data as string;
-      expect(text).toContain('ncl tasks create');
+      expect(text).toContain('area51 tasks create');
       expect(text).toContain('wakeAgent'); // full multi-line script contract present
       expect(text).toContain('Examples:'); // examples block rendered
     }

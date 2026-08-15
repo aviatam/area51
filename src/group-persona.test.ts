@@ -9,7 +9,7 @@ vi.mock('./log.js', () => ({
 import { PERSONA_PREPEND_FILE, readGroupPersona, stageGroupPersona } from './group-persona.js';
 import { log } from './log.js';
 
-const TMP = '/tmp/nanoclaw-group-persona-test';
+const TMP = '/tmp/area51-group-persona-test';
 
 beforeEach(() => {
   vi.clearAllMocks();

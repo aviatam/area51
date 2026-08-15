@@ -1,19 +1,19 @@
 /**
- * `ncl` binary entry point.
+ * `area51` binary entry point.
  *
  * Parses argv, builds a request frame, sends it via the picked transport,
  * formats the response, exits non-zero on error.
  *
  * Usage:
- *   ncl <resource> <verb> [target] [--key value ...] [--json]
+ *   area51 <resource> <verb> [target] [--key value ...] [--json]
  *
  * Examples:
- *   ncl groups list
- *   ncl groups get abc123
- *   ncl groups create --name foo --folder bar
- *   ncl groups update abc123 --name baz
- *   ncl help
- *   ncl groups help
+ *   area51 groups list
+ *   area51 groups get abc123
+ *   area51 groups create --name foo --folder bar
+ *   area51 groups update abc123 --name baz
+ *   area51 help
+ *   area51 groups help
  */
 import { randomUUID } from 'crypto';
 
@@ -49,7 +49,7 @@ async function main(): Promise<void> {
       : formatResponse(res, json ? 'json' : 'human');
   // Exit only after stdout drains: process.exit() discards buffered pipe
   // writes, silently truncating any response past the 64KB pipe buffer
-  // (bit `ncl sessions list --json` at scale).
+  // (bit `area51 sessions list --json` at scale).
   process.stdout.write(output, () => process.exit(res.ok ? 0 : 1));
 }
 
@@ -87,7 +87,7 @@ function parseArgv(argv: string[]): {
   }
 
   if (positional.length === 0) {
-    process.stderr.write('ncl: missing command\n');
+    process.stderr.write('area51: missing command\n');
     printUsage();
     process.exit(2);
   }
@@ -104,15 +104,15 @@ function parseArgv(argv: string[]): {
 function printUsage(): void {
   process.stdout.write(
     [
-      'Usage: ncl <resource> <verb> [target] [--key value ...] [--json]',
+      'Usage: area51 <resource> <verb> [target] [--key value ...] [--json]',
       '',
-      'Run `ncl help` to list available resources and commands.',
+      'Run `area51 help` to list available resources and commands.',
       '',
     ].join('\n'),
   );
 }
 
 main().catch((err) => {
-  process.stderr.write(`ncl: unexpected error: ${err instanceof Error ? err.message : String(err)}\n`);
+  process.stderr.write(`area51: unexpected error: ${err instanceof Error ? err.message : String(err)}\n`);
   process.exit(2);
 });

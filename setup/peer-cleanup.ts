@@ -1,10 +1,10 @@
 /**
- * Detect and clean up unhealthy NanoClaw peer services.
+ * Detect and clean up unhealthy Area51 peer services.
  *
  * Runs as a setup preflight before we install our own service. A crash-looping
- * peer install (typically the legacy v1 `com.nanoclaw` plist) silently trashes
+ * peer install (typically the legacy v1 `com.area51` plist) silently trashes
  * this install's containers on every respawn because its `cleanupOrphans()`
- * reaps anything matching `nanoclaw-`. We scope our reaper by label now, but
+ * reaps anything matching `area51-`. We scope our reaper by label now, but
  * we still need to stop the peer from killing us on its way down.
  *
  * A peer is "unhealthy" when:
@@ -48,7 +48,7 @@ export interface PeerCleanupResult {
 }
 
 /**
- * Scan for peer NanoClaw services and unload any that are crash-looping.
+ * Scan for peer Area51 services and unload any that are crash-looping.
  * Returns a summary suitable for emitStatus / setup-log reporting.
  */
 export function cleanupUnhealthyPeers(projectRoot: string = process.cwd()): PeerCleanupResult {
@@ -105,7 +105,7 @@ function cleanupLaunchdPeers(projectRoot: string): PeerCleanupResult {
   try {
     plists = fs
       .readdirSync(agentsDir)
-      .filter((f) => /^com\.nanoclaw.*\.plist$/.test(f))
+      .filter((f) => /^com\.area51.*\.plist$/.test(f))
       .map((f) => path.join(agentsDir, f));
   } catch {
     return result;
@@ -207,7 +207,7 @@ function cleanupSystemdPeers(projectRoot: string): PeerCleanupResult {
   try {
     units = fs
       .readdirSync(unitDir)
-      .filter((f) => /^nanoclaw.*\.service$/.test(f))
+      .filter((f) => /^area51.*\.service$/.test(f))
       .map((f) => f.replace(/\.service$/, ''));
   } catch {
     return result;

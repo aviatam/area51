@@ -67,14 +67,14 @@ export async function handleRecurrence(inDb: Database.Database, session: Session
       const scriptFails = trailingFailedRuns(inDb, msg.series_id ?? msg.id);
 
       if (scriptFails >= SCRIPT_FAIL_PAUSE_CAP) {
-        // Re-arm PAUSED at the cron time so `ncl tasks resume` revives the
+        // Re-arm PAUSED at the cron time so `area51 tasks resume` revives the
         // series in place; leave the why in the run log.
         insertRecurrence(inDb, msg, newId, cronNext.toISOString(), 'paused');
         clearRecurrence(inDb, msg.id);
         appendHostTaskNote(
           session.agent_group_id,
           msg.series_id,
-          `auto-paused after ${scriptFails} consecutive script failures (host); fix the script, then \`ncl tasks resume ${msg.series_id}\``,
+          `auto-paused after ${scriptFails} consecutive script failures (host); fix the script, then \`area51 tasks resume ${msg.series_id}\``,
         );
         log.warn('Task series auto-paused: script keeps failing', {
           seriesId: msg.series_id,

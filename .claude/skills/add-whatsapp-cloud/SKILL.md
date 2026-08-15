@@ -5,8 +5,8 @@ description: Add WhatsApp Business Cloud API channel via Chat SDK. Official Meta
 
 # Add WhatsApp Cloud API Channel
 
-Connect NanoClaw to WhatsApp via the official Meta WhatsApp Business Cloud API.
-NanoClaw doesn't ship channels in trunk — this skill copies the WhatsApp Cloud
+Connect Area51 to WhatsApp via the official Meta WhatsApp Business Cloud API.
+Area51 doesn't ship channels in trunk — this skill copies the WhatsApp Cloud
 adapter in from the `channels` branch.
 
 The mechanical steps under **Apply** carry `nc:` directive fences: an agent reads
@@ -102,7 +102,7 @@ compiling, registered adapter that cannot receive a message until they're done.
 
 Capture the four values, then write them. `prompt` only *asks* and binds the
 answer to a name; a separate directive consumes it — so the same prompts could
-feed `ncl` or the OneCLI vault instead of `.env` by swapping only the consumer.
+feed `area51` or the OneCLI vault instead of `.env` by swapping only the consumer.
 Here they go to `.env` (set-if-absent — a value you've already filled in is
 never overwritten):
 

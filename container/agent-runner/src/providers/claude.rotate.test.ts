@@ -36,18 +36,18 @@ function writeTranscript(sessionId: string, bytes: number, firstTs?: string): st
 beforeEach(() => {
   tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'claude-rotate-'));
   prevHome = process.env.HOME;
-  prevConv = process.env.NANOCLAW_CONVERSATIONS_DIR;
+  prevConv = process.env.AREA51_CONVERSATIONS_DIR;
   prevBytes = process.env.CLAUDE_TRANSCRIPT_ROTATE_BYTES;
   prevDays = process.env.CLAUDE_TRANSCRIPT_ROTATE_AGE_DAYS;
   process.env.HOME = tmp;
   delete process.env.CLAUDE_CONFIG_DIR;
-  process.env.NANOCLAW_CONVERSATIONS_DIR = path.join(tmp, 'conversations');
+  process.env.AREA51_CONVERSATIONS_DIR = path.join(tmp, 'conversations');
 });
 
 afterEach(() => {
   const restore = (k: string, v: string | undefined) => (v === undefined ? delete process.env[k] : (process.env[k] = v));
   restore('HOME', prevHome);
-  restore('NANOCLAW_CONVERSATIONS_DIR', prevConv);
+  restore('AREA51_CONVERSATIONS_DIR', prevConv);
   restore('CLAUDE_TRANSCRIPT_ROTATE_BYTES', prevBytes);
   restore('CLAUDE_TRANSCRIPT_ROTATE_AGE_DAYS', prevDays);
   fs.rmSync(tmp, { recursive: true, force: true });

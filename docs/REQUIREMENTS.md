@@ -1,4 +1,4 @@
-# NanoClaw Requirements
+# Area51 Requirements
 
 Original requirements and design decisions from the project creator.
 
@@ -6,9 +6,9 @@ Original requirements and design decisions from the project creator.
 
 ## Why This Exists
 
-This is a lightweight, secure alternative to OpenClaw (formerly ClawBot). That project became a monstrosity - 4-5 different processes running different gateways, endless configuration files, endless integrations. It's a security nightmare where agents don't run in isolated processes; there's all kinds of leaky workarounds trying to prevent them from accessing parts of the system they shouldn't. It's impossible for anyone to realistically understand the whole codebase. When you run it you're kind of just yoloing it.
+This is a lightweight, secure alternative to older agent runtime (formerly ClawBot). That project became a monstrosity - 4-5 different processes running different gateways, endless configuration files, endless integrations. It's a security nightmare where agents don't run in isolated processes; there's all kinds of leaky workarounds trying to prevent them from accessing parts of the system they shouldn't. It's impossible for anyone to realistically understand the whole codebase. When you run it you're kind of just yoloing it.
 
-NanoClaw gives you the core functionality without that mess.
+Area51 gives you the core functionality without that mess.
 
 ---
 
@@ -50,7 +50,7 @@ Skills we'd like to see contributed:
 
 None currently — Signal and Matrix have since shipped as skills.
 
-> **Note:** Telegram, Slack, Discord, Gmail, Signal, and Matrix skills already exist. See the [skills documentation](https://docs.nanoclaw.dev/integrations/skills-system) for the full list.
+> **Note:** Telegram, Slack, Discord, Gmail, Signal, and Matrix skills already exist. See the [skills documentation](https://docs.area51.dev/integrations/skills-system) for the full list.
 
 ---
 
@@ -134,7 +134,7 @@ A personal AI assistant accessible via messaging, with minimal custom code.
 
 ### Scheduler
 - Built-in scheduler runs on the host, spawns containers for task execution
-- `ncl tasks` provides scheduling commands
+- `area51 tasks` provides scheduling commands
 - Commands: `list`, `get`, `create`, `update`, `cancel`, `pause`, `resume`, `delete`, `run`, `append-log`
 - Tasks stored in SQLite with run history
 - Scheduler loop checks for due tasks every minute
@@ -163,7 +163,7 @@ A personal AI assistant accessible via messaging, with minimal custom code.
 ### Skills
 - `/setup` - Install dependencies, configure channels, start services
 - `/customize` - General-purpose skill for adding capabilities
-- `/update-nanoclaw` - Pull upstream changes, merge with customizations
+- `/update-area51` - Pull upstream changes, merge with customizations
 
 ### Deployment
 - Runs on macOS (launchd), Linux (systemd), or Windows (WSL2)
@@ -184,4 +184,4 @@ These are the creator's settings, stored here for reference:
 
 ## Project Name
 
-**NanoClaw** - A reference to Clawdbot (now OpenClaw).
+**Area51** - A reference to Clawdbot (now older agent runtime).

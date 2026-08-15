@@ -14,7 +14,7 @@ import tiktoken
 
 CONTEXT_WINDOW = 1_000_000
 BADGE_PATH = "repo-tokens/badge.svg"
-LINK_URL = "https://github.com/nanocoai/nanoclaw/tree/main/repo-tokens"
+LINK_URL = "https://github.com/aviatam/area51/tree/main/repo-tokens"
 
 
 def included(path: str) -> bool:
@@ -29,7 +29,7 @@ def included(path: str) -> bool:
     return path in (
         "container/Dockerfile",
         "container/build.sh",
-        "launchd/com.nanoclaw.plist",
+        "launchd/com.area51.plist",
         "CLAUDE.md",
     )
 

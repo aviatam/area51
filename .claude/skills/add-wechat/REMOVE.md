@@ -39,11 +39,11 @@ rm -rf data/wechat
 The channel's messaging groups, wirings, and conversation history are **left
 intact** — you created those at runtime (wiring + use), not this skill's install,
 so removal doesn't touch them. To purge them deliberately, delete them yourself
-with `ncl messaging-groups delete <id>`.
+with `area51 messaging-groups delete <id>`.
 
 ## 5. Rebuild and restart
 
-Run from your NanoClaw project root:
+Run from your Area51 project root:
 
 ```bash
 pnpm run build

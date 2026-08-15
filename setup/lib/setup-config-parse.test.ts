@@ -8,19 +8,19 @@ import { describe, expect, it } from 'vitest';
 import { parseFlags } from './setup-config-parse.js';
 
 describe('public setup flags', () => {
-  it('forwards nanoclaw.sh arguments without an end-of-options marker', () => {
-    const entrypoint = fs.readFileSync(path.join(process.cwd(), 'nanoclaw.sh'), 'utf8');
+  it('forwards area51.sh arguments without an end-of-options marker', () => {
+    const entrypoint = fs.readFileSync(path.join(process.cwd(), 'area51.sh'), 'utf8');
     expect(entrypoint).toContain('exec pnpm --silent run setup:auto "$@"');
     expect(entrypoint).not.toContain('run setup:auto -- "$@"');
   });
 
   it('shows shell help without running bootstrap when dependencies are absent', () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'nanoclaw-help-'));
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'area51-help-'));
     try {
-      fs.copyFileSync(path.join(process.cwd(), 'nanoclaw.sh'), path.join(root, 'nanoclaw.sh'));
+      fs.copyFileSync(path.join(process.cwd(), 'area51.sh'), path.join(root, 'area51.sh'));
       fs.writeFileSync(path.join(root, 'setup.sh'), 'touch bootstrap-ran\n');
 
-      const result = spawnSync('bash', ['nanoclaw.sh', '--help'], { cwd: root, encoding: 'utf8' });
+      const result = spawnSync('bash', ['area51.sh', '--help'], { cwd: root, encoding: 'utf8' });
 
       expect(result.status).toBe(0);
       expect(result.stdout).toContain('--template-path <ref>');

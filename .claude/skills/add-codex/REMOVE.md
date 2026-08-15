@@ -7,10 +7,10 @@ Reverses every change `/add-codex` makes and returns every group to the default 
 List groups still on codex and switch each one (each group's `memory/` tree stays on disk and readable; run `/migrate-memory` per group if its memory should carry back to Claude — see [docs/provider-migration.md](../../docs/provider-migration.md)):
 
 ```bash
-ncl groups list
+area51 groups list
 # for each group whose config shows provider=codex:
-ncl groups config update --id <group-id> --provider claude
-ncl groups restart --id <group-id>
+area51 groups config update --id <group-id> --provider claude
+area51 groups restart --id <group-id>
 ```
 
 ## 2. Delete the barrel imports
@@ -75,4 +75,4 @@ pnpm test
 cd container/agent-runner && bun test
 ```
 
-All suites green and `ncl groups list` showing no codex groups means the removal is complete. Restart the service (`launchctl kickstart -k gui/$(id -u)/<label>` on macOS, `systemctl --user restart <unit>` on Linux).
+All suites green and `area51 groups list` showing no codex groups means the removal is complete. Restart the service (`launchctl kickstart -k gui/$(id -u)/<label>` on macOS, `systemctl --user restart <unit>` on Linux).

@@ -82,7 +82,7 @@ registerResource({
       access: 'open',
       description: 'Ping a widget.',
       args: [{ name: 'target', type: 'string', description: 'Where to ping.', required: true }],
-      examples: ['ncl widgets ping --target prod'],
+      examples: ['area51 widgets ping --target prod'],
       handler: async (args) => ({ echo: args }),
     },
     legacy: {
@@ -109,7 +109,7 @@ describe('strict validation wiring (declared args)', () => {
       message = (e as Error).message;
     }
     expect(message).toContain('--target is required');
-    expect(message).toContain('ncl widgets ping'); // usage line
+    expect(message).toContain('area51 widgets ping'); // usage line
     expect(message).toContain('Flags:');
     expect(message).toContain('Examples:');
   });
@@ -153,7 +153,7 @@ describe('resource help command', () => {
 
   it('renders deep help for `help <verb>` (id from prefix fallback)', async () => {
     const out = (await helpCmd.handler(helpCmd.parseArgs({ id: 'ping' }), host)) as string;
-    expect(out).toContain('ncl widgets ping');
+    expect(out).toContain('area51 widgets ping');
     expect(out).toContain('--target');
     expect(out).toContain('Examples:');
   });

@@ -81,10 +81,10 @@ export function composeGroupClaudeMd(group: AgentGroup): void {
 
   // Built-in module fragments — every MCP/CLI module that ships a
   // sibling `<name>.instructions.md`. These describe how the agent should
-  // use that module's tools (`ncl tasks`, install_packages, etc.).
+  // use that module's tools (`area51 tasks`, install_packages, etc.).
   // Skip ncl-dependent instructions when cli_scope is disabled. `scheduling`
-  // teaches `ncl tasks`, so it is just as dead as `cli` itself when the agent
-  // has no ncl — dispatch rejects every cli_request and ncl is excluded.
+  // teaches `area51 tasks`, so it is just as dead as `cli` itself when the agent
+  // has no area51 — dispatch rejects every cli_request and area51 is excluded.
   const cliDisabled = configRow?.cli_scope === 'disabled';
   const mcpToolsHostDir = path.join(process.cwd(), MCP_TOOLS_HOST_SUBPATH);
   if (fs.existsSync(mcpToolsHostDir)) {

@@ -13,7 +13,7 @@ import './emacs.js';
 Then delete the copied adapter, its tests, and the Lisp client:
 
 ```bash
-rm -f src/channels/emacs.ts src/channels/emacs.test.ts src/channels/emacs-registration.test.ts emacs/nanoclaw.el
+rm -f src/channels/emacs.ts src/channels/emacs.test.ts src/channels/emacs-registration.test.ts emacs/area51.el
 ```
 
 ## 2. Remove credentials
@@ -29,7 +29,7 @@ EMACS_PLATFORM_ID
 
 ## 3. Rebuild and restart
 
-Run from your NanoClaw project root:
+Run from your Area51 project root:
 
 ```bash
 pnpm run build
@@ -44,12 +44,12 @@ launchctl kickstart -k gui/$(id -u)/$(launchd_label)
 
 ## 4. Remove the Emacs config (optional)
 
-Remove the NanoClaw block from your Emacs config (`config.el`, `~/.spacemacs`, or `init.el`):
+Remove the Area51 block from your Emacs config (`config.el`, `~/.spacemacs`, or `init.el`):
 
 ```elisp
-;; NanoClaw — personal AI assistant channel
-(load-file "~/src/nanoclaw/emacs/nanoclaw.el")
-;; ...and the associated keybindings / nanoclaw-auth-token / nanoclaw-port settings
+;; Area51 — personal AI assistant channel
+(load-file "~/src/area51/emacs/area51.el")
+;; ...and the associated keybindings / area51-auth-token / area51-port settings
 ```
 
 Reload your config or restart Emacs.
@@ -58,4 +58,4 @@ Reload your config or restart Emacs.
 
 Your wired messaging group and conversation history are **not** removed — you
 created them at runtime, not this skill's install. To purge them deliberately,
-delete them yourself with `ncl messaging-groups delete <id>`.
+delete them yourself with `area51 messaging-groups delete <id>`.

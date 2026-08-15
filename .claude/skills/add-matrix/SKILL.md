@@ -5,7 +5,7 @@ description: Add Matrix channel integration via Chat SDK. Works with any Matrix 
 
 # Add Matrix Channel
 
-Adds Matrix support via the Chat SDK bridge. NanoClaw doesn't ship channels in
+Adds Matrix support via the Chat SDK bridge. Area51 doesn't ship channels in
 trunk — this skill copies the Matrix adapter in from the `channels` branch.
 
 The mechanical steps under **Apply** carry `nc:` directive fences: an agent
@@ -134,14 +134,14 @@ MATRIX_BOT_USERNAME=Andy
 MATRIX_INVITE_AUTOJOIN=true                    # Auto-accept room invites (default: true)
 MATRIX_INVITE_AUTOJOIN_ALLOWLIST=@you:matrix.org  # Only accept invites from these users
 MATRIX_RECOVERY_KEY=your-recovery-key          # Enable E2EE cross-signing
-MATRIX_DEVICE_ID=NANOCLAW01                    # Stable device ID across restarts
+MATRIX_DEVICE_ID=AREA5101                    # Stable device ID across restarts
 ```
 
 ### Store the credentials
 
 Capture the values for the auth method you chose, then write them. `prompt` only
 *asks* and binds the answer to a name; a separate directive consumes it — so the
-same prompts could feed `ncl` or the OneCLI vault instead of `.env` by swapping
+same prompts could feed `area51` or the OneCLI vault instead of `.env` by swapping
 only the consumer. The homeserver URL, the bot's user ID, and a display name are
 shared across both auth methods:
 
@@ -205,4 +205,4 @@ Otherwise, run `/manage-channels` to wire this channel to an agent group.
 
 **Messages to yourself never arrive.** Matrix cannot DM your own account — the bot must be its own account, separate from yours. If you configured the adapter with your personal credentials, register a dedicated bot account and redo the credential steps.
 
-**Registered but silent.** Run `pnpm exec vitest run src/channels/matrix-registration.test.ts` — red means the barrel import or the `@beeper/chat-adapter-matrix` install drifted, so re-run the Apply steps. If green, restart the service (see Next Steps) and check `logs/nanoclaw.error.log` for login errors.
+**Registered but silent.** Run `pnpm exec vitest run src/channels/matrix-registration.test.ts` — red means the barrel import or the `@beeper/chat-adapter-matrix` install drifted, so re-run the Apply steps. If green, restart the service (see Next Steps) and check `logs/area51.error.log` for login errors.

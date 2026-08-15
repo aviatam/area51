@@ -283,7 +283,7 @@ export async function run(args: string[]): Promise<void> {
   // rebuild paths refuse when this is set, because `docker build -t <slug>:latest`
   // would replace the pinned image in place with nothing downstream able to tell.
   const source =
-    readSetting(projectRoot, 'NANOCLAW_HARDENED_IMAGE')?.toLowerCase() === 'true'
+    readSetting(projectRoot, 'AREA51_HARDENED_IMAGE')?.toLowerCase() === 'true'
       ? 'pull'
       : 'build';
 
@@ -306,7 +306,7 @@ export async function run(args: string[]): Promise<void> {
       // The pinned ref names the repository we pulled from; pass it so the
       // reported digest is that repository's and not some other one the same
       // bytes also live in.
-      digest = imageDigest(image, readSetting(projectRoot, 'NANOCLAW_AGENT_IMAGE_REF')?.split('@')[0] ?? pinnedRepo(projectRoot));
+      digest = imageDigest(image, readSetting(projectRoot, 'AREA51_AGENT_IMAGE_REF')?.split('@')[0] ?? pinnedRepo(projectRoot));
       log.info('Container image acquired', { image, digest });
 
       // Retagging the slug tag does nothing for an agent group pinned to its

@@ -60,7 +60,7 @@ Edit `container/agent-runner/src/index.ts`. Find the `mcpServers` object that cu
 
 ```ts
   const mcpServers: Record<string, { command: string; args: string[]; env: Record<string, string> }> = {
-    nanoclaw: {
+    area51: {
       command: 'bun',
       args: ['run', mcpServerPath],
       env: {},
@@ -68,11 +68,11 @@ Edit `container/agent-runner/src/index.ts`. Find the `mcpServers` object that cu
   };
 ```
 
-Add an `atomic_chat` entry alongside `nanoclaw`:
+Add an `atomic_chat` entry alongside `area51`:
 
 ```ts
   const mcpServers: Record<string, { command: string; args: string[]; env: Record<string, string> }> = {
-    nanoclaw: {
+    area51: {
       command: 'bun',
       args: ['run', mcpServerPath],
       env: {},
@@ -190,7 +190,7 @@ ATOMIC_CHAT_API_KEY=sk-...
 
 ### Restart the service
 
-Run from your NanoClaw project root:
+Run from your Area51 project root:
 
 ```bash
 source setup/lib/install-slug.sh
@@ -211,7 +211,7 @@ Tell the user:
 ### Check logs if needed
 
 ```bash
-tail -f logs/nanoclaw.log | grep -i atomic
+tail -f logs/area51.log | grep -i atomic
 ```
 
 Look for:

@@ -146,7 +146,7 @@ export function applyToEnv(
 
 export function printHelp(stream: NodeJS.WritableStream = process.stdout): void {
   const lines: string[] = [];
-  lines.push('Usage: bash nanoclaw.sh [flags...]');
+  lines.push('Usage: bash area51.sh [flags...]');
   lines.push('');
   lines.push('Flags:');
   const width = Math.max(...CONFIG.map((e) => flagFor(e).length));
@@ -155,7 +155,7 @@ export function printHelp(stream: NodeJS.WritableStream = process.stdout): void 
     lines.push(`  ${flag}${e.help}`);
   }
   lines.push('');
-  lines.push('Each flag also reads from its corresponding NANOCLAW_<KEY> env var.');
+  lines.push('Each flag also reads from its corresponding AREA51_<KEY> env var.');
   lines.push('Run without flags for the default interactive flow.');
   stream.write(lines.join('\n') + '\n');
 }

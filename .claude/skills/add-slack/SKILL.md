@@ -5,7 +5,7 @@ description: Add Slack channel integration via Chat SDK.
 
 # Add Slack Channel
 
-Adds Slack support via the Chat SDK bridge. NanoClaw doesn't ship channels in
+Adds Slack support via the Chat SDK bridge. Area51 doesn't ship channels in
 trunk — this skill copies the Slack adapter in from the `channels` branch.
 
 The mechanical steps under **Apply** carry `nc:` directive fences: an agent
@@ -85,7 +85,7 @@ receive a message until this is done. For Socket Mode, tell the user:
 
 ```nc:operator when:connection=socket
 Create the Slack app (Socket Mode):
-1. Go to api.slack.com/apps → Create New App → From scratch. Name it (e.g. "NanoClaw") and pick your workspace.
+1. Go to api.slack.com/apps → Create New App → From scratch. Name it (e.g. "Area51") and pick your workspace.
 2. OAuth & Permissions → add these Bot Token Scopes: chat:write, im:write, channels:history, groups:history, im:history, channels:read, groups:read, users:read, reactions:write, files:read, files:write.
 3. App Home → enable the Messages Tab, and check "Allow users to send Slash commands and messages from the messages tab."
 4. Basic Information → App-Level Tokens → "Generate Token and Scopes" → add the connections:write scope → copy the token (starts with xapp-).
@@ -98,7 +98,7 @@ For webhook delivery, tell the user:
 
 ```nc:operator when:connection=webhook
 Create the Slack app (webhook delivery):
-1. Go to api.slack.com/apps → Create New App → From scratch. Name it (e.g. "NanoClaw") and pick your workspace.
+1. Go to api.slack.com/apps → Create New App → From scratch. Name it (e.g. "Area51") and pick your workspace.
 2. OAuth & Permissions → add these Bot Token Scopes: chat:write, im:write, channels:history, groups:history, im:history, channels:read, groups:read, users:read, reactions:write, files:read, files:write.
 3. App Home → enable the Messages Tab, and check "Allow users to send Slash commands and messages from the messages tab."
 4. Install to Workspace, then copy the Bot User OAuth Token (starts with xoxb-).
@@ -206,4 +206,4 @@ this channel with `/init-first-agent` (or `/manage-channels`).
 
 **The greeting arrives but your replies vanish.** Sending works with just the bot token; *receiving* needs the event path. Socket Mode: the toggle on, `SLACK_APP_TOKEN` set with `connections:write`, and the bot events (`message.im`, `message.channels`, `message.groups`, `app_mention`) subscribed. Webhook: the Request URL must have passed Slack's challenge and the same events subscribed. Either way, App Home's Messages Tab must be enabled or Slack refuses DMs to the app.
 
-**Adapter registered but Slack never connects.** Run `pnpm exec vitest run src/channels/slack-registration.test.ts` — red means the barrel import or the `@chat-adapter/slack` install drifted, so re-run the Apply steps. If green, restart the service (`bash setup/lib/restart.sh`) so it picks up the adapter and tokens, then check `logs/nanoclaw.error.log`.
+**Adapter registered but Slack never connects.** Run `pnpm exec vitest run src/channels/slack-registration.test.ts` — red means the barrel import or the `@chat-adapter/slack` install drifted, so re-run the Apply steps. If green, restart the service (`bash setup/lib/restart.sh`) so it picks up the adapter and tokens, then check `logs/area51.error.log`.

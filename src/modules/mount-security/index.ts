@@ -1,10 +1,10 @@
 /**
- * Mount Security Module for NanoClaw
+ * Mount Security Module for Area51
  *
  * Validates additional mounts against an allowlist stored OUTSIDE the project root.
  * This prevents container agents from modifying security configuration.
  *
- * Allowlist location: ~/.config/nanoclaw/mount-allowlist.json
+ * Allowlist location: ~/.config/area51/mount-allowlist.json
  */
 import fs from 'fs';
 import os from 'os';
@@ -40,7 +40,7 @@ let cache: { path: string; mtimeMs: number; allowlist: MountAllowlist } | null =
  *
  * Entries are matched by {@link matchesBlockedPattern} as substrings of the
  * mount's resolved realPath, so an entry may carry a separator
- * (`.config/nanoclaw`) to pin a name to its parent instead of blocking every
+ * (`.config/area51`) to pin a name to its parent instead of blocking every
  * `.config` on the host.
  *
  * SCOPE — read this before treating the list as protection. The check runs
@@ -61,12 +61,12 @@ const DEFAULT_BLOCKED_PATTERNS = [
   '.gcloud',
   '.kube',
   '.docker',
-  // NanoClaw's own host-side state. The mount allowlist itself lives at
-  // ~/.config/nanoclaw/mount-allowlist.json specifically so a container agent
+  // Area51's own host-side state. The mount allowlist itself lives at
+  // ~/.config/area51/mount-allowlist.json specifically so a container agent
   // cannot edit the rules that govern it (see the module header) — handing that
   // directory to a container as a mount root would undo the whole arrangement.
   // It is also where host credentials land as they are added.
-  '.config/nanoclaw',
+  '.config/area51',
   // Host-executed helper binaries. Setup installs onecli and claude here and
   // then invokes them by name as the operator, so a read-write mount of this
   // directory is a container-to-host code-execution primitive: drop a file,

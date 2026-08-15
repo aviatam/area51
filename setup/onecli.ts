@@ -106,7 +106,7 @@ function writeEnvOnecliUrl(url: string): void {
 // The SANCTIONED gateway version: fresh installs pin to it. Upgrading an
 // existing gateway is NOT done here — the gateway is a separate out-of-band
 // component, and the migrator is the user's coding agent following
-// docs/onecli-upgrades.md during /update-nanoclaw. The pin lives in
+// docs/onecli-upgrades.md during /update-area51. The pin lives in
 // versions.json ("onecli-gateway") so that flow can diff it across updates and
 // route the agent to the doc; bump it there deliberately on a new release.
 const ONECLI_GATEWAY_VERSION = readVersionPin('onecli-gateway');
@@ -249,7 +249,7 @@ function installOnecliCliDirect(): { stdout: string; ok: boolean } {
  * but presents as transient per-spawn failures). This is detect-only — setup
  * does not migrate the gateway. The upgrade is an out-of-band action on a
  * separate component that the agent runs via docs/onecli-upgrades.md during
- * /update-nanoclaw, so this step only surfaces the condition and points there.
+ * /update-area51, so this step only surfaces the condition and points there.
  */
 export async function verifyGatewayV1(
   url: string,
@@ -322,7 +322,7 @@ export async function run(args: string[]): Promise<void> {
     }
     writeEnvOnecliUrl(remoteUrl);
     log.info('Wrote ONECLI_URL to .env', { url: remoteUrl });
-    const remoteToken = process.env.NANOCLAW_ONECLI_API_TOKEN?.trim();
+    const remoteToken = process.env.AREA51_ONECLI_API_TOKEN?.trim();
     if (remoteToken) {
       // Two auth surfaces: `onecli auth login` persists the key for CLI
       // calls during setup itself (e.g. detecting an existing Anthropic

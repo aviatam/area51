@@ -65,7 +65,7 @@ describe('ensureContainerConfig provider stamping', () => {
     updateContainerConfigScalars('ag-tz', { timezone: 'Asia/Tokyo' });
     expect(getContainerConfig('ag-tz')?.timezone).toBe('Asia/Tokyo');
 
-    // `ncl groups config update --timezone ""` maps to null — the clear path.
+    // `area51 groups config update --timezone ""` maps to null — the clear path.
     updateContainerConfigScalars('ag-tz', { timezone: null });
     expect(getContainerConfig('ag-tz')?.timezone).toBeNull();
   });

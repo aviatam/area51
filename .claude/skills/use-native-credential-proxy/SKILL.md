@@ -5,16 +5,16 @@ description: Opt out of the OneCLI gateway and supply Anthropic credentials from
 
 # Use Native Credential Proxy
 
-This skill adds a **native, `.env`-based credential path** for the container agent — an explicit opt-out of the OneCLI gateway. With it enabled, NanoClaw reads the Anthropic credential straight from `.env` and threads it into the container as standard environment variables, which the Claude Agent SDK reads natively. No OneCLI vault, no HTTPS proxy, no certificates.
+This skill adds a **native, `.env`-based credential path** for the container agent — an explicit opt-out of the OneCLI gateway. With it enabled, Area51 reads the Anthropic credential straight from `.env` and threads it into the container as standard environment variables, which the Claude Agent SDK reads natively. No OneCLI vault, no HTTPS proxy, no certificates.
 
-> **Credential-home inversion — read this first.** NanoClaw's default is that credentials live in the OneCLI agent vault and are injected per request, never threaded into the container via `-e`. This skill deliberately inverts that: the credential lives in `.env` on the host and is passed into the container's environment. That inversion is the *entire point* of this skill (simple `.env` credentials without OneCLI). Use it only if you accept that tradeoff; everywhere else in NanoClaw, env-threaded credentials are an anti-pattern.
+> **Credential-home inversion — read this first.** Area51's default is that credentials live in the OneCLI agent vault and are injected per request, never threaded into the container via `-e`. This skill deliberately inverts that: the credential lives in `.env` on the host and is passed into the container's environment. That inversion is the *entire point* of this skill (simple `.env` credentials without OneCLI). Use it only if you accept that tradeoff; everywhere else in Area51, env-threaded credentials are an anti-pattern.
 
 The skill is **additive**: it ships its proxy logic and tests in this folder, copies them into `src/`, and makes a single one-line reach-in at the container-spawn seam (gated by an env flag). It does not remove or rewrite the OneCLI gateway — when the flag is unset, the gateway path is exactly as it was, and the native proxy is a no-op.
 
 ## How it works
 
 - `src/native-credential-proxy.ts` exports `nativeCredentialEnvArgs()`. It reads `ANTHROPIC_API_KEY` / `ANTHROPIC_AUTH_TOKEN` / `CLAUDE_CODE_OAUTH_TOKEN` (and optional `ANTHROPIC_BASE_URL`) from `.env` via core's `readEnvFile`, and returns the Docker `-e VAR=value` arguments.
-- All gating lives inside that function: it returns an empty array unless `NANOCLAW_NATIVE_CREDENTIALS=true`. So the reach-in in core is a single unconditional `args.push(...nativeCredentialEnvArgs())`.
+- All gating lives inside that function: it returns an empty array unless `AREA51_NATIVE_CREDENTIALS=true`. So the reach-in in core is a single unconditional `args.push(...nativeCredentialEnvArgs())`.
 - The seam is `buildContainerArgs` in `src/container-runner.ts`, right after the `TZ` env line — the same place container env vars are assembled, just before the OneCLI gateway is applied. With the flag on, the direct credential env vars take precedence in the container; with it off, nothing changes.
 
 ## Phase 1: Pre-flight
@@ -75,7 +75,7 @@ Append to `.env.example`:
 # Native credential proxy (.claude/skills/use-native-credential-proxy)
 # Opt out of the OneCLI gateway and supply Anthropic credentials from .env.
 # When true, the credential below is injected into the container env directly.
-# NANOCLAW_NATIVE_CREDENTIALS=true
+# AREA51_NATIVE_CREDENTIALS=true
 # One of the following is required when the flag is true:
 # ANTHROPIC_API_KEY=
 # CLAUDE_CODE_OAUTH_TOKEN=
@@ -106,7 +106,7 @@ Tell the user to run `claude setup-token` in another terminal and copy the token
 Once they have it, add it to `.env` along with the opt-out flag:
 
 ```bash
-grep -q '^NANOCLAW_NATIVE_CREDENTIALS=' .env && sed -i.bak 's/^NANOCLAW_NATIVE_CREDENTIALS=.*/NANOCLAW_NATIVE_CREDENTIALS=true/' .env && rm -f .env.bak || echo 'NANOCLAW_NATIVE_CREDENTIALS=true' >> .env
+grep -q '^AREA51_NATIVE_CREDENTIALS=' .env && sed -i.bak 's/^AREA51_NATIVE_CREDENTIALS=.*/AREA51_NATIVE_CREDENTIALS=true/' .env && rm -f .env.bak || echo 'AREA51_NATIVE_CREDENTIALS=true' >> .env
 echo 'CLAUDE_CODE_OAUTH_TOKEN=<token>' >> .env
 ```
 
@@ -117,7 +117,7 @@ echo 'CLAUDE_CODE_OAUTH_TOKEN=<token>' >> .env
 Tell the user to get an API key from https://console.anthropic.com/settings/keys if they don't have one, then:
 
 ```bash
-grep -q '^NANOCLAW_NATIVE_CREDENTIALS=' .env && sed -i.bak 's/^NANOCLAW_NATIVE_CREDENTIALS=.*/NANOCLAW_NATIVE_CREDENTIALS=true/' .env && rm -f .env.bak || echo 'NANOCLAW_NATIVE_CREDENTIALS=true' >> .env
+grep -q '^AREA51_NATIVE_CREDENTIALS=' .env && sed -i.bak 's/^AREA51_NATIVE_CREDENTIALS=.*/AREA51_NATIVE_CREDENTIALS=true/' .env && rm -f .env.bak || echo 'AREA51_NATIVE_CREDENTIALS=true' >> .env
 echo 'ANTHROPIC_API_KEY=<key>' >> .env
 ```
 
@@ -129,13 +129,13 @@ For a custom API endpoint, add `ANTHROPIC_BASE_URL=<url>` to `.env` (it is forwa
 
 ### Restart the service
 
-Run from your NanoClaw project root:
+Run from your Area51 project root:
 
 ```bash
 source setup/lib/install-slug.sh
 launchctl kickstart -k gui/$(id -u)/$(launchd_label)  # macOS
 # Linux: systemctl --user restart $(systemd_unit)
-# WSL/manual: stop and re-run bash start-nanoclaw.sh
+# WSL/manual: stop and re-run bash start-area51.sh
 ```
 
 ### Verify
@@ -144,11 +144,11 @@ Send a test message in a registered chat and confirm the agent responds. If the 
 
 ## Troubleshooting
 
-**Container fails to spawn with "no Anthropic credential found in .env":** `NANOCLAW_NATIVE_CREDENTIALS=true` is set but none of `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN`, or `CLAUDE_CODE_OAUTH_TOKEN` is present in `.env`. Add one.
+**Container fails to spawn with "no Anthropic credential found in .env":** `AREA51_NATIVE_CREDENTIALS=true` is set but none of `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN`, or `CLAUDE_CODE_OAUTH_TOKEN` is present in `.env`. Add one.
 
 **401 errors from the API:** The credential in `.env` is invalid or expired. For a subscription token, re-run `claude setup-token` and update `CLAUDE_CODE_OAUTH_TOKEN`. For an API key, check it at console.anthropic.com.
 
-**Agent still goes through OneCLI:** Confirm `NANOCLAW_NATIVE_CREDENTIALS=true` is in `.env` and the service was restarted. With the flag unset, `nativeCredentialEnvArgs()` is a no-op and the OneCLI gateway remains the credential source.
+**Agent still goes through OneCLI:** Confirm `AREA51_NATIVE_CREDENTIALS=true` is in `.env` and the service was restarted. With the flag unset, `nativeCredentialEnvArgs()` is a no-op and the OneCLI gateway remains the credential source.
 
 ## Removal
 

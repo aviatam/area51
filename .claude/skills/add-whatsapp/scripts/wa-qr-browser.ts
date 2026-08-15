@@ -187,7 +187,7 @@ child.stdout.on('data', (chunk: Buffer) => {
   process.stdout.write(text);
   stdoutBuf += text;
 
-  const blockRe = /=== NANOCLAW SETUP: (\w+) ===\n([\s\S]*?)\n=== END ===/g;
+  const blockRe = /=== AREA51 SETUP: (\w+) ===\n([\s\S]*?)\n=== END ===/g;
   let m: RegExpExecArray | null;
   let lastEnd = 0;
   while ((m = blockRe.exec(stdoutBuf)) !== null) {

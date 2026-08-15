@@ -1,5 +1,5 @@
 /**
- * ncl — chat with your NanoClaw agent from the terminal.
+ * area51 — chat with your Area51 agent from the terminal.
  *
  * Usage:
  *   pnpm run chat <message...>
@@ -7,7 +7,7 @@
  * Sends the message through the CLI channel (Unix socket) to the wired agent.
  * Reads replies until the stream goes quiet, then exits.
  *
- * Preconditions: NanoClaw host service running, an agent group wired to
+ * Preconditions: Area51 host service running, an agent group wired to
  * `cli/local` via `/init-first-agent` or `/manage-channels`.
  */
 import net from 'net';
@@ -35,7 +35,7 @@ function main(): void {
   socket.on('error', (err) => {
     const e = err as NodeJS.ErrnoException;
     if (e.code === 'ENOENT' || e.code === 'ECONNREFUSED') {
-      console.error(`NanoClaw daemon not reachable at ${socketPath()}.`);
+      console.error(`Area51 daemon not reachable at ${socketPath()}.`);
       console.error('Start the service (launchctl/systemd) before running ncl.');
     } else {
       console.error('CLI socket error:', err);

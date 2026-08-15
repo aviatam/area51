@@ -18,9 +18,7 @@ import {
   getPlatform,
   getNodePath,
   getServiceManager,
-  hasSystemd,
   isRoot,
-  isWSL,
 } from './platform.js';
 import { emitStatus } from './status.js';
 
@@ -61,19 +59,19 @@ export async function run(_args: string[]): Promise<void> {
   log.info('Stamped upgrade marker', { version: stamped.version });
 
   // Peer preflight — a crash-looping peer install (most often the legacy v1
-  // `com.nanoclaw` plist) will keep trashing this install's containers on
+  // `com.area51` plist) will keep trashing this install's containers on
   // every respawn via its own cleanupOrphans. Detect and unload any peer
   // that's unhealthy before we install our service. Healthy peers are left
   // alone now that container reaping is install-label-scoped.
   const peerReport = cleanupUnhealthyPeers(projectRoot);
   if (peerReport.unloaded.length > 0) {
-    log.warn('Unloaded unhealthy peer NanoClaw services', {
+    log.warn('Unloaded unhealthy peer Area51 services', {
       count: peerReport.unloaded.length,
       labels: peerReport.unloaded.map((p) => p.label),
     });
   }
   if (peerReport.removed.length > 0) {
-    log.warn('Removed dead peer NanoClaw registrations (target binary missing)', {
+    log.warn('Removed dead peer Area51 registrations (target binary missing)', {
       count: peerReport.removed.length,
       labels: peerReport.removed.map((p) => p.label),
     });
@@ -99,13 +97,13 @@ export async function run(_args: string[]): Promise<void> {
 }
 
 /**
- * Symlink bin/ncl into ~/.local/bin so `ncl` is available from anywhere.
+ * Symlink bin/area51 into ~/.local/bin so `area51` is available from anywhere.
  * Idempotent — overwrites an existing symlink but won't clobber a real file.
  */
 function installCliSymlink(projectRoot: string, homeDir: string): void {
-  const source = path.join(projectRoot, 'bin', 'ncl');
+  const source = path.join(projectRoot, 'bin', 'area51');
   const targetDir = path.join(homeDir, '.local', 'bin');
-  const target = path.join(targetDir, 'ncl');
+  const target = path.join(targetDir, 'area51');
 
   try {
     fs.mkdirSync(targetDir, { recursive: true });
@@ -116,7 +114,7 @@ function installCliSymlink(projectRoot: string, homeDir: string): void {
       if (stat.isSymbolicLink()) {
         fs.unlinkSync(target);
       } else {
-        log.warn('~/.local/bin/ncl exists and is not a symlink — skipping', { target });
+        log.warn('~/.local/bin/area51 exists and is not a symlink — skipping', { target });
         return;
       }
     } catch (e) {
@@ -125,9 +123,9 @@ function installCliSymlink(projectRoot: string, homeDir: string): void {
     }
 
     fs.symlinkSync(source, target);
-    log.info('Installed ncl CLI symlink', { target, source });
+    log.info('Installed area51 CLI symlink', { target, source });
   } catch (err) {
-    log.warn('Could not install ncl CLI symlink (non-fatal)', { err });
+    log.warn('Could not install area51 CLI symlink (non-fatal)', { err });
   }
 }
 
@@ -136,7 +134,7 @@ function setupLaunchd(
   nodePath: string,
   homeDir: string,
 ): void {
-  // Per-checkout service label so multiple NanoClaw installs can coexist
+  // Per-checkout service label so multiple Area51 installs can coexist
   // without clobbering each other's plist.
   const label = getLaunchdLabel(projectRoot);
   const plistPath = path.join(
@@ -172,9 +170,9 @@ function setupLaunchd(
         <string>${homeDir}</string>
     </dict>
     <key>StandardOutPath</key>
-    <string>${projectRoot}/logs/nanoclaw.log</string>
+    <string>${projectRoot}/logs/area51.log</string>
     <key>StandardErrorPath</key>
-    <string>${projectRoot}/logs/nanoclaw.error.log</string>
+    <string>${projectRoot}/logs/area51.error.log</string>
 </dict>
 </plist>`;
 
@@ -249,12 +247,12 @@ function setupLinux(
     setupSystemd(projectRoot, nodePath, homeDir);
   } else {
     // WSL without systemd or other Linux without systemd
-    setupNohupFallback(projectRoot, nodePath, homeDir);
+    setupNohupFallback(projectRoot, nodePath);
   }
 }
 
 /**
- * Kill any orphaned nanoclaw node processes left from previous runs or debugging.
+ * Kill any orphaned area51 node processes left from previous runs or debugging.
  * Prevents connection conflicts when two instances connect to the same channel simultaneously.
  */
 function killOrphanedProcesses(projectRoot: string): void {
@@ -262,7 +260,7 @@ function killOrphanedProcesses(projectRoot: string): void {
     execSync(`pkill -f '${projectRoot}/dist/index\\.js' || true`, {
       stdio: 'ignore',
     });
-    log.info('Stopped any orphaned nanoclaw processes');
+    log.info('Stopped any orphaned area51 processes');
   } catch {
     // pkill not available or no orphans
   }
@@ -320,7 +318,7 @@ function setupSystemd(
       log.warn(
         'systemd user session not available — falling back to nohup wrapper',
       );
-      setupNohupFallback(projectRoot, nodePath, homeDir);
+      setupNohupFallback(projectRoot, nodePath);
       return;
     }
     const unitDir = path.join(homeDir, '.config', 'systemd', 'user');
@@ -330,7 +328,7 @@ function setupSystemd(
   }
 
   const unit = `[Unit]
-Description=NanoClaw Personal Assistant
+Description=Area51 Personal Assistant
 After=network.target
 
 [Service]
@@ -342,8 +340,8 @@ RestartSec=5
 KillMode=process
 Environment=HOME=${homeDir}
 Environment=PATH=/usr/local/bin:/usr/bin:/bin:${homeDir}/.local/bin
-StandardOutput=append:${projectRoot}/logs/nanoclaw.log
-StandardError=append:${projectRoot}/logs/nanoclaw.error.log
+StandardOutput=append:${projectRoot}/logs/area51.log
+StandardError=append:${projectRoot}/logs/area51.error.log
 
 [Install]
 WantedBy=${runningAsRoot ? 'multi-user.target' : 'default.target'}`;
@@ -381,7 +379,7 @@ WantedBy=${runningAsRoot ? 'multi-user.target' : 'default.target'}`;
     }
   }
 
-  // Kill orphaned nanoclaw processes to avoid channel connection conflicts
+  // Kill orphaned area51 processes to avoid channel connection conflicts
   killOrphanedProcesses(projectRoot);
 
   // Enable lingering so the user service survives SSH logout.
@@ -448,16 +446,15 @@ WantedBy=${runningAsRoot ? 'multi-user.target' : 'default.target'}`;
 function setupNohupFallback(
   projectRoot: string,
   nodePath: string,
-  homeDir: string,
 ): void {
   log.warn('No systemd detected — generating nohup wrapper script');
 
-  const wrapperPath = path.join(projectRoot, 'start-nanoclaw.sh');
-  const pidFile = path.join(projectRoot, 'nanoclaw.pid');
+  const wrapperPath = path.join(projectRoot, 'start-area51.sh');
+  const pidFile = path.join(projectRoot, 'area51.pid');
 
   const lines = [
     '#!/bin/bash',
-    '# start-nanoclaw.sh — Start NanoClaw without systemd',
+    '# start-area51.sh — Start Area51 without systemd',
     `# To stop: kill \\$(cat ${pidFile})`,
     '',
     'set -euo pipefail',
@@ -468,20 +465,20 @@ function setupNohupFallback(
     `if [ -f ${JSON.stringify(pidFile)} ]; then`,
     `  OLD_PID=$(cat ${JSON.stringify(pidFile)} 2>/dev/null || echo "")`,
     '  if [ -n "$OLD_PID" ] && kill -0 "$OLD_PID" 2>/dev/null; then',
-    '    echo "Stopping existing NanoClaw (PID $OLD_PID)..."',
+    '    echo "Stopping existing Area51 (PID $OLD_PID)..."',
     '    kill "$OLD_PID" 2>/dev/null || true',
     '    sleep 2',
     '  fi',
     'fi',
     '',
-    'echo "Starting NanoClaw..."',
+    'echo "Starting Area51..."',
     `nohup ${JSON.stringify(nodePath)} ${JSON.stringify(projectRoot + '/dist/index.js')} \\`,
-    `  >> ${JSON.stringify(projectRoot + '/logs/nanoclaw.log')} \\`,
-    `  2>> ${JSON.stringify(projectRoot + '/logs/nanoclaw.error.log')} &`,
+    `  >> ${JSON.stringify(projectRoot + '/logs/area51.log')} \\`,
+    `  2>> ${JSON.stringify(projectRoot + '/logs/area51.error.log')} &`,
     '',
     `echo $! > ${JSON.stringify(pidFile)}`,
-    'echo "NanoClaw started (PID $!)"',
-    `echo "Logs: tail -f ${projectRoot}/logs/nanoclaw.log"`,
+    'echo "Area51 started (PID $!)"',
+    `echo "Logs: tail -f ${projectRoot}/logs/area51.log"`,
   ];
   const wrapper = lines.join('\n') + '\n';
 

@@ -1,5 +1,5 @@
 /**
- * Regression test for #2525 — `ncl groups delete` must cascade dependent
+ * Regression test for #2525 — `area51 groups delete` must cascade dependent
  * rows in FK order so the final `DELETE FROM agent_groups` succeeds even
  * when the group has sessions, destinations, approvals, role grants, etc.
  *
@@ -24,10 +24,10 @@ vi.mock('../../container-runner.js', () => ({
 
 vi.mock('../../config.js', async () => {
   const actual = await vi.importActual('../../config.js');
-  return { ...actual, DATA_DIR: '/tmp/nanoclaw-test-cli-groups' };
+  return { ...actual, DATA_DIR: '/tmp/area51-test-cli-groups' };
 });
 
-const TEST_DIR = '/tmp/nanoclaw-test-cli-groups';
+const TEST_DIR = '/tmp/area51-test-cli-groups';
 
 import { initTestDb, closeDb, runMigrations, createAgentGroup, getDb } from '../../db/index.js';
 import { createSession } from '../../db/sessions.js';

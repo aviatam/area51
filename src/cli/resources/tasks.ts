@@ -373,7 +373,7 @@ function cancelTaskCommand(args: Record<string, unknown>, ctx: CallerContext) {
 }
 
 /**
- * `ncl tasks run <id>` — fire a task on demand without disturbing its schedule.
+ * `area51 tasks run <id>` — fire a task on demand without disturbing its schedule.
  * Inserts a fresh pending occurrence (same series, content, no recurrence) due
  * now, which the next sweep delivers through the normal fire path. Unlike
  * `update --process-after now`, it neither consumes a one-shot nor force-advances
@@ -488,7 +488,7 @@ registerResource({
         `carries a --script gate (the script decides whether each fire needs you — a gated fire that\n` +
         `finds nothing costs zero tokens) or you pass --dangerously-override-recurrence-limit after\n` +
         `the user explicitly confirmed they want an ungated frequent task.\n\n` +
-        `Failure backoff: a script that ERRORS repeatedly backs the series off (2,4,8,…60 min between fires; each errored fire counts as a failed run); after 8 consecutive failures the series is auto-paused with a note in its run log — fix the script, then \`ncl tasks resume <id>\`. A deliberate wakeAgent=false is a normal run and never backs off. \`ncl tasks get <id>\` shows failed_runs and the run log.`,
+        `Failure backoff: a script that ERRORS repeatedly backs the series off (2,4,8,…60 min between fires; each errored fire counts as a failed run); after 8 consecutive failures the series is auto-paused with a note in its run log — fix the script, then \`area51 tasks resume <id>\`. A deliberate wakeAgent=false is a normal run and never backs off. \`area51 tasks get <id>\` shows failed_runs and the run log.`,
       args: [
         {
           name: 'name',
@@ -525,9 +525,9 @@ registerResource({
         },
       ],
       examples: [
-        `# Recurring — --recurrence alone is enough; the first run comes off the cron grid:\nncl tasks create --name "sales briefing" --prompt "Send the weekday sales briefing" --recurrence "0 9 * * 1-5"`,
-        `# One-shot — --process-after required (UTC, offset, or naive-local in the instance TZ):\nncl tasks create --name "ping" --prompt "Remind me to call Dana" --process-after "tomorrow 18:00"`,
-        `# Monitor — script gates the run; the agent wakes only when something matters:\nncl tasks create --name "alert watch" --recurrence "*/15 * * * *" \\\n  --prompt "Investigate the alerts in the script data and notify me if serious" \\\n  --script 'c=$(curl -sf https://example.com/api/alerts | jq length) || exit 0\necho "{\\"wakeAgent\\": $([ "$c" -gt 0 ] && echo true || echo false), \\"data\\": {\\"alerts\\": $c}}"'`,
+        `# Recurring — --recurrence alone is enough; the first run comes off the cron grid:\narea51 tasks create --name "sales briefing" --prompt "Send the weekday sales briefing" --recurrence "0 9 * * 1-5"`,
+        `# One-shot — --process-after required (UTC, offset, or naive-local in the instance TZ):\narea51 tasks create --name "ping" --prompt "Remind me to call Dana" --process-after "tomorrow 18:00"`,
+        `# Monitor — script gates the run; the agent wakes only when something matters:\narea51 tasks create --name "alert watch" --recurrence "*/15 * * * *" \\\n  --prompt "Investigate the alerts in the script data and notify me if serious" \\\n  --script 'c=$(curl -sf https://example.com/api/alerts | jq length) || exit 0\necho "{\\"wakeAgent\\": $([ "$c" -gt 0 ] && echo true || echo false), \\"data\\": {\\"alerts\\": $c}}"'`,
       ],
       handler: async (args, ctx) => createTask(args, ctx),
     },
@@ -536,7 +536,7 @@ registerResource({
       description:
         'Append a one-line note to a task run log (tasks/<id>.md).\n\nOptional: every task run auto-logs its final text, so use this only for additive mid-run notes. The host stamps the local timestamp; you supply --msg. This is a LOG ENTRY, not a message — it sends nothing to anyone. Inside a task run --id is auto-derived from your session.',
       examples: [
-        `# Inside a task run (--id auto-derived) — optional progress note:\nncl tasks append-log --msg "one feed returned 403; continuing with the remaining feeds"`,
+        `# Inside a task run (--id auto-derived) — optional progress note:\narea51 tasks append-log --msg "one feed returned 403; continuing with the remaining feeds"`,
       ],
       args: [
         {

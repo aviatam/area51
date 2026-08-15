@@ -68,7 +68,7 @@ export function markPluginServers(
 /**
  * Stamp a self-contained agent group from a LOCAL plugin ref under
  * TEMPLATES_DIR. The plugin carries skills and MCP servers (portable Agent
- * Plugins surface) plus the optional NanoClaw extension (persona, context
+ * Plugins surface) plus the optional Area51 extension (persona, context
  * extras, paused recurring tasks), but nothing else (no policy, packages, or
  * provider).
  *

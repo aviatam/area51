@@ -1,7 +1,7 @@
 // Read-only file viewer for clidash.
 //
 // Surfaces on-disk documents (skills, CLAUDE.md, profile.json, conversations)
-// that are NOT ncl resources. Same security posture as the rest of clidash:
+// that are NOT area51 resources. Same security posture as the rest of clidash:
 // only files matching a configured collection's glob patterns are listable or
 // readable; a deny-list blocks secrets; path traversal is impossible because a
 // requested path must be a member of the freshly-globbed allow-set.

@@ -2,7 +2,7 @@
  * OneCLI vault-agent inventory for the uninstaller.
  *
  * Vault agents split into two sets: MINE (identifier matches an agent-group
- * id in this copy's data/v2.db) and ORPHANS (NanoClaw-style `ag-*`
+ * id in this copy's data/v2.db) and ORPHANS (Area51-style `ag-*`
  * identifiers not in our DB — possibly another copy's). Deletion is always
  * by the vault's internal uuid: the agent-group id is NOT a valid
  * `onecli agents delete --id` value (see src/container-runner.ts).
@@ -14,7 +14,7 @@ import Database from 'better-sqlite3';
 export interface VaultAgent {
   /** Internal vault uuid — the only valid `onecli agents delete --id` value. */
   uuid: string;
-  /** What the agent was registered under, e.g. a NanoClaw agent-group id (`ag-*`). */
+  /** What the agent was registered under, e.g. a Area51 agent-group id (`ag-*`). */
   identifier: string;
   name: string;
 }
@@ -101,7 +101,7 @@ export function readAgentGroupIds(dbPath: string): {
 
 /**
  * Split vault agents into MINE (identifier ∈ ids) and ORPHANS (ag-* not in
- * ids). Non-NanoClaw identifiers are ignored entirely. With `known: false`
+ * ids). Non-Area51 identifiers are ignored entirely. With `known: false`
  * nothing can be MINE, so every ag-* agent lands in ORPHANS — the caller is
  * responsible for warning that the labels are unreliable.
  */

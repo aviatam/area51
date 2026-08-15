@@ -1,7 +1,7 @@
 /**
  * Template = Agent Plugins 1.0.0 plugin directory. This is the flag-day
  * reader: plugin.json is the only hard requirement; skills, mcp.json, and the
- * NanoClaw extension (persona, context, tasks) are all optional, so a plain
+ * Area51 extension (persona, context, tasks) are all optional, so a plain
  * conformant third-party plugin stamps fine. The pre-plugin template layout
  * is detected only to emit a migration error.
  *
@@ -26,13 +26,13 @@ export type { TemplateTask } from './tasks.js';
 export interface Template {
   /** The manifest's machine name — also the folder the plugin is stamped under. */
   name: string;
-  /** Display name from extensions["ai.nanoco.nanoclaw"].agentName, when given. */
+  /** Display name from extensions["ai.nanoco.area51"].agentName, when given. */
   agentName?: string;
   mcpServers: Record<string, McpServerConfig>; // mcp.json — name -> validated launch config
-  instructions?: string; // ai.nanoco.nanoclaw/context/instructions.md (optional persona)
+  instructions?: string; // ai.nanoco.area51/context/instructions.md (optional persona)
   contextExtras: { name: string; content: string }[]; // other extension-dir context/**/*.md
   skills: { name: string; srcDir: string }[]; // skills/<name>/ conforming skill folders
-  tasks: TemplateTask[]; // ai.nanoco.nanoclaw/tasks/*.md, created paused when stamped
+  tasks: TemplateTask[]; // ai.nanoco.area51/tasks/*.md, created paused when stamped
   /** Absolute, containment-validated plugin root (stamping copies from here). */
   dir: string;
   /** Named skip/ignore notices — never silently stripped components. */

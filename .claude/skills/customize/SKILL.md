@@ -1,9 +1,9 @@
 ---
 name: customize
-description: Add new capabilities or modify NanoClaw behavior. Use when user wants to add channels (Telegram, Slack, email input), change triggers, add integrations, modify the router, or make any other customizations. This is an interactive skill that asks questions to understand what the user wants.
+description: Add new capabilities or modify Area51 behavior. Use when user wants to add channels (Telegram, Slack, email input), change triggers, add integrations, modify the router, or make any other customizations. This is an interactive skill that asks questions to understand what the user wants.
 ---
 
-# NanoClaw Customization
+# Area51 Customization
 
 This skill helps users add capabilities or modify behavior. Use AskUserQuestion to understand what they want before making changes.
 
@@ -22,7 +22,7 @@ This skill helps users add capabilities or modify behavior. Use AskUserQuestion 
 
 ## Entity Model
 
-Customizations route through the v2 entity model: users → messaging groups → agent groups → sessions. A messaging group is one chat/channel on one platform; an agent group holds the workspace, personality, and container config; a wiring links a messaging group to an agent group with a session mode and trigger rules. Inspect and edit all of this with the `ncl` admin CLI. See `docs/isolation-model.md` for the three isolation levels.
+Customizations route through the v2 entity model: users → messaging groups → agent groups → sessions. A messaging group is one chat/channel on one platform; an agent group holds the workspace, personality, and container config; a wiring links a messaging group to an agent group with a session mode and trigger rules. Inspect and edit all of this with the `area51` admin CLI. See `docs/isolation-model.md` for the three isolation levels.
 
 ## Key Files
 
@@ -53,7 +53,7 @@ Questions to ask:
 
 Implementation:
 1. Run the matching install skill (`/add-telegram`, `/add-slack`, …). It fetches the adapter from the `channels` branch, wires the registration import, installs the pinned package, and builds.
-2. Run `/manage-channels` (or use `ncl messaging-groups` + `ncl wirings`) to create the messaging group, choose the isolation level, and wire it to an agent group with a session mode and trigger rules.
+2. Run `/manage-channels` (or use `area51 messaging-groups` + `area51 wirings`) to create the messaging group, choose the isolation level, and wire it to an agent group with a session mode and trigger rules.
 
 ### Adding a New MCP Integration
 
@@ -64,7 +64,7 @@ Questions to ask:
 
 Implementation:
 - If a dedicated `/add-<service>-tool` skill exists, run it — it wires the MCP server and routes credentials through OneCLI so no raw keys reach the container.
-- Otherwise wire the MCP server into the agent group's container config with either `--command <cmd> [--args <json-array>] [--env <json-object>]` for stdio or `--url <url>` for Streamable HTTP (HTTPS, or plain HTTP for localhost / host.docker.internal): `ncl groups config add-mcp-server --id <group-id> --name <name> ...`. Then run `ncl groups restart --id <group-id>` to take effect. From inside a container the agent uses the `add_mcp_server` self-mod tool, which requires one admin approval.
+- Otherwise wire the MCP server into the agent group's container config with either `--command <cmd> [--args <json-array>] [--env <json-object>]` for stdio or `--url <url>` for Streamable HTTP (HTTPS, or plain HTTP for localhost / host.docker.internal): `area51 groups config add-mcp-server --id <group-id> --name <name> ...`. Then run `area51 groups restart --id <group-id>` to take effect. From inside a container the agent uses the `add_mcp_server` self-mod tool, which requires one admin approval.
 
 ### Changing Assistant Behavior
 
@@ -74,7 +74,7 @@ Questions to ask:
 
 Implementation:
 - Persona, instructions, and personality live per agent group in `groups/<folder>/CLAUDE.md` — edit that file for the target group.
-- Container runtime behavior (provider, model, packages, MCP servers) lives in the `container_configs` table: `ncl groups config get/update --id <group-id>`.
+- Container runtime behavior (provider, model, packages, MCP servers) lives in the `container_configs` table: `area51 groups config get/update --id <group-id>`.
 
 ### Adding New Commands
 
@@ -85,7 +85,7 @@ Questions to ask:
 
 Implementation:
 - The agent interprets requests naturally — add instructions to the agent group's `groups/<folder>/CLAUDE.md`.
-- For routing or trigger changes (which messages wake which agent group), update the wiring's trigger rules: `ncl wirings update --id <wiring-id> ...`.
+- For routing or trigger changes (which messages wake which agent group), update the wiring's trigger rules: `area51 wirings update --id <wiring-id> ...`.
 
 ### Changing Deployment
 
@@ -102,7 +102,7 @@ Implementation:
 
 Always tell the user.
 
-Run from your NanoClaw project root:
+Run from your Area51 project root:
 
 ```bash
 # Rebuild and restart
@@ -122,5 +122,5 @@ User: "Add Telegram as an input channel"
 1. Run `/add-telegram` to install the adapter, wire its registration, and build.
 2. Ask: "Should Telegram reach an existing agent group, or a new one?"
 3. Ask: "Share an agent group with your other channels, or keep Telegram separate?"
-4. Run `/manage-channels` (or `ncl messaging-groups create` + `ncl wirings create`) to create the messaging group and wire it to the chosen agent group with a session mode and trigger rules.
+4. Run `/manage-channels` (or `area51 messaging-groups create` + `area51 wirings create`) to create the messaging group and wire it to the chosen agent group with a session mode and trigger rules.
 5. Tell the user how to authenticate and test.

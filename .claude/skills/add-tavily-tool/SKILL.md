@@ -1,6 +1,6 @@
 ---
 name: add-tavily-tool
-description: Add Tavily Search and Extract as keyless remote MCP tools for selected NanoClaw agent groups. Use when installing Tavily web search or URL extraction without an API key.
+description: Add Tavily Search and Extract as keyless remote MCP tools for selected Area51 agent groups. Use when installing Tavily web search or URL extraction without an API key.
 ---
 
 # Add Tavily Tool
@@ -27,7 +27,7 @@ Check whether the bridge is already in the image manifest, then list the groups:
 
 ```bash
 grep -n '"mcp-remote"' container/cli-tools.json || true
-ncl groups list
+area51 groups list
 ```
 
 Ask which agent groups should receive Tavily. If `mcp-remote` is already
@@ -63,7 +63,7 @@ pnpm exec vitest run src/tavily-manifest.test.ts
 ```
 
 The manifest is the only source-backed integration point. Per-group MCP
-registration is runtime state stored through `ncl`, so it has no in-tree line
+registration is runtime state stored through `area51`, so it has no in-tree line
 for a registration test to guard.
 
 ## Phase 3: Register Tavily
@@ -76,22 +76,22 @@ moving on to Phase 4.
 For each selected `<group-id>`, register one server named `tavily`:
 
 ```bash
-ncl groups config add-mcp-server \
+area51 groups config add-mcp-server \
   --id <group-id> \
   --name tavily \
   --command mcp-remote \
-  --args '["https://mcp.tavily.com/mcp/","--transport","http-only","--enable-proxy","--header","X-Tavily-Access-Mode:keyless","--header","X-Client-Name:nanoclaw","--ignore-tool","tavily_crawl","--ignore-tool","tavily_map","--ignore-tool","tavily_research"]' \
+  --args '["https://mcp.tavily.com/mcp/","--transport","http-only","--enable-proxy","--header","X-Tavily-Access-Mode:keyless","--header","X-Client-Name:area51","--ignore-tool","tavily_crawl","--ignore-tool","tavily_map","--ignore-tool","tavily_research"]' \
   --env '{}'
 ```
 
 The keyless header enables Tavily's IP-based allowance. The client-name header
-attributes calls to NanoClaw. The tool filters leave only Search and Extract
+attributes calls to Area51. The tool filters leave only Search and Extract
 available.
 
 Restart each selected group:
 
 ```bash
-ncl groups restart \
+area51 groups restart \
   --id <group-id> \
   --message "Tavily Search and Extract are installed. Run one Tavily search with max_results 1 and report whether it succeeds."
 ```
@@ -102,7 +102,7 @@ Confirm the stored configuration contains one `tavily` server with both
 headers:
 
 ```bash
-ncl groups config get --id <group-id>
+area51 groups config get --id <group-id>
 ```
 
 Then check the selected agent's test response. The call must use
@@ -142,7 +142,7 @@ moment instead of dead-ending. For each selected group:
    dialog loads with host `mcp.tavily.com` prefilled. If they supplied a public
    URL while `APP_URL` was a loopback address, suggest setting the public URL in
    the OneCLI dashboard (Settings, Instance) so future links stay stable.
-5. Restart each selected group: `ncl groups restart --id <group-id>`.
+5. Restart each selected group: `area51 groups restart --id <group-id>`.
 
 ## Keyless limit
 

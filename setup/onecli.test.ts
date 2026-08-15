@@ -1,7 +1,7 @@
 /**
  * The step DETECTS gateway /v1 compatibility and warns (pointing at
  * docs/onecli-upgrades.md) — it does not migrate the gateway; that's the
- * agent's job via /update-nanoclaw. The verify helper must distinguish
+ * agent's job via /update-area51. The verify helper must distinguish
  * incompatible (pre-/v1 server: warn) from unreachable (transient: nothing to
  * say) so the warning only fires on a real pre-/v1 server.
  */

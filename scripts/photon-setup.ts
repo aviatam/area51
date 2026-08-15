@@ -12,7 +12,7 @@
  * receive messages.
  *
  *   [1/5] Device login   — open a URL, approve, we store the bearer token
- *   [2/5] Project        — find or create the "NanoClaw" Photon project
+ *   [2/5] Project        — find or create the "Area51" Photon project
  *   [3/5] Secret         — reuse the project's current secret (rotating only
  *                          when the API doesn't return one) and write
  *                          PHOTON_PROJECT_ID + PHOTON_PROJECT_SECRET to .env
@@ -31,7 +31,7 @@
  *
  * Usage:
  *   pnpm exec tsx scripts/photon-setup.ts [setup] \
- *     [--phone +15551234567] [--project-name NanoClaw] \
+ *     [--phone +15551234567] [--project-name Area51] \
  *     [--no-browser] [--non-interactive] \
  *     [--dashboard-host https://app.photon.codes] \
  *     [--spectrum-host https://spectrum.photon.codes]
@@ -41,7 +41,7 @@
  * `--embedded` is for machine-driven runs (the setup wizard / the /add-imessage
  * skill's streaming step): it suppresses the standalone intro/outro while
  * preserving the provisioning progress and device prompt, and emits a terminal
- * `=== NANOCLAW SETUP: PHOTON ===` status block (STATUS/PHONE/LINE_NUMBER) on
+ * `=== AREA51 SETUP: PHOTON ===` status block (STATUS/PHONE/LINE_NUMBER) on
  * success so a streaming exec can confirm the step and capture its fields.
  *
  * Reference: https://github.com/photon-hq/cli
@@ -62,7 +62,7 @@ export const DEFAULT_SPECTRUM_HOST = 'https://spectrum.photon.codes';
 // the published CLI client id (matches photon-hq/cli's CLI_CLIENT_ID).
 export const DEFAULT_CLIENT_ID = 'photon-cli';
 export const DEFAULT_SCOPE = 'openid profile email';
-export const DEFAULT_PROJECT_NAME = 'NanoClaw';
+export const DEFAULT_PROJECT_NAME = 'Area51';
 const DEFAULT_POLL_INTERVAL_S = 5;
 const DEFAULT_POLL_TIMEOUT_S = 1800;
 const DEFAULT_OPTIN_POLL_INTERVAL_S = 5;
@@ -937,7 +937,7 @@ async function runSetup(args: Args, fetchFn: FetchFn = fetch, deps: SetupDeps = 
         '',
         'Next:',
         '  1. Install the runtime SDK (if not already):  pnpm install spectrum-ts@11.0.0',
-        '  2. (Re)start the NanoClaw service so the channel connects.',
+        '  2. (Re)start the Area51 service so the channel connects.',
         phone
           ? `  3. Wire your DM to an agent:  npx tsx scripts/init-first-agent.ts --channel imessage --user-id imessage:${phone} --platform-id ${phone} --display-name "You"`
           : '  3. Run /init-first-agent to wire your DM to an agent.',
@@ -948,7 +948,7 @@ async function runSetup(args: Args, fetchFn: FetchFn = fetch, deps: SetupDeps = 
     // streaming exec parses this block and treats the step as passed only when
     // it sees STATUS: success (a clean exit code alone is not enough).
     const fields = [
-      '=== NANOCLAW SETUP: PHOTON ===',
+      '=== AREA51 SETUP: PHOTON ===',
       'STATUS: success',
       ...(phone ? [`PHONE: ${phone}`] : []),
       ...(assigned ? [`LINE_NUMBER: ${assigned}`] : []),

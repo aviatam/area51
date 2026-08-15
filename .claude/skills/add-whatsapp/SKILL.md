@@ -6,7 +6,7 @@ description: Add WhatsApp channel via native Baileys adapter. Direct connection 
 # Add WhatsApp Channel
 
 Adds WhatsApp support via the native Baileys adapter — a direct WhatsApp Web
-connection, no Chat SDK bridge. NanoClaw doesn't ship channels in trunk — this
+connection, no Chat SDK bridge. Area51 doesn't ship channels in trunk — this
 skill copies the WhatsApp adapter in from the `channels` branch.
 
 The mechanical steps under **Apply** carry `nc:` directive fences: an agent
@@ -22,10 +22,10 @@ the user already said they want to use their **shared**, **personal**,
 number and show the warning immediately. Do not ask the number-type question
 again.
 
-Otherwise, ask which WhatsApp number NanoClaw will use:
+Otherwise, ask which WhatsApp number Area51 will use:
 
 ```nc:prompt number_mode validate:^(dedicated|shared)$
-Which WhatsApp number will NanoClaw use? `dedicated` (recommended) — a separate number used only for NanoClaw (spare SIM, eSIM, or old phone). `shared` — your existing everyday / personal WhatsApp number.
+Which WhatsApp number will Area51 use? `dedicated` (recommended) — a separate number used only for Area51 (spare SIM, eSIM, or old phone). `shared` — your existing everyday / personal WhatsApp number.
 ```
 
 If the answer is `shared`, show this warning — tell the user:
@@ -35,7 +35,7 @@ If the answer is `shared`, show this warning — tell the user:
 
 Connecting your shared or personal number could cause WhatsApp to temporarily suspend or permanently ban that number. You could lose access to the WhatsApp account, chats, and groups you rely on.
 
-We strongly recommend using a separate, dedicated number for NanoClaw.
+We strongly recommend using a separate, dedicated number for Area51.
 
 On your personal number, the agent lives only in your "You" / self-chat. Messages other people send you are ignored entirely — never read, never answered, never flagged for approval. Nobody else can talk to the agent.
 
@@ -291,16 +291,16 @@ If the wired DM's phone **equals** the authed number, the operator is talking to
 
 Before the shared-number fix, group chats approved via the channel-registration card were wired `engage_mode='pattern'` with pattern `.` — respond-to-everything — because the card flow couldn't tell groups from DMs on non-threaded platforms. On a personal number this shows up as the bot answering every message in family/work groups after someone once tapped Connect on a spam-triggered card.
 
-List the suspect wirings (host service running — `ncl` is socket-only):
+List the suspect wirings (host service running — `area51` is socket-only):
 
 ```bash
-ncl wirings list --engage-mode pattern --engage-pattern "." --json
+area51 wirings list --engage-mode pattern --engage-pattern "." --json
 ```
 
-Cross-reference against WhatsApp group chats (`ncl messaging-groups list --channel-type whatsapp --is-group 1`). For each wiring with pattern `.` on a WhatsApp group that is *not* the operator's deliberate always-on chat (e.g. their self-chat), offer:
+Cross-reference against WhatsApp group chats (`area51 messaging-groups list --channel-type whatsapp --is-group 1`). For each wiring with pattern `.` on a WhatsApp group that is *not* the operator's deliberate always-on chat (e.g. their self-chat), offer:
 
-- **Flip to name-based engagement**: `ncl wirings update <wiring-id> --engage-mode pattern --engage-pattern '\b<AgentName>\b'` (or `--engage-mode mention` on a dedicated number)
-- **Delete the wiring**: `ncl wirings delete <wiring-id>`
+- **Flip to name-based engagement**: `area51 wirings update <wiring-id> --engage-mode pattern --engage-pattern '\b<AgentName>\b'` (or `--engage-mode mention` on a dedicated number)
+- **Delete the wiring**: `area51 wirings delete <wiring-id>`
 
 Stale approval cards from that era can also linger. Clear pending channel approvals for chats the operator doesn't want wired:
 
@@ -334,7 +334,7 @@ default for a DM.
 
 ## Restart
 
-Restart NanoClaw so it loads the WhatsApp adapter and sees your credentials and
+Restart Area51 so it loads the WhatsApp adapter and sees your credentials and
 settings, and wait for its CLI socket before resolving. Restart only after
 `ASSISTANT_HAS_OWN_NUMBER` / `ASSISTANT_NAME` land in `.env` — the adapter
 computes its shared/dedicated mode and name once at module load, so restarting
@@ -493,7 +493,7 @@ pnpm exec tsx .claude/skills/add-whatsapp/scripts/wa-qr-browser.ts --clean
 ### "waiting for this message" on reactions
 
 WhatsApp sessions corrupted from rapid restarts. Clear sessions, then restart the
-service. Run from your NanoClaw project root:
+service. Run from your Area51 project root:
 
 ```bash
 source setup/lib/install-slug.sh
@@ -505,20 +505,20 @@ systemctl --user start $(systemd_unit)
 ### Bot not responding
 
 1. Auth exists: `test -f store/auth/creds.json`
-2. Connected: `grep "Connected to WhatsApp" logs/nanoclaw.log | tail -1`
+2. Connected: `grep "Connected to WhatsApp" logs/area51.log | tail -1`
 3. Channel wired: `pnpm exec tsx scripts/q.ts data/v2.db "SELECT mg.platform_id, mg.name FROM messaging_groups mg JOIN messaging_group_agents mga ON mg.id=mga.messaging_group_id WHERE mg.channel_type='whatsapp'"`
 4. Service running: `systemctl --user status "$(. setup/lib/install-slug.sh && systemd_unit)"`
 
 ### "conflict" disconnection
 
-Two instances connected with the same credentials. Ensure only one NanoClaw
+Two instances connected with the same credentials. Ensure only one Area51
 process is running.
 
 ### Trunk updated but shared-number behavior unchanged (stale adapter copy)
 
-The shared-number behavior (no stranger approval cards, name-pattern group defaults) lives in the **adapter copy** at `src/channels/whatsapp.ts`, installed from the `channels` branch — not in trunk. If you updated trunk via `/update-nanoclaw` but skipped the skill-update step, the old adapter copy neither reads `ASSISTANT_HAS_OWN_NUMBER` itself nor declares channel defaults, so trunk falls back to the legacy behavior: approval cards still fire on a personal number, and new wirings get the channel-blind defaults. Symptoms of the skew:
+The shared-number behavior (no stranger approval cards, name-pattern group defaults) lives in the **adapter copy** at `src/channels/whatsapp.ts`, installed from the `channels` branch — not in trunk. If you updated trunk via `/update-area51` but skipped the skill-update step, the old adapter copy neither reads `ASSISTANT_HAS_OWN_NUMBER` itself nor declares channel defaults, so trunk falls back to the legacy behavior: approval cards still fire on a personal number, and new wirings get the channel-blind defaults. Symptoms of the skew:
 
 - `.env` says `ASSISTANT_HAS_OWN_NUMBER=false` (or unset) but strangers' DMs still raise approval cards
-- `ncl wirings create` on a WhatsApp group defaults to `mention` instead of a name pattern
+- `area51 wirings create` on a WhatsApp group defaults to `mention` instead of a name pattern
 
 Fix: re-run `/add-whatsapp` (or `/update-skills`) to pull the current adapter from the `channels` branch, then restart the service. The reverse skew (new adapter, old trunk) can't happen — the adapter's `defaults` field is optional and old trunk ignores it.

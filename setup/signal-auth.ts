@@ -14,7 +14,7 @@
  *                                as a terminal QR, wait for completion.
  *
  * The linking URL + its QR are written as PLAIN stdout lines (not wrapped in a
- * NANOCLAW SETUP block): a streaming parent (setup/lib/skill-driver's
+ * AREA51 SETUP block): a streaming parent (setup/lib/skill-driver's
  * hostExecStream) consumes the status blocks but tees every other stdout line to
  * the operator live, so the operator sees the QR/URL directly. Only the terminal
  * SIGNAL_AUTH block is parsed — the driver's `capture:<var>=ACCOUNT` reads the
@@ -39,7 +39,7 @@ import { spawn, spawnSync } from 'child_process';
 import { emitStatus } from './status.js';
 
 const LINK_TIMEOUT_MS = 180_000;
-const DEFAULT_DEVICE_NAME = 'NanoClaw';
+const DEFAULT_DEVICE_NAME = 'Area51';
 
 interface SignalAccount {
   number?: string;
@@ -76,7 +76,7 @@ function listAccounts(): string[] {
 /**
  * Render the signal-cli linking URL as a block-art QR and print it — together
  * with the raw URL — as PLAIN stdout lines. A streaming parent tees these to the
- * operator's terminal live; do NOT wrap them in a NANOCLAW SETUP block (those are
+ * operator's terminal live; do NOT wrap them in a AREA51 SETUP block (those are
  * consumed by the parser, not displayed). small-mode keeps the code scannable on
  * 24-row terminals. If qrcode isn't installed (the add-signal skill installs it,
  * but be defensive) fall back to the URL alone for an external renderer.
@@ -168,7 +168,7 @@ export async function run(_args: string[]): Promise<void> {
         // Match both modern (sgnl://) and legacy (tsdevice://) schemes. Render
         // the linking URL as a QR and print both as PLAIN stdout lines so a
         // streaming parent tees them straight to the operator (a wrapping
-        // NANOCLAW SETUP block would be consumed, not shown).
+        // AREA51 SETUP block would be consumed, not shown).
         if (/^(sgnl|tsdevice):\/\/linkdevice\?/.test(line) && !qrEmitted) {
           qrEmitted = true;
           printLink(line);

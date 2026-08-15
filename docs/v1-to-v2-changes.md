@@ -1,6 +1,6 @@
-# NanoClaw v1 → v2 — what changed
+# Area51 v1 → v2 — what changed
 
-Big-picture differences between NanoClaw v1 (the `~/nanoclaw` checkout you've been running) and v2 (this rewrite). Not a migration guide — that's what `bash migrate-v2.sh` and the `/migrate-from-v1` skill are for. This doc is the **vocabulary**: when something has moved or been renamed, find it here.
+Big-picture differences between Area51 v1 (the `~/area51` checkout you've been running) and v2 (this rewrite). Not a migration guide — that's what `bash migrate-v2.sh` and the `/migrate-from-v1` skill are for. This doc is the **vocabulary**: when something has moved or been renamed, find it here.
 
 Read this before touching the migration code or porting customizations forward.
 

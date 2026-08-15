@@ -1,11 +1,11 @@
 ---
 name: learn
-description: "Distill a reusable skill from anything — a directory, a URL, pasted notes, or what you just did together — or refine an existing skill with new learnings. Use when the user says '/learn', 'learn this', 'turn this into a skill', 'capture this workflow', 'make a skill from <source>', or 'improve/update the <name> skill'. Produces or updates a .claude/skills/<name>/SKILL.md authored to NanoClaw's skill guidelines. (This CREATES or REFINES a skill from a source; it does not install existing skills from a registry.)"
+description: "Distill a reusable skill from anything — a directory, a URL, pasted notes, or what you just did together — or refine an existing skill with new learnings. Use when the user says '/learn', 'learn this', 'turn this into a skill', 'capture this workflow', 'make a skill from <source>', or 'improve/update the <name> skill'. Produces or updates a .claude/skills/<name>/SKILL.md authored to Area51's skill guidelines. (This CREATES or REFINES a skill from a source; it does not install existing skills from a registry.)"
 ---
 
 # Learn — Distill a Skill from Anything
 
-Turn a source — a directory, a URL, pasted notes, or the work just done in this conversation — into a clean, reusable NanoClaw skill. The output is a new `.claude/skills/<name>/SKILL.md` (plus optional `scripts/`, `references/`, `templates/`) authored to the project's skill guidelines.
+Turn a source — a directory, a URL, pasted notes, or the work just done in this conversation — into a clean, reusable Area51 skill. The output is a new `.claude/skills/<name>/SKILL.md` (plus optional `scripts/`, `references/`, `templates/`) authored to the project's skill guidelines.
 
 This skill is **instruction-only**: it uses the tools you already have (`Read`, `Grep`, `Glob`, `WebFetch`, `Write`) — there is no separate distillation engine and no reach-ins into core code.
 

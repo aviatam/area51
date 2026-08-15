@@ -4,7 +4,7 @@ import path from 'path';
 
 import { MEMORY_FILE_BUDGET_CHARS, MEMORY_TRUNCATION_NOTICE, renderMemorySection } from './context.js';
 
-const BASE = '/tmp/nanoclaw-memory-context-test';
+const BASE = '/tmp/area51-memory-context-test';
 
 function writeMemoryTree(index: string, definition: string): void {
   fs.mkdirSync(path.join(BASE, 'memory', 'system'), { recursive: true });

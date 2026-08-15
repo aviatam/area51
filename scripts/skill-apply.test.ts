@@ -203,11 +203,11 @@ describe('json-merge directive', () => {
 });
 
 // append at:<marker>: insert before a dormant region's closing line.
-const MARKER_FILE = ['const STEPS = {', "  auth: () => import('./auth.js'),", '  // >>> nanoclaw:setup-steps', '  // <<< nanoclaw:setup-steps', '};', ''].join('\n');
+const MARKER_FILE = ['const STEPS = {', "  auth: () => import('./auth.js'),", '  // >>> area51:setup-steps', '  // <<< area51:setup-steps', '};', ''].join('\n');
 const APPEND_AT_SKILL = `# append-at demo
 
 ## Register a setup step
-\`\`\`nc:append to:setup/index.ts at:nanoclaw:setup-steps
+\`\`\`nc:append to:setup/index.ts at:area51:setup-steps
 codex: () => import('./codex.js'),
 \`\`\`
 `;
@@ -233,9 +233,9 @@ describe('append at:<marker>', () => {
     writeFileSync(join(askill, 'SKILL.md'), APPEND_AT_SKILL);
     await applySkill(askill, aroot, { resolveInput: headless({}), exec: () => {} });
     const out = readFileSync(join(aroot, 'setup/index.ts'), 'utf8').split('\n');
-    const closeIdx = out.findIndex((l) => l.includes('<<< nanoclaw:setup-steps'));
+    const closeIdx = out.findIndex((l) => l.includes('<<< area51:setup-steps'));
     expect(out[closeIdx - 1]).toBe("  codex: () => import('./codex.js'),"); // inserted just above, 2-space indent
-    expect(out[closeIdx - 2]).toContain('>>> nanoclaw:setup-steps'); // open marker untouched
+    expect(out[closeIdx - 2]).toContain('>>> area51:setup-steps'); // open marker untouched
   });
 
   it('is idempotent (whole-file line check) regardless of position', async () => {
@@ -273,8 +273,8 @@ Your email.
 
 ## Wire via ncl
 \`\`\`nc:run effect:wire
-ncl messaging-groups create --channel-type resend --platform-id resend:{{owner_email}} --is-group 0
-ncl messaging-groups send --channel-type resend --platform-id resend:{{owner_email}} --text "hello"
+area51 messaging-groups create --channel-type resend --platform-id resend:{{owner_email}} --is-group 0
+area51 messaging-groups send --channel-type resend --platform-id resend:{{owner_email}} --text "hello"
 \`\`\`
 
 ## A var-free build run
@@ -297,10 +297,10 @@ describe('nc:run variable substitution', () => {
     const { cmds, exec } = recordingExec();
     await applySkill(rskill, rroot, { resolveInput: headless({ owner_email: 'you@example.com' }), exec });
     expect(cmds).toContain(
-      'ncl messaging-groups create --channel-type resend --platform-id resend:you@example.com --is-group 0',
+      'area51 messaging-groups create --channel-type resend --platform-id resend:you@example.com --is-group 0',
     );
     expect(cmds).toContain(
-      'ncl messaging-groups send --channel-type resend --platform-id resend:you@example.com --text "hello"',
+      'area51 messaging-groups send --channel-type resend --platform-id resend:you@example.com --text "hello"',
     );
     expect(cmds).toContain('pnpm run build');
   });
@@ -309,7 +309,7 @@ describe('nc:run variable substitution', () => {
     const res = await applySkill(rskill, rroot, { resolveInput: headless({ owner_email: 'you@example.com' }), exec: () => {} });
     const ran = res.journal.filter((e) => e.op === 'ran').map((e) => 'cmd' in e ? e.cmd : '');
     expect(ran).toContain(
-      'ncl messaging-groups create --channel-type resend --platform-id resend:{{owner_email}} --is-group 0',
+      'area51 messaging-groups create --channel-type resend --platform-id resend:{{owner_email}} --is-group 0',
     );
     expect(JSON.stringify(res.journal)).not.toContain('you@example.com');
   });
@@ -318,7 +318,7 @@ describe('nc:run variable substitution', () => {
     const { cmds, exec } = recordingExec();
     const res = await applySkill(rskill, rroot, { resolveInput: headless({}), exec });
     expect(res.deferred.some((d) => /unresolved \{\{owner_email\}\}/.test(d))).toBe(true);
-    expect(cmds.some((c) => c.startsWith('ncl'))).toBe(false); // no ncl ran with an unresolved value
+    expect(cmds.some((c) => c.startsWith('ncl'))).toBe(false); // no area51 ran with an unresolved value
     expect(cmds).toContain('pnpm run build'); // the var-free run still executes
   });
 });
@@ -338,7 +338,7 @@ Your member id.
 resolve-dm {{user_id}}
 \`\`\`
 \`\`\`nc:run effect:wire
-ncl messaging-groups create --channel-type slack --platform-id slack:{{dm_channel}}
+area51 messaging-groups create --channel-type slack --platform-id slack:{{dm_channel}}
 \`\`\`
 `;
 
@@ -361,7 +361,7 @@ describe('nc:run capture', () => {
     };
     await applySkill(cskill, croot, { resolveInput: headless({ user_id: 'U999' }), exec });
     expect(cmds).toContain('resolve-dm U999'); // resolved with the prompted id
-    expect(cmds).toContain('ncl messaging-groups create --channel-type slack --platform-id slack:D0SLACK123'); // captured value flowed downstream
+    expect(cmds).toContain('area51 messaging-groups create --channel-type slack --platform-id slack:D0SLACK123'); // captured value flowed downstream
   });
 
   it('lint accepts {{dm_channel}} as defined by the earlier capture', () => {
@@ -512,7 +512,7 @@ Go create the thing, {{owner}}.
 resolve-thing {{owner}}
 \`\`\`
 \`\`\`nc:run effect:wire
-ncl wire --owner {{owner}} --thing {{thing_id}}
+area51 wire --owner {{owner}} --thing {{thing_id}}
 \`\`\`
 `;
 
@@ -538,7 +538,7 @@ describe('programmatic apply via inputs', () => {
     expect(res.deferred).toEqual([]);
     expect(res.agentTasks).toEqual([]);
     expect(cmds).toContain('resolve-thing ada'); // prompt input flowed through
-    expect(cmds).toContain('ncl wire --owner ada --thing T-42'); // captured value flowed through
+    expect(cmds).toContain('area51 wire --owner ada --thing T-42'); // captured value flowed through
     expect(res.operatorMessages).toEqual(['Go create the thing, ada.']); // human step collected for relay
   });
 
@@ -563,12 +563,12 @@ describe('programmatic apply via inputs', () => {
   it('skipEffects skips a run the caller owns (effect:restart) but runs the rest', async () => {
     writeFileSync(
       join(pskill, 'SKILL.md'),
-      '# restart demo\n\n```nc:run effect:build\npnpm run build\n```\n```nc:run effect:restart\nbash setup/lib/restart.sh\n```\n```nc:run effect:wire\nncl wire\n```\n',
+      '# restart demo\n\n```nc:run effect:build\npnpm run build\n```\n```nc:run effect:restart\nbash setup/lib/restart.sh\n```\n```nc:run effect:wire\narea51 wire\n```\n',
     );
     const cmds: string[] = [];
     const res = await applySkill(pskill, proot, { inputs: {}, skipEffects: ['restart'], exec: (c) => void cmds.push(c) });
     expect(cmds).toContain('pnpm run build');
-    expect(cmds).toContain('ncl wire');
+    expect(cmds).toContain('area51 wire');
     expect(cmds).not.toContain('bash setup/lib/restart.sh'); // restart owned by the caller → skipped
     expect(res.skipped.some((s) => /run restart: owned by the caller/.test(s))).toBe(true);
   });
@@ -1097,7 +1097,7 @@ describe('stepLabel', () => {
       '## Copy a file', '```nc:copy', 'a -> b', '```', '',
       '## Pull from the branch', '```nc:copy from-branch:channels', 'x -> y', '```', '',
       '## Link the device', '```nc:run effect:step capture:platform_id=PLATFORM_ID', 'pair', '```', '',
-      '## Wire it', '```nc:run effect:wire', 'ncl wire', '```',
+      '## Wire it', '```nc:run effect:wire', 'area51 wire', '```',
     ].join('\n');
     const ds = parseDirectives(md);
     const nth = (k: string, i = 0) => ds.filter((d) => d.kind === k)[i];
@@ -1437,7 +1437,7 @@ SIGNAL_TCP_HOST=127.0.0.1
 ### Bot not responding
 Check the logs.
 \`\`\`bash
-grep demo logs/nanoclaw.log
+grep demo logs/area51.log
 \`\`\`
 `;
 
@@ -1451,7 +1451,7 @@ describe('referenceProse (reference-floor slice)', () => {
     expect(ref).toContain('SIGNAL_TCP_HOST=127.0.0.1');
     expect(ref).toContain('## Troubleshooting');
     expect(ref).toContain('### Bot not responding'); // a ### subsection is kept
-    expect(ref).toContain('grep demo logs/nanoclaw.log');
+    expect(ref).toContain('grep demo logs/area51.log');
     // non-reference sections are never included
     expect(ref).not.toContain('## Apply');
     expect(ref).not.toContain('## Channel Info');

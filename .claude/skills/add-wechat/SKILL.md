@@ -18,11 +18,11 @@ Adds WeChat support via **iLink Bot API** — the first-party Tencent API for pe
 
 - A **personal WeChat account** with the mobile app installed
 - A phone to scan the QR code for login
-- Node.js >= 20 (already required by NanoClaw)
+- Node.js >= 20 (already required by Area51)
 
 ## Install
 
-NanoClaw doesn't ship channels in trunk. This skill copies the WeChat adapter in from the `channels` branch.
+Area51 doesn't ship channels in trunk. This skill copies the WeChat adapter in from the `channels` branch.
 
 ### Pre-flight (idempotent)
 
@@ -88,9 +88,9 @@ WECHAT_ENABLED=true
 
 ### 2. Start the service and scan the QR
 
-Restart NanoClaw.
+Restart Area51.
 
-Run from your NanoClaw project root:
+Run from your Area51 project root:
 
 ```bash
 source setup/lib/install-slug.sh
@@ -102,7 +102,7 @@ launchctl kickstart -k gui/$(id -u)/$(launchd_label)  # macOS
 The adapter will print a **QR URL** to the logs and save it to `data/wechat/qr.txt`:
 
 ```bash
-tail -f logs/nanoclaw.log | grep WeChat
+tail -f logs/area51.log | grep WeChat
 # or
 cat data/wechat/qr.txt
 ```
@@ -120,7 +120,7 @@ The bot is now connected as your WeChat account.
 
 A successful QR login alone isn't enough — the adapter still needs to be wired to an agent group before it can respond.
 
-**Prerequisite: the host service must be running.** The wire script creates the wiring through `ncl`, which talks to the running host over a Unix socket — there is no offline mode.
+**Prerequisite: the host service must be running.** The wire script creates the wiring through `area51`, which talks to the running host over a Unix socket — there is no offline mode.
 
 ### 1. Trigger the first inbound message
 
@@ -132,7 +132,7 @@ Have a different WeChat account send a message to the bot account. This auto-cre
 pnpm exec tsx .claude/skills/add-wechat/scripts/wire-dm.ts
 ```
 
-Interactive flow: the script lists all unwired WeChat messaging groups, asks which agent group to wire it to, and runs `ncl wirings create` — engage mode/pattern and priority come from the WeChat adapter's declared channel defaults, so a wiring created here matches one created by `/manage-channels` or the approval-card flow.
+Interactive flow: the script lists all unwired WeChat messaging groups, asks which agent group to wire it to, and runs `area51 wirings create` — engage mode/pattern and priority come from the WeChat adapter's declared channel defaults, so a wiring created here matches one created by `/manage-channels` or the approval-card flow.
 
 With `request_approval` as the sender policy, the next DM from a stranger fires an approval card to the admin — admin taps Approve/Deny, approved users are added as members and their queued message replays through the agent.
 
@@ -152,10 +152,10 @@ Flags:
 - `--sender-policy public|strict|request_approval` — override the messaging group's `unknown_sender_policy` (default: leave whatever the WeChat adapter declared when the row was auto-created)
 - `--session-mode shared|per-thread` — default `shared`
 
-Equivalent raw `ncl` invocation (host must be running):
+Equivalent raw `area51` invocation (host must be running):
 
 ```bash
-ncl wirings create --messaging-group-id <mg-id> --agent-group-id <ag-id> --session-mode shared
+area51 wirings create --messaging-group-id <mg-id> --agent-group-id <ag-id> --session-mode shared
 ```
 
 ### 3. Test
@@ -164,7 +164,7 @@ Have the sender message the bot again — the agent should respond.
 
 ## Operational notes
 
-- **Only one instance can use a given token at a time.** Don't run multiple NanoClaw instances pointing to the same `data/wechat/auth.json`.
+- **Only one instance can use a given token at a time.** Don't run multiple Area51 instances pointing to the same `data/wechat/auth.json`.
 - **Re-login on session expiry:** if you see `WeChat: session expired` in logs, delete `data/wechat/auth.json` and restart — you'll be asked to re-scan.
 - **Sync cursor persistence:** `data/wechat/sync-buf.txt` holds the long-poll cursor. Deleting it replays recent history on next start; don't delete it in normal operation.
 - **Account safety:** this uses the official Tencent API, so account bans for bot automation aren't a risk. That said, don't spam — normal rate limits still apply.
@@ -184,4 +184,4 @@ Otherwise, restart the service to pick up the new channel and wiring.
 - **supports-threads**: no (WeChat has no reply threads)
 - **typical-use**: Long-poll — the adapter holds a persistent connection to Tencent's iLink API and receives messages in real time. No webhook URL needed.
 - **default-isolation**: `shared` session mode per messaging group (DM or room). Use `strict` sender policy if you want only specific users to reach the agent; `public` opens it to anyone who messages the bot.
-- **post-install-wiring**: Use the `wire-dm.ts` helper (see the "Wire your first DM" section above) if running this skill standalone. If running as part of `bash nanoclaw.sh`, `init-first-agent.ts` handles wiring — just pass the `platform-id` and `admin-user-id` captured above.
+- **post-install-wiring**: Use the `wire-dm.ts` helper (see the "Wire your first DM" section above) if running this skill standalone. If running as part of `bash area51.sh`, `init-first-agent.ts` handles wiring — just pass the `platform-id` and `admin-user-id` captured above.

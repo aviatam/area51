@@ -153,9 +153,9 @@ function runAction(action: RemovalAction, deps: ExecDeps, notes: string[]): void
       }
       break;
     }
-    case 'rm-ncl-symlink':
+    case 'rm-area51-symlink':
       fs.rmSync(action.linkPath, { force: true });
-      log('✓ removed ncl command');
+      log('✓ removed area51 command');
       break;
     case 'delete-onecli-agent': {
       const res = runCommand('onecli', [

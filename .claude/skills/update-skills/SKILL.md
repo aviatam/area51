@@ -42,7 +42,7 @@ If output is non-empty:
 Check remotes:
 - `git remote -v`
 
-If `origin` does not point at a NanoClaw upstream (or you want to verify it has the skill branches), confirm with the user before continuing. The default upstream is `https://github.com/nanocoai/nanoclaw.git`.
+If `origin` does not point at a Area51 upstream (or you want to verify it has the skill branches), confirm with the user before continuing. The default upstream is `https://github.com/aviatam/area51.git`.
 
 Fetch the branches that carry skill code:
 - `git fetch origin channels providers --prune`

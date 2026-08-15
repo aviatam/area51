@@ -1,5 +1,5 @@
 /**
- * Init the first (or Nth) NanoClaw v2 agent for a DM channel.
+ * Init the first (or Nth) Area51 v2 agent for a DM channel.
  *
  * Wires a real DM channel (discord, telegram, etc.) to a new agent group,
  * then hands a welcome message to the running service via the CLI socket
@@ -222,7 +222,7 @@ async function main(): Promise<void> {
 
   // 2. Agent group + filesystem. Setup-created template groups arrive by id;
   // this script owns only role, membership, channel wiring, and welcome.
-  const pickedProvider = process.env.NANOCLAW_PICKED_PROVIDER?.trim().toLowerCase();
+  const pickedProvider = process.env.AREA51_PICKED_PROVIDER?.trim().toLowerCase();
   let ag: AgentGroup;
   let folder: string;
   if (args.agentGroupId) {
@@ -254,7 +254,7 @@ async function main(): Promise<void> {
     stageGroupPersona(
       path.resolve(GROUPS_DIR, folder),
       `# ${args.agentName}\n\n` +
-        `You are ${args.agentName}, a personal NanoClaw agent for ${args.displayName}. ` +
+        `You are ${args.agentName}, a personal Area51 agent for ${args.displayName}. ` +
         'When the user first reaches out (or you receive a system welcome prompt), introduce yourself briefly and invite them to chat. Keep replies concise.',
     );
   }
@@ -387,7 +387,7 @@ async function sendWelcomeViaCliSocket(
     };
 
     socket.once('error', (err) =>
-      settle(new Error(`CLI socket at ${sockPath} not reachable: ${err.message}. Is the NanoClaw service running?`)),
+      settle(new Error(`CLI socket at ${sockPath} not reachable: ${err.message}. Is the Area51 service running?`)),
     );
     socket.once('connect', () => {
       const payload =

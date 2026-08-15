@@ -7,7 +7,7 @@
         "bot_token": "123456789:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
       },
       "exec": [
-        { "match": "getMe", "stdout": "nanoclaw_bot" }
+        { "match": "getMe", "stdout": "area51_bot" }
       ],
       "stepFields": { "PLATFORM_ID": "telegram:123456789", "ADMIN_USER_ID": "987654321" }
     }

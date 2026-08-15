@@ -1,5 +1,5 @@
 /**
- * Command registry — single source of truth for what `ncl` can do.
+ * Command registry — single source of truth for what `area51` can do.
  *
  * Most commands come from resource modules under `resources/`, which call
  * `registerResource()` (one `register()` per CRUD verb); the top-level `help`
@@ -14,7 +14,7 @@ import type { CallerContext } from './frame.js';
 
 /**
  * Resources an agent under `cli_scope=group` may touch. Single source —
- * consumed by both dispatch enforcement and `ncl help` filtering, so the
+ * consumed by both dispatch enforcement and `area51 help` filtering, so the
  * agent is never shown a resource the gate would reject (or vice versa).
  */
 export const GROUP_SCOPE_RESOURCES = new Set(['groups', 'sessions', 'destinations', 'members', 'tasks']);

@@ -5,14 +5,14 @@ import { fileURLToPath } from 'node:url';
 import { discoveryParsers, parseOutput, unwrapPath } from '../parsers.js';
 
 const fixture = readFileSync(
-  fileURLToPath(new URL('./fixtures/ncl-help.txt', import.meta.url)),
+  fileURLToPath(new URL('./fixtures/area51-help.txt', import.meta.url)),
   'utf8',
 );
 
-// ---------------------------------------------------------------- ncl-help
+// ---------------------------------------------------------------- area51-help
 
-test('ncl-help: parses all listable resources from real captured output', () => {
-  const resources = discoveryParsers['ncl-help'](fixture);
+test('area51-help: parses all listable resources from real captured output', () => {
+  const resources = discoveryParsers['area51-help'](fixture);
   assert.deepEqual(
     resources.map((r) => r.name),
     [
@@ -22,16 +22,16 @@ test('ncl-help: parses all listable resources from real captured output', () => 
   );
 });
 
-test('ncl-help: every parsed resource has a non-empty description and a list verb', () => {
-  const resources = discoveryParsers['ncl-help'](fixture);
+test('area51-help: every parsed resource has a non-empty description and a list verb', () => {
+  const resources = discoveryParsers['area51-help'](fixture);
   for (const r of resources) {
     assert.ok(r.description.length > 0, `${r.name} has empty description`);
-    assert.ok(r.verbs.includes('list'), `${r.name} missing list verb`);
+    assert.ok(r.verbs.iarea51udes('list'), `${r.name} missing list verb`);
   }
 });
 
-test('ncl-help: parses verbs correctly, including multi-word verbs', () => {
-  const resources = discoveryParsers['ncl-help'](fixture);
+test('area51-help: parses verbs correctly, iarea51uding multi-word verbs', () => {
+  const resources = discoveryParsers['area51-help'](fixture);
   const groups = resources.find((r) => r.name === 'groups');
   assert.deepEqual(groups.verbs, [
     'list', 'get', 'create', 'update', 'delete', 'restart',
@@ -40,7 +40,7 @@ test('ncl-help: parses verbs correctly, including multi-word verbs', () => {
   ]);
 });
 
-test('ncl-help: excludes resources without a list verb', () => {
+test('area51-help: excludes resources without a list verb', () => {
   const input = [
     'Resources:',
     '  alpha                Has list.',
@@ -49,18 +49,18 @@ test('ncl-help: excludes resources without a list verb', () => {
     '                       verbs: grant, revoke',
     '',
   ].join('\n');
-  const resources = discoveryParsers['ncl-help'](input);
+  const resources = discoveryParsers['area51-help'](input);
   assert.deepEqual(resources.map((r) => r.name), ['alpha']);
 });
 
-test('ncl-help: ignores the Commands section (help is not a resource)', () => {
-  const resources = discoveryParsers['ncl-help'](fixture);
+test('area51-help: ignores the Commands section (help is not a resource)', () => {
+  const resources = discoveryParsers['area51-help'](fixture);
   assert.ok(!resources.some((r) => r.name === 'help'));
 });
 
-test('ncl-help: throws loudly on unrecognized format', () => {
-  assert.throws(() => discoveryParsers['ncl-help']('totally not help output'), /Resources/);
-  assert.throws(() => discoveryParsers['ncl-help'](''), /Resources/);
+test('area51-help: throws loudly on unrecognized format', () => {
+  assert.throws(() => discoveryParsers['area51-help']('totally not help output'), /Resources/);
+  assert.throws(() => discoveryParsers['area51-help'](''), /Resources/);
 });
 
 // ------------------------------------------------------------- parseOutput
@@ -92,7 +92,7 @@ test('parseOutput: rejects unknown format', () => {
 
 // -------------------------------------------------------------- unwrapPath
 
-test('unwrapPath: extracts the ncl {id, ok, data} envelope', () => {
+test('unwrapPath: extracts the area51 {id, ok, data} envelope', () => {
   const doc = { id: 'x', ok: true, data: [{ id: 'sess-1' }] };
   assert.deepEqual(unwrapPath(doc, 'data'), [{ id: 'sess-1' }]);
 });

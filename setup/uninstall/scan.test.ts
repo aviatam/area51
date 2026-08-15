@@ -13,8 +13,8 @@ let root: string;
 let home: string;
 
 beforeEach(() => {
-  root = fs.mkdtempSync(path.join(os.tmpdir(), 'nanoclaw-scan-root-'));
-  home = fs.mkdtempSync(path.join(os.tmpdir(), 'nanoclaw-scan-home-'));
+  root = fs.mkdtempSync(path.join(os.tmpdir(), 'area51-scan-root-'));
+  home = fs.mkdtempSync(path.join(os.tmpdir(), 'area51-scan-home-'));
 });
 
 afterEach(() => {
@@ -54,7 +54,7 @@ describe('scanInstall path groups', () => {
       fs.mkdirSync(path.join(root, dir));
     }
     fs.writeFileSync(path.join(root, '.env'), 'KEY=v');
-    fs.writeFileSync(path.join(root, 'start-nanoclaw.sh'), '#!/bin/bash');
+    fs.writeFileSync(path.join(root, 'start-area51.sh'), '#!/bin/bash');
 
     const inv = scanInstall(deps());
 
@@ -62,7 +62,7 @@ describe('scanInstall path groups', () => {
       'data',
       'logs',
       '.env',
-      'start-nanoclaw.sh',
+      'start-area51.sh',
     ]);
     expect(inv.runtime.map((i) => path.basename(i.path))).toEqual([
       'dist',
@@ -107,18 +107,18 @@ describe('scanInstall service artifacts', () => {
     );
     fs.mkdirSync(path.dirname(unit), { recursive: true });
     fs.writeFileSync(unit, '[Unit]');
-    fs.writeFileSync(path.join(root, 'nanoclaw.pid'), '12345');
+    fs.writeFileSync(path.join(root, 'area51.pid'), '12345');
 
     const inv = scanInstall(deps({ platform: 'linux' }));
     expect(inv.service.systemdUserUnit).toBe(unit);
-    expect(inv.service.pidFile).toBe(path.join(root, 'nanoclaw.pid'));
+    expect(inv.service.pidFile).toBe(path.join(root, 'area51.pid'));
     expect(inv.service.launchdPlist).toBeUndefined();
   });
 
   it('captures container ids and image when docker is up', () => {
     const inv = scanInstall(deps({ runCommand: dockerUp(['abc123', 'def456'], true) }));
     expect(inv.service.containerIds).toEqual(['abc123', 'def456']);
-    expect(inv.service.image).toMatch(/^nanoclaw-agent-v2-[0-9a-f]{8}:latest$/);
+    expect(inv.service.image).toMatch(/^area51-agent-v2-[0-9a-f]{8}:latest$/);
     expect(inv.notes).toEqual([]);
   });
 
@@ -130,24 +130,24 @@ describe('scanInstall service artifacts', () => {
   });
 });
 
-describe('scanInstall ncl symlink', () => {
-  const link = () => path.join(home, '.local', 'bin', 'ncl');
+describe('scanInstall area51 symlink', () => {
+  const link = () => path.join(home, '.local', 'bin', 'area51');
 
   it('includes the symlink only when it targets this checkout', () => {
     fs.mkdirSync(path.dirname(link()), { recursive: true });
-    fs.symlinkSync(path.join(root, 'bin', 'ncl'), link());
+    fs.symlinkSync(path.join(root, 'bin', 'area51'), link());
 
     const inv = scanInstall(deps());
-    expect(inv.service.nclSymlink).toBe(link());
+    expect(inv.service.area51Symlink).toBe(link());
   });
 
   it('leaves a symlink pointing at another copy, with a note', () => {
     fs.mkdirSync(path.dirname(link()), { recursive: true });
-    fs.symlinkSync('/some/other/copy/bin/ncl', link());
+    fs.symlinkSync('/some/other/copy/bin/area51', link());
 
     const inv = scanInstall(deps());
-    expect(inv.service.nclSymlink).toBeUndefined();
-    expect(inv.notes.some((n) => n.includes('points to another NanoClaw copy'))).toBe(true);
+    expect(inv.service.area51Symlink).toBeUndefined();
+    expect(inv.notes.some((n) => n.includes('points to another Area51 copy'))).toBe(true);
   });
 });
 

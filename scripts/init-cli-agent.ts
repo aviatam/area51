@@ -107,7 +107,7 @@ async function main(): Promise<void> {
 
   // 2. Agent group + filesystem.
   const folder = args.folder || `cli-with-${normalizeName(args.displayName)}`;
-  const pickedProvider = process.env.NANOCLAW_PICKED_PROVIDER?.trim().toLowerCase();
+  const pickedProvider = process.env.AREA51_PICKED_PROVIDER?.trim().toLowerCase();
   let ag: AgentGroup | undefined = getAgentGroupByFolder(folder);
   if (!ag) {
     const agId = generateId('ag');
@@ -126,9 +126,9 @@ async function main(): Promise<void> {
   initGroupFilesystem(ag, {
     instructions:
       `# ${args.agentName}\n\n` +
-      `You are ${args.agentName}, a personal NanoClaw agent for ${args.displayName}. ` +
+      `You are ${args.agentName}, a personal Area51 agent for ${args.displayName}. ` +
       'When the user first reaches out, introduce yourself briefly and invite them to chat. Keep replies concise.',
-    // The operator's setup pick (NANOCLAW_PICKED_PROVIDER) when set; otherwise
+    // The operator's setup pick (AREA51_PICKED_PROVIDER) when set; otherwise
     // undefined, so initGroupFilesystem falls back to the instance default and
     // stamps it onto the fresh config row.
     provider: pickedProvider,

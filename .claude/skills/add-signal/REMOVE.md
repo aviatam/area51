@@ -37,7 +37,7 @@ mkdir -p data/env && cp .env data/env/env
 
 ## 3. Rebuild and restart
 
-Run from your NanoClaw project root:
+Run from your Area51 project root:
 
 ```bash
 pnpm run build
@@ -52,7 +52,7 @@ launchctl kickstart -k gui/$(id -u)/$(launchd_label)
 
 ## 4. Unlink the Signal account (optional)
 
-To unlink NanoClaw's device from the Signal account:
+To unlink Area51's device from the Signal account:
 
 ```bash
 signal-cli -a +1YOURNUMBER removeDevice --deviceId <id>

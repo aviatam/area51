@@ -5,7 +5,7 @@ import type { Migration } from './index.js';
  *
  * NULL = follow the install-global timezone (TZ in .env / system), matching
  * pre-migration behavior for every existing row — deliberately no backfill.
- * A non-NULL value is a validated IANA id (rejected at the ncl write path);
+ * A non-NULL value is a validated IANA id (rejected at the area51 write path);
  * it grounds host-side scheduling (cron parsing, --process-after, run-log
  * stamps) immediately and the container's TZ env on next respawn.
  */

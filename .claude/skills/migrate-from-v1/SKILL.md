@@ -1,6 +1,6 @@
 ---
 name: migrate-from-v1
-description: Finish migrating a NanoClaw v1 install into v2. Run after `bash migrate-v2.sh` completes. Seeds the owner, migrates legacy memory, reconciles container configs, and helps port custom v1 code. Triggers on "migrate from v1", "finish migration", "v1 migration".
+description: Finish migrating a Area51 v1 install into v2. Run after `bash migrate-v2.sh` completes. Seeds the owner, migrates legacy memory, reconciles container configs, and helps port custom v1 code. Triggers on "migrate from v1", "finish migration", "v1 migration".
 ---
 
 # Finish v1 → v2 migration
@@ -49,7 +49,7 @@ Walk `handoff.steps`. Fix only the failures that would stop the bot from routing
 
 Tell the user the switch is non-destructive (v1 is paused, not modified; reverting is one command). Help them stop v1's service unit and start v2's, tail the host log for a clean boot, and have them send a real test message. Use `AskUserQuestion` to confirm the bot responded.
 
-If yes, continue to Phase 1. If no, diagnose from `logs/nanoclaw.log` and re-test — don't proceed to deeper work on a broken router.
+If yes, continue to Phase 1. If no, diagnose from `logs/area51.log` and re-test — don't proceed to deeper work on a broken router.
 
 ### Deferred failures
 
@@ -139,7 +139,7 @@ Run `/migrate-memory` for the imported groups. It quiesces each group, moves the
 v1 `CLAUDE.local.md` into the shared `memory/` tree without reading it during
 staging, then has the invoking coding harness distill standing identity into
 `instructions.prepend.md` and durable facts into Core Memory or focused linked
-files before the NanoClaw group runs again.
+files before the Area51 group runs again.
 
 Do not duplicate that migration logic here. Record each group's result in the
 handoff before continuing.
@@ -207,7 +207,7 @@ pnpm exec tsx setup/index.ts --step <name>
    pnpm exec tsx setup/index.ts --step verify
    ```
 2. Delete `logs/setup-migration/handoff.json` — offer to save as `docs/migration-<date>.md` first.
-3. Restart the service if running so changes take effect. The v2 service label is install-specific (`nanoclaw-v2-<slug>` / `com.nanoclaw-v2-<slug>`), so derive it from `src/install-slug.ts` rather than guessing:
+3. Restart the service if running so changes take effect. The v2 service label is install-specific (`area51-v2-<slug>` / `com.area51-v2-<slug>`), so derive it from `src/install-slug.ts` rather than guessing:
    ```bash
    # Linux
    UNIT=$(pnpm exec tsx -e "import{getSystemdUnit}from'./src/install-slug.js';console.log(getSystemdUnit())")
