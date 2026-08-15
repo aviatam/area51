@@ -153,6 +153,7 @@ area51 agent-gate scan --path ./groups/support-agent --json-path reports/agent-g
 - Agent Gate findings when the target contains an agent definition
 - package verification status using a named package script, not arbitrary shell text
 - Runtime Policy decision when an agent gate exists
+- vendor-readiness metadata when the target declares `.area51/agent-target.json`
 - normalized findings with severity, evidence, recommendation, and next steps
 - optional JSON output for CI, dashboards, or release evidence
 
@@ -186,6 +187,43 @@ pnpm run verify
 ```
 
 `pnpm run verify` matches the fast local confidence path: high-severity dependency audit, host typecheck, and the portable behavior suite that also runs as the blocking Windows CI lane. Linux and macOS CI run the full host behavior suite.
+
+## Vendor Coverage
+
+Area51 separates assessment from live execution:
+
+- **Assessment** works for vendor-neutral agent targets. `area51 expose` reads
+  `AGENTS.md`, `security-policy.md`, `.area51/agent-gate/scenarios/*.json`,
+  `container.json`, and optional `.area51/agent-target.json`.
+- **Behavior execution across vendors** is delegated to Agent Gym when the
+  target was generated from an Agent Gym suite. Agent Gym can drive HTTP/REST,
+  Python script, or custom plugin adapters for OpenAI, Claude, Gemini, Ollama,
+  LangGraph, CrewAI, AutoGen, hosted agents, and in-house agents.
+- **Native Area51 live runtime** is only for providers implemented inside the
+  Area51 runner. Today Claude is the native production provider; other vendors
+  should be reported as `external-adapter` until an Area51 provider module is
+  added for them.
+
+When an Agent Gym target includes `.area51/agent-target.json`, exposure reports
+include:
+
+```json
+{
+  "vendor_support": {
+    "vendor": "openai",
+    "model": "gpt-5-codex",
+    "adapter": "http",
+    "agentgym_behavior_execution": true,
+    "area51_native_runtime": false,
+    "status": "external-adapter"
+  }
+}
+```
+
+That means the vendor can be tested through Agent Gym, while Area51 contributes
+gate checks, runtime policy, quarantine posture, and release evidence. Add a
+native Area51 provider only when Area51 itself must run that vendor live inside
+its managed runtime.
 
 ## Five Pillars
 

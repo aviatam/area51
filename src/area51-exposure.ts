@@ -36,6 +36,17 @@ export interface Area51ExposureCheck {
   reason?: string;
 }
 
+export interface Area51VendorSupport {
+  vendor: string;
+  model?: string | null;
+  adapter?: string;
+  source?: string;
+  agentgym_behavior_execution: boolean;
+  area51_native_runtime: boolean;
+  status: 'native-runtime' | 'external-adapter' | 'metadata-only';
+  detail: string;
+}
+
 export interface Area51ExposureReport {
   schema: 'area51.exposure.v1';
   generated_at: string;
@@ -52,6 +63,7 @@ export interface Area51ExposureReport {
   };
   agent_gate?: AgentGateReport;
   runtime_policy?: RuntimePolicyDecision;
+  vendor_support?: Area51VendorSupport;
   checks: Area51ExposureCheck[];
   findings: Area51ExposureFinding[];
   recommendations: string[];
@@ -121,6 +133,9 @@ export async function exposeArea51(options: Area51ExposureOptions): Promise<Area
     });
   }
 
+  const vendorSupport = inspectVendorSupport(targetPath);
+  if (vendorSupport) findings.push(vendorSupportFinding(vendorSupport));
+
   let runtimePolicy: RuntimePolicyDecision | undefined;
   if (agentGate) {
     runtimePolicy = selectRuntimePolicy(agentGate, {
@@ -156,6 +171,7 @@ export async function exposeArea51(options: Area51ExposureOptions): Promise<Area
     summary,
     agent_gate: agentGate,
     runtime_policy: runtimePolicy,
+    vendor_support: vendorSupport,
     checks,
     findings,
     recommendations,
@@ -188,6 +204,14 @@ export function formatArea51ExposureReport(report: Area51ExposureReport): string
       `Runtime Policy: ${report.runtime_policy.action.toUpperCase()}${
         report.runtime_policy.runtime ? ` via ${report.runtime_policy.runtime}` : ''
       } risk=${report.runtime_policy.riskScore}/100`,
+    );
+  }
+
+  if (report.vendor_support) {
+    lines.push(
+      `Vendor: ${report.vendor_support.vendor}${
+        report.vendor_support.model ? `/${report.vendor_support.model}` : ''
+      } (${report.vendor_support.status})`,
     );
   }
 
@@ -257,6 +281,64 @@ function inferCapabilities(targetPath: string): RuntimeCapability[] {
   }
 }
 
+interface AgentTargetManifest {
+  schema?: string;
+  source?: string;
+  adapter?: string;
+  vendor?: string;
+  model?: string | null;
+  agentgym?: {
+    can_execute_behavior?: boolean;
+    adapter?: string;
+  };
+}
+
+const AREA51_NATIVE_RUNTIME_PROVIDERS = new Set(['claude']);
+
+function inspectVendorSupport(targetPath: string): Area51VendorSupport | undefined {
+  const manifestPath = path.join(targetPath, '.area51', 'agent-target.json');
+  if (!fs.existsSync(manifestPath)) return undefined;
+
+  try {
+    const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8')) as AgentTargetManifest;
+    const vendor = normalizeVendor(manifest.vendor);
+    const agentgymBehaviorExecution = manifest.agentgym?.can_execute_behavior === true;
+    const area51NativeRuntime = AREA51_NATIVE_RUNTIME_PROVIDERS.has(vendor);
+    const status: Area51VendorSupport['status'] = area51NativeRuntime
+      ? 'native-runtime'
+      : agentgymBehaviorExecution
+        ? 'external-adapter'
+        : 'metadata-only';
+    return {
+      vendor,
+      model: manifest.model ?? null,
+      adapter: manifest.adapter ?? manifest.agentgym?.adapter,
+      source: manifest.source,
+      agentgym_behavior_execution: agentgymBehaviorExecution,
+      area51_native_runtime: area51NativeRuntime,
+      status,
+      detail:
+        status === 'native-runtime'
+          ? 'Area51 has a native runtime provider for this vendor and can assess the target directly.'
+          : status === 'external-adapter'
+            ? 'Agent Gym can execute this vendor through its adapter layer; Area51 assesses the materialized target and runtime policy evidence.'
+            : 'Area51 found vendor metadata but no behavior execution adapter or native runtime declaration.',
+    };
+  } catch {
+    return {
+      vendor: 'unknown',
+      agentgym_behavior_execution: false,
+      area51_native_runtime: false,
+      status: 'metadata-only',
+      detail: 'Area51 could not parse .area51/agent-target.json.',
+    };
+  }
+}
+
+function normalizeVendor(value: string | undefined): string {
+  return (value ?? 'generic').trim().toLowerCase() || 'generic';
+}
+
 function agentGateFinding(finding: AgentGateFinding): Area51ExposureFinding {
   return {
     id: finding.id,
@@ -289,6 +371,30 @@ function runtimeFinding(decision: RuntimePolicyDecision): Area51ExposureFinding 
         : decision.action === 'quarantine'
           ? 'Preserve the quarantine artifacts, investigate the evidence, and rebuild from trusted inputs.'
           : 'Run the workload using the selected runtime and keep this decision in the report.',
+  };
+}
+
+function vendorSupportFinding(vendor: Area51VendorSupport): Area51ExposureFinding {
+  const severity: Area51ExposureSeverity = vendor.status === 'metadata-only' ? 'warning' : 'info';
+  return {
+    id: `vendor-support-${vendor.status}`,
+    severity,
+    surface: 'repo',
+    title: `Vendor support is ${vendor.status}`,
+    detail: vendor.detail,
+    evidence: [
+      `vendor=${vendor.vendor}`,
+      vendor.model ? `model=${vendor.model}` : '',
+      vendor.adapter ? `adapter=${vendor.adapter}` : '',
+      `agentgym_behavior_execution=${vendor.agentgym_behavior_execution}`,
+      `area51_native_runtime=${vendor.area51_native_runtime}`,
+    ].filter(Boolean),
+    recommendation:
+      vendor.status === 'native-runtime'
+        ? 'Use Area51 native runtime checks plus Agent Gym behavior suites for release evidence.'
+        : vendor.status === 'external-adapter'
+          ? 'Keep Agent Gym as the behavior executor for this vendor, and add an Area51 native provider only when Area51 must run it live itself.'
+          : 'Add an Agent Gym adapter or an Area51 native provider before treating this vendor as executable.',
   };
 }
 

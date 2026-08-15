@@ -26,6 +26,17 @@ describe('exposeArea51', () => {
       path.join(dir, 'package.json'),
       JSON.stringify({ scripts: { verify: 'vitest run' }, dependencies: { zod: '4.0.0' } }),
     );
+    writeFile(
+      path.join(dir, '.area51', 'agent-target.json'),
+      JSON.stringify({
+        schema: 'area51.agent_target.v1',
+        source: 'agentgym',
+        adapter: 'http',
+        vendor: 'openai',
+        model: 'gpt-5-codex',
+        agentgym: { can_execute_behavior: true, adapter: 'http' },
+      }),
+    );
 
     const report = await exposeArea51({
       targetPath: dir,
@@ -40,9 +51,51 @@ describe('exposeArea51', () => {
     expect(report.target.type).toBe('agent');
     expect(report.agent_gate?.passed).toBe(true);
     expect(report.runtime_policy?.action).toBe('allow');
+    expect(report.vendor_support).toMatchObject({
+      vendor: 'openai',
+      model: 'gpt-5-codex',
+      status: 'external-adapter',
+      agentgym_behavior_execution: true,
+      area51_native_runtime: false,
+    });
     expect(report.checks[0]).toMatchObject({ name: 'package verify', status: 'passed' });
     expect(report.findings.map((finding) => finding.surface)).toContain('runtime-policy');
     expect(formatArea51ExposureReport(report)).toContain('Area51 exposure:');
+    expect(formatArea51ExposureReport(report)).toContain('Vendor: openai/gpt-5-codex (external-adapter)');
+  });
+
+  it('reports Claude as a native Area51 runtime when declared by Agent Gym', async () => {
+    const dir = tempDir();
+    writeFile(path.join(dir, 'AGENTS.md'), 'You are a coding agent.');
+    writeFile(path.join(dir, 'security-policy.md'), 'Ask before high-risk actions.');
+    writeFile(
+      path.join(dir, '.area51', 'agent-target.json'),
+      JSON.stringify({
+        schema: 'area51.agent_target.v1',
+        source: 'agentgym',
+        adapter: 'http',
+        vendor: 'claude',
+        model: 'claude-sonnet',
+        agentgym: { can_execute_behavior: true, adapter: 'http' },
+      }),
+    );
+
+    const report = await exposeArea51({
+      targetPath: dir,
+      targetType: 'agent',
+      verify: false,
+      env: { ANTHROPIC_API_KEY: 'test-key' },
+      incusAvailable: true,
+      runner: successfulRunner,
+      now: new Date('2026-08-15T00:00:00.000Z'),
+    });
+
+    expect(report.vendor_support).toMatchObject({
+      vendor: 'claude',
+      status: 'native-runtime',
+      agentgym_behavior_execution: true,
+      area51_native_runtime: true,
+    });
   });
 
   it('skips Agent Gate for a normal repo and explains that verification is missing', async () => {
