@@ -242,6 +242,12 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
       cwd: config.cwd,
       systemContext: config.systemContext,
     });
+    const abortQuery = () => query.abort();
+    if (config.signal?.aborted) {
+      abortQuery();
+    } else {
+      config.signal?.addEventListener('abort', abortQuery, { once: true });
+    }
 
     // Process the query while concurrently polling for new messages
     const skippedSet = new Set(skipped.map((s) => s.id));
@@ -291,6 +297,7 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
       // followed by a "Completed" line that reads like success.
       log(`Errored batch will be acked completed — ${processingIds.length} message(s), no redelivery`);
     } finally {
+      config.signal?.removeEventListener('abort', abortQuery);
       clearCurrentInReplyTo();
     }
 
