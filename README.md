@@ -239,19 +239,32 @@ Docker remains useful for local compatibility. Incus is the stronger Area51 runt
 
 Runtime Policy is host-owned: the agent cannot select its own isolation level or mount the Incus socket. Local mode can stay on Docker for trusted low-risk work. Production mode prefers Incus containers. Maximum mode uses Incus VMs. Compromised-package or quarantine evidence fails closed into Incus quarantine when Incus is available, or blocks when policy requires Incus and it is unavailable.
 
-Area51 now keeps Docker as the default local runtime and adds an opt-in live Incus backend:
+Area51 keeps Docker as the default local runtime. Packaged installs can pull one
+multi-arch OCI agent image and run those same bytes under Docker or, on Linux
+hosts with Incus OCI support, under Incus containers.
+
+For Docker installs, the image is controlled by the committed `agent-image` pin
+in `versions.json` or by `AREA51_AGENT_IMAGE_REF`:
+
+```bash
+AREA51_HARDENED_IMAGE=true
+AREA51_AGENT_IMAGE_REF=ghcr.io/aviatam/area51-agent@sha256:<digest>
+```
+
+For Incus installs, configure an OCI remote that points at the registry and use
+the same image path/digest through that remote:
 
 ```bash
 AREA51_RUNTIME_BACKEND=incus
-AREA51_INCUS_IMAGE=images:debian/12/cloud
-AREA51_INCUS_INSTANCE_KIND=vm   # optional: container by default, vm for high-risk work
+AREA51_INCUS_IMAGE=area51-ghcr:aviatam/area51-agent@sha256:<digest>
+AREA51_INCUS_INSTANCE_KIND=container
 ```
 
 When `AREA51_RUNTIME_BACKEND=incus`, live session wakeups build the host-owned mount set, harden it for Incus, create/apply an Incus runtime plan, then run the agent runner with `incus exec`. The Incus socket is never mounted into the agent instance. The backend uses argv-based CLI calls, not shell-interpolated command strings.
 
 The Incus mount policy is intentionally stricter than the Docker local path: only the session workspace may remain writable. Agent definitions, runner source, skills, provider state, and plugin content are mounted read-only, and the Incus adapter refuses dangerous host sources such as filesystem roots, home-directory roots, SSH/cloud config directories, Docker/Podman sockets, and Incus/LXD sockets before invoking Incus.
 
-The Incus backend is Linux-production oriented. Docker remains the recommended local/dev path and the fallback for users who do not want to install Incus.
+The Incus backend is Linux-production oriented. Docker remains the recommended local/dev path and the fallback for users who do not want to install Incus. Incus VM mode still needs a VM-capable system image; the shared OCI agent image is the cross-runtime package for Docker and Incus container mode.
 
 ## Requirements
 

@@ -1,0 +1,178 @@
+name: Publish Agent Image to GHCR
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_sha:
+        description: Full 40-character SHA to publish
+        required: true
+        type: string
+      tag:
+        description: Human tag to add beside the immutable digest
+        required: true
+        default: hardened-main
+        type: string
+      mode:
+        description: Build locally first; publish only when mode is publish
+        required: true
+        default: verify
+        type: choice
+        options:
+          - verify
+          - publish
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-agent-image-ghcr
+  cancel-in-progress: false
+
+env:
+  IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/area51-agent
+
+jobs:
+  build:
+    name: Build hardened agent image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Verify dispatch source
+        env:
+          DISPATCH_REF: ${{ github.ref }}
+          DISPATCH_REPOSITORY: ${{ github.repository }}
+          TARGET_SHA: ${{ inputs.target_sha }}
+          IMAGE_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          if [ "$DISPATCH_REPOSITORY" != "aviatam/area51" ]; then
+            echo "::error::Publisher runs only in aviatam/area51; got $DISPATCH_REPOSITORY."
+            exit 1
+          fi
+          if [ "$DISPATCH_REF" != "refs/heads/main" ]; then
+            echo "::error::Select the main branch when dispatching; got $DISPATCH_REF."
+            exit 1
+          fi
+          if [[ ! "$TARGET_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::target_sha must be a full lowercase 40-character SHA."
+            exit 1
+          fi
+          if [[ ! "$IMAGE_TAG" =~ ^[a-zA-Z0-9_][a-zA-Z0-9_.-]{0,127}$ ]]; then
+            echo "::error::tag contains characters Docker registries may reject: $IMAGE_TAG"
+            exit 1
+          fi
+
+      - name: Checkout target
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.target_sha }}
+
+      - name: Verify target is on main
+        env:
+          TARGET_SHA: ${{ inputs.target_sha }}
+        run: |
+          set -euo pipefail
+          git fetch --force origin main:refs/remotes/origin/main
+          test "$(git rev-parse HEAD)" = "$TARGET_SHA"
+          git merge-base --is-ancestor "$TARGET_SHA" origin/main
+
+      - name: Compute agent-runner lock label
+        id: lock
+        run: |
+          set -euo pipefail
+          sha="$(sha256sum container/agent-runner/bun.lock | cut -d' ' -f1)"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        if: inputs.mode == 'publish'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build or publish image
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: container
+          file: container/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: ${{ inputs.mode == 'publish' }}
+          tags: |
+            ${{ env.IMAGE_NAME }}:${{ inputs.tag }}
+            ${{ env.IMAGE_NAME }}:sha-${{ inputs.target_sha }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ inputs.target_sha }}
+            dev.area51.agent-runner-lock-sha256=${{ steps.lock.outputs.sha }}
+            dev.area51.image-source=hardened
+          build-args: |
+            AGENT_RUNNER_LOCK_SHA256=${{ steps.lock.outputs.sha }}
+            IMAGE_SOURCE=hardened
+          provenance: false
+          sbom: false
+
+      - name: Verify published image shape
+        if: inputs.mode == 'publish'
+        env:
+          REF: ${{ env.IMAGE_NAME }}@${{ steps.build.outputs.digest }}
+          LOCK_SHA: ${{ steps.lock.outputs.sha }}
+        run: |
+          set -euo pipefail
+          docker buildx imagetools inspect --raw "$REF" > "$RUNNER_TEMP/manifest.json"
+          export MANIFEST_PATH="$RUNNER_TEMP/manifest.json"
+          python3 - <<'PY'
+          import os
+          import json, sys
+          m = json.load(open(os.environ['MANIFEST_PATH']))
+          plats = {
+              f"{e['platform']['os']}/{e['platform']['architecture']}"
+              for e in m.get('manifests', [])
+              if e.get('platform', {}).get('architecture') not in (None, 'unknown')
+          }
+          missing = {'linux/amd64', 'linux/arm64'} - plats
+          if missing:
+              print(f"::error::Index is missing {sorted(missing)}; has {sorted(plats)}")
+              sys.exit(1)
+          print(f"  index covers {sorted(plats)}")
+          PY
+          docker pull -q "$REF"
+          image_lock="$(docker image inspect --format '{{index .Config.Labels "dev.area51.agent-runner-lock-sha256"}}' "$REF")"
+          source="$(docker image inspect --format '{{index .Config.Labels "dev.area51.image-source"}}' "$REF")"
+          if [ "$image_lock" != "$LOCK_SHA" ]; then
+            echo "::error::Lock label mismatch: image=$image_lock checkout=$LOCK_SHA"
+            exit 1
+          fi
+          if [ "$source" != "hardened" ]; then
+            echo "::error::image-source label is ${source:-<unset>}, expected hardened"
+            exit 1
+          fi
+
+      - name: Publish summary
+        env:
+          IMAGE_TAG: ${{ inputs.tag }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+          MODE: ${{ inputs.mode }}
+        run: |
+          set -euo pipefail
+          {
+            echo "### GHCR agent image"
+            echo "- Mode: \`$MODE\`"
+            echo "- Tag: \`${IMAGE_NAME}:${IMAGE_TAG}\`"
+            if [ -n "$DIGEST" ]; then
+              echo "- Digest ref: \`${IMAGE_NAME}@${DIGEST}\`"
+            else
+              echo "- Digest ref: unavailable in verify mode because the image was not pushed"
+            fi
+            echo "- Lock label: \`${{ steps.lock.outputs.sha }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
