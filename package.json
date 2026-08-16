@@ -1,6 +1,6 @@
 {
   "name": "area51",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "description": "AI agent containment runtime: scan, isolate, run, and quarantine autonomous agents.",
   "type": "module",
   "packageManager": "pnpm@10.33.0",

@@ -4,6 +4,13 @@ All notable changes to Area51 will be documented in this file.
 
 ## [Unreleased]
 
+## [2.2.1] - 2026-08-16
+
+- **Area51 now ships a public multi-arch GHCR agent image.** The new `Publish Agent Image to GHCR` workflow builds `linux/amd64` and `linux/arm64` from `container/Dockerfile`, stamps the hardened image labels, verifies the pushed multi-arch index, and publishes `ghcr.io/aviatam/area51-agent` for installs that should not need ECR credentials.
+- **The default hardened agent image pin moved from private ECR to public GHCR.** `versions.json` now points at the public digest-pinned package, and README usage shows how Docker installs and Incus container installs consume the same reviewed OCI image bytes.
+- **Live Incus validation is now hostile instead of happy-path only.** The GitHub runner now proves the guest can write only to `/workspace`, keeps `/workspace/agent` read-only, does not see Docker/Podman/Incus/LXD sockets, does not inherit runtime-control env vars, lacks `CAP_SYS_ADMIN`, has no unexpected network interface, and cannot mutate host sentinels outside declared mounts.
+- **Incus agent execution now runs non-root.** The Incus adapter supports explicit exec UID/GID, and the live agent runner path starts as UID/GID `1000:1000` with `HOME=/home/node`.
+
 ## [2.2.0] - 2026-08-13
 
 - **Stamped plugins update in place through `area51 groups create --template <ref>`.** When a group already carries the template's plugin, the same command becomes an in-place update instead of minting a duplicate agent: a dry run prints a plan of every plugin-owned surface (plugin files, skills, MCP servers, persona, context files, tasks), flagging locally customized files whose edits would be lost; `--yes` applies, `--id` picks among several stamped groups, `--new` deliberately stamps another agent. Agent state the plugin does not own (memory, `plugin-data/`, user-added MCP servers, task pause/resume state, wiring) is never touched. Plugin-stamped MCP servers now carry an ownership marker and refuse direct edits via `area51 groups config add-mcp-server` / `remove-mcp-server` or the agent's `add_mcp_server` tool: update the plugin and restamp instead.
