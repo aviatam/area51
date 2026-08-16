@@ -402,10 +402,7 @@ describe('parseTemplate', () => {
 
     it('accepts a multiline script and a single-line script', () => {
       writeManifest();
-      write(
-        `${AREA51_EXTENSION_NS}/tasks/check.md`,
-        '---\nschedule: "0 9 * * *"\nscript: echo wake\n---\nCheck it.\n',
-      );
+      write(`${AREA51_EXTENSION_NS}/tasks/check.md`, '---\nschedule: "0 9 * * *"\nscript: echo wake\n---\nCheck it.\n');
       expect(parseTemplate(dir).tasks[0].script).toBe('echo wake');
     });
   });

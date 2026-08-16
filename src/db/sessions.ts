@@ -172,8 +172,7 @@ export function createPendingQuestion(pq: PendingQuestion): boolean {
 
 export function getPendingQuestion(questionId: string): PendingQuestion | undefined {
   const row = getDb().prepare('SELECT * FROM pending_questions WHERE question_id = ?').get(questionId) as
-    | (Omit<PendingQuestion, 'options'> & { options_json: string })
-    | undefined;
+    (Omit<PendingQuestion, 'options'> & { options_json: string }) | undefined;
   if (!row) return undefined;
   const { options_json, ...rest } = row;
   return { ...rest, options: JSON.parse(options_json) };
@@ -225,8 +224,7 @@ export function createPendingApproval(
 
 export function getPendingApproval(approvalId: string): PendingApproval | undefined {
   return getDb().prepare('SELECT * FROM pending_approvals WHERE approval_id = ?').get(approvalId) as
-    | PendingApproval
-    | undefined;
+    PendingApproval | undefined;
 }
 
 export function updatePendingApprovalStatus(approvalId: string, status: PendingApproval['status']): void {
