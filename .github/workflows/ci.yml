@@ -36,4 +36,4 @@ jobs:
 
       - name: Container tests
         working-directory: container/agent-runner
-        run: bun test
+        run: bun run test
