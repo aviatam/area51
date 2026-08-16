@@ -130,7 +130,7 @@ fi
 
 for iface_path in /sys/class/net/*; do
   [ -e "$iface_path" ] || continue
-  iface="\${iface_path##*/}"
+  iface="$(basename "$iface_path")"
   if [ "$iface" != "lo" ]; then
     fail "unexpected non-loopback network interface: $iface"
   fi
