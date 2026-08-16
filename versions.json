@@ -1,5 +1,5 @@
 {
   "onecli-gateway": "1.36.0",
   "onecli-cli": "2.2.5",
-  "agent-image": "797273591697.dkr.ecr.us-east-1.amazonaws.com/area51/agent@sha256:ccde3d9c86fb655be66c93e07bc38a62faab2d951651a1fba345a7a47defeb85"
+  "agent-image": "ghcr.io/aviatam/area51-agent@sha256:6e91dfc302ec697cd60b2ef7e8ed3a7d8a24d2c5d73720bbba7bd3a61e4252b3"
 }
