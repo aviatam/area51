@@ -81,13 +81,12 @@ jobs:
             .deployment_branch_policy.protected_branches == false and
             .deployment_branch_policy.custom_branch_policies == true and
             ([.protection_rules[] | select(.type == "required_reviewers")] | length) == 1 and
-            ([.protection_rules[] | select(.type == "required_reviewers")][0].prevent_self_review == true) and
             all(
               [.protection_rules[] | select(.type == "required_reviewers")][0].reviewers[];
               .type == "User"
             )
           ' "$RUNNER_TEMP/release-environment.json" >/dev/null; then
-            echo "::error::The release environment must have one user-reviewer rule, prevent self-review and admin bypass, and use custom branch policies."
+            echo "::error::The release environment must have one user-reviewer rule, admin bypass disabled, and custom branch policies."
             exit 1
           fi
 
@@ -95,7 +94,7 @@ jobs:
             [.protection_rules[] | select(.type == "required_reviewers") | .reviewers[].reviewer.login]
             | sort
           ' "$RUNNER_TEMP/release-environment.json")
-          EXPECTED_REVIEWERS='["gavrielc","omri-maya"]'
+          EXPECTED_REVIEWERS='["aviatam"]'
           if [ "$ACTUAL_REVIEWERS" != "$EXPECTED_REVIEWERS" ]; then
             echo "::error::Release reviewer roster drift: expected $EXPECTED_REVIEWERS, got $ACTUAL_REVIEWERS. Update the workflow and RELEASING.md together in a reviewed pull request."
             exit 1

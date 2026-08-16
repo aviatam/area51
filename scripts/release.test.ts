@@ -77,7 +77,7 @@ describe('release workflow safeguards', () => {
     expect(releaseWorkflow).not.toContain(
       "- name: Verify protected release environment\n        if: inputs.mode == 'publish'",
     );
-    expect(releaseWorkflow).toContain('EXPECTED_REVIEWERS=\'["gavrielc","omri-maya"]\'');
+    expect(releaseWorkflow).toContain('EXPECTED_REVIEWERS=\'["aviatam"]\'');
     expect(releaseWorkflow).toContain('Release reviewer roster drift');
   });
 
