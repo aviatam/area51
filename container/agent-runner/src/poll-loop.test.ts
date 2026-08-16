@@ -220,7 +220,13 @@ describe('origin metadata (from= attribute)', () => {
       .run(name, name, channelType, platformId);
   }
 
-  function insertWithRouting(id: string, kind: string, content: object, channelType: string | null, platformId: string | null): void {
+  function insertWithRouting(
+    id: string,
+    kind: string,
+    content: object,
+    channelType: string | null,
+    platformId: string | null,
+  ): void {
     getInboundDb()
       .prepare(
         `INSERT INTO messages_in (id, kind, timestamp, status, platform_id, channel_type, content)
@@ -498,9 +504,9 @@ const TASK_ROUTING = {
 
 function taskLogRows(): Array<{ text: string }> {
   return (
-    getOutboundDb()
-      .prepare("SELECT content FROM messages_out WHERE kind = 'task_log' ORDER BY seq")
-      .all() as Array<{ content: string }>
+    getOutboundDb().prepare("SELECT content FROM messages_out WHERE kind = 'task_log' ORDER BY seq").all() as Array<{
+      content: string;
+    }>
   ).map((r) => JSON.parse(r.content) as { text: string });
 }
 
@@ -533,10 +539,11 @@ describe('task-run turn wiring (real processQuery)', () => {
       // A SECOND task run lands while the query is open — the follow-up poller
       // pushes it and must reset the per-turn correction state.
       insertMessage('t2', 'task', { prompt: 'fire two' });
-      const deadline = Date.now() + 5000;
+      const deadline = Date.now() + 2500;
       while (!pushes.some((p) => p.includes('fire two')) && Date.now() < deadline) {
         await new Promise((r) => setTimeout(r, 50));
       }
+      expect(pushes.some((p) => p.includes('fire two'))).toBe(true);
 
       // Turn 2 repeats the mistake. This receives a second independent nudge
       // only if the follow-up path reset taskBlockNudged.
