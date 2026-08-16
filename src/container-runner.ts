@@ -291,10 +291,14 @@ async function spawnIncusAgent(args: {
   applyIncusRuntimePlan(plan);
 
   const env: Record<string, string> = {
+    HOME: '/home/node',
     TZ: timezone,
     ...(providerContribution.env ?? {}),
   };
-  const container = spawnIncusExec(plan, 'bash', ['-lc', 'exec bun run /app/src/index.ts'], env);
+  const container = spawnIncusExec(plan, 'bash', ['-lc', 'exec bun run /app/src/index.ts'], env, {
+    user: '1000',
+    group: '1000',
+  });
   activeContainers.set(session.id, { process: container, containerName, backend: 'incus', plan });
   markContainerRunning(session.id);
 

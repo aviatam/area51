@@ -85,6 +85,13 @@ describe('Incus runtime backend wiring (structural)', () => {
       { source: '/srv/area51/src', path: '/app/src', readonly: true },
     ]);
   });
+
+  it('runs Incus agent processes as a non-root guest user', () => {
+    const src = fs.readFileSync(path.join(process.cwd(), 'src', 'container-runner.ts'), 'utf-8');
+    expect(src).toContain("HOME: '/home/node'");
+    expect(src).toContain("user: '1000'");
+    expect(src).toContain("group: '1000'");
+  });
 });
 
 describe('plugins read-only mount (structural)', () => {

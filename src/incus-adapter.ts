@@ -25,6 +25,12 @@ export interface IncusQuarantineOptions extends IncusAdapterOptions {
   now?: Date;
 }
 
+export interface IncusExecOptions {
+  env?: Record<string, string>;
+  user?: string;
+  group?: string;
+}
+
 export interface IncusAdapterResult {
   commands: IncusCommandResult[];
 }
@@ -128,12 +134,16 @@ export function spawnIncusExec(
   command: string,
   args: string[],
   env: Record<string, string> = {},
+  options: IncusExecOptions = {},
 ): ChildProcess {
   validatePlan(plan);
   const incusArgs = ['exec', plan.instance, '--project', plan.project];
-  for (const [key, value] of Object.entries(env)) {
+  const mergedEnv = { ...env, ...(options.env ?? {}) };
+  for (const [key, value] of Object.entries(mergedEnv)) {
     incusArgs.push('--env', `${key}=${value}`);
   }
+  if (options.user) incusArgs.push('--user', options.user);
+  if (options.group) incusArgs.push('--group', options.group);
   incusArgs.push('--', command, ...args);
   return spawn('incus', incusArgs, { stdio: ['ignore', 'pipe', 'pipe'] });
 }

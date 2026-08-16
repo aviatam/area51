@@ -136,7 +136,9 @@ for iface_path in /sys/class/net/*; do
   fi
 done
 
-echo container-only > /container-root-marker
+if echo container-only > /container-root-marker 2>/tmp/container-root.err; then
+  fail "non-root guest process could write to the container root filesystem"
+fi
 test ! -e /workspace/container-root-marker || fail "container-root marker appeared inside mounted workspace"
 test ! -e /workspace/agent/container-root-marker || fail "container-root marker appeared inside agent material"
 
@@ -153,7 +155,7 @@ function longRunningIncus(argv: string[]): string {
 }
 
 function runGuest(plan: IncusRuntimePlan, script: string): Promise<{ stdout: string; stderr: string }> {
-  const child = spawnIncusExec(plan, 'sh', ['-lc', script]);
+  const child = spawnIncusExec(plan, 'sh', ['-lc', script], {}, { user: '65534', group: '65534' });
   return collect(child);
 }
 
