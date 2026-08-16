@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   incus-live:
-    name: Live Incus daemon smoke test
+    name: Live Incus hostile containment test
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -44,7 +44,7 @@ jobs:
           echo "AREA51_INCUS_STORAGE_POOL=area51-ci" >> "$GITHUB_ENV"
           incus version
 
-      - name: Live Incus E2E
+      - name: Live Incus hostile E2E
         env:
           AREA51_INCUS_E2E_IMAGE: images:debian/12
         run: pnpm run test:incus:e2e
