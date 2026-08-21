@@ -20,6 +20,10 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Verify Incus daemon
         run: incus version
+      - name: Delegate the runner identity to Incus
+        run: |
+          sudo usermod --add-subuids "$(id -u)-$(id -u)" root
+          sudo usermod --add-subgids "$(id -g)-$(id -g)" root
       - name: Run hostile containment and private-session-file test
         run: pnpm run test:incus:e2e
       - name: Confirm cleanup

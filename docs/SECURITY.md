@@ -206,6 +206,12 @@ update an existing mode-`0600` session file while agent material stays
 read-only. Run the manual `Live Incus Containment` workflow on a disposable,
 dedicated runner labelled `linux`, `incus`, and `disposable`.
 
+The Incus daemon's account must have the Area51 service UID/GID delegated in
+`/etc/subuid` and `/etc/subgid` (one ID is sufficient). The live workflows add
+that narrow delegation for their ephemeral runner. Production hosts should do
+the same during provisioning; Area51 refuses writable Incus mounts when run as
+root instead of weakening the mapping.
+
 Per-container CPU and memory caps are **opt-in and unset by default** — a runaway
 agent is not throttled unless the operator configures a limit:
 

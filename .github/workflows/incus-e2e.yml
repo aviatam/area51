@@ -39,6 +39,8 @@ jobs:
           set -euxo pipefail
           sudo apt-get update
           sudo apt-get install -y incus acl
+          sudo usermod --add-subuids "$(id -u)-$(id -u)" root
+          sudo usermod --add-subgids "$(id -g)-$(id -g)" root
           sudo incus admin init --minimal
           sudo setfacl -m "u:${USER}:rw" /var/lib/incus/unix.socket
           incus storage create area51-ci dir source=/var/lib/incus/storage-pools/area51-ci
