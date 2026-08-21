@@ -177,6 +177,34 @@ Lockdown is **off by default**; opt in with `AREA51_EGRESS_LOCKDOWN=true`.
 
 ## Resource Limits
 
+### Incus image readiness
+
+The Incus backend requires an Area51-built image (`local:area51-agent-v2` by
+default). Before executing an agent, the host verifies that Bun is executable
+and the pinned `/app/node_modules` tree is present. If either check fails, the
+instance is stopped and the session remains pending for operator repair.
+
+Build the image with `bash container/incus/build.sh`. It contains runtime
+dependencies only; agent source remains a read-only host mount.
+
+### Incus credential and egress boundary
+
+Incus sessions fetch their per-agent OneCLI configuration before the guest is
+started. CA material and credential stubs are written mode `0600` and mounted
+read-only. Docker-only `host.docker.internal` proxy URLs are replaced by a
+guest-loopback endpoint. An Incus proxy device exposes only that loopback port
+and relays it to the host-loopback OneCLI gateway; the agent receives no NIC.
+
+If OneCLI configuration cannot be fetched, the Incus spawn fails closed. Incus
+VM mode is also blocked for now: a VM requires a NIC and audited ACL rules, and
+Area51 will not silently attach the default internet-enabled network.
+
+Writable session mounts use Incus ownership shifting rather than making the
+host directory world-writable. The live hostile E2E verifies that the guest can
+update an existing mode-`0600` session file while agent material stays
+read-only. Run the manual `Live Incus Containment` workflow on a disposable,
+dedicated runner labelled `linux`, `incus`, and `disposable`.
+
 Per-container CPU and memory caps are **opt-in and unset by default** — a runaway
 agent is not throttled unless the operator configures a limit:
 

@@ -1,0 +1,31 @@
+name: Live Incus Containment
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  hostile-containment:
+    runs-on: [self-hosted, linux, incus, disposable]
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: pnpm/action-setup@v6.0.10
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Verify Incus daemon
+        run: incus version
+      - name: Run hostile containment and private-session-file test
+        run: pnpm run test:incus:e2e
+      - name: Confirm cleanup
+        if: always()
+        run: |
+          if incus list --format csv -c n | grep -q '^area51-live-e2e-'; then
+            echo 'Area51 E2E instance leaked after test cleanup' >&2
+            exit 1
+          fi

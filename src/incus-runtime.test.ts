@@ -14,6 +14,7 @@ describe('buildIncusRuntimePlan', () => {
 
     expect(plan.project).toBe('area51-support-refund-agent');
     expect(plan.instance).toBe('area51-support-refund-agent-agent');
+    expect(plan.image).toBe('local:area51-agent-v2');
     expect(plan.profiles).toContain('area51-agent-net');
     expect(plan.mounts).toEqual(
       expect.arrayContaining([

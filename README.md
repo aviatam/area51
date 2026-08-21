@@ -237,7 +237,7 @@ its managed runtime.
 
 Docker remains useful for local compatibility. Incus is the stronger Area51 runtime target for Linux deployments because it gives project-level isolation, reusable profiles, resource limits, snapshots, freeze/stop controls, and VM escalation for high-risk agents.
 
-Runtime Policy is host-owned: the agent cannot select its own isolation level or mount the Incus socket. Local mode can stay on Docker for trusted low-risk work. Production mode prefers Incus containers. Maximum mode uses Incus VMs. Compromised-package or quarantine evidence fails closed into Incus quarantine when Incus is available, or blocks when policy requires Incus and it is unavailable.
+Runtime Policy is host-owned: the agent cannot select its own isolation level or mount the Incus socket. Local mode can stay on Docker for trusted low-risk work. Production mode prefers Incus containers. Maximum mode selects Incus VMs at the policy layer, but live VM execution currently blocks until its OneCLI-only NIC and deny-by-default ACL path is configured. Compromised-package evidence on the live Incus path freezes and snapshots the instance before execution.
 
 Area51 keeps Docker as the default local runtime. Packaged installs can pull one
 multi-arch OCI agent image and run those same bytes under Docker or, on Linux
@@ -252,7 +252,8 @@ AREA51_AGENT_IMAGE_REF=ghcr.io/aviatam/area51-agent@sha256:<digest>
 ```
 
 For Incus installs, configure an OCI remote that points at the registry and use
-the same image path/digest through that remote:
+the same image path/digest through that remote, or build the local system image
+with `bash container/incus/build.sh`:
 
 ```bash
 AREA51_RUNTIME_BACKEND=incus
@@ -264,7 +265,7 @@ When `AREA51_RUNTIME_BACKEND=incus`, live session wakeups build the host-owned m
 
 The Incus mount policy is intentionally stricter than the Docker local path: only the session workspace may remain writable. Agent definitions, runner source, skills, provider state, and plugin content are mounted read-only, and the Incus adapter refuses dangerous host sources such as filesystem roots, home-directory roots, SSH/cloud config directories, Docker/Podman sockets, and Incus/LXD sockets before invoking Incus.
 
-The Incus backend is Linux-production oriented. Docker remains the recommended local/dev path and the fallback for users who do not want to install Incus. Incus VM mode still needs a VM-capable system image; the shared OCI agent image is the cross-runtime package for Docker and Incus container mode.
+The Incus backend is Linux-production oriented. Docker remains the recommended local/dev path and the fallback for users who do not want to install Incus. Incus VM execution deliberately fails closed until Area51 can attach a OneCLI-only NIC with audited deny-by-default ACLs; the shared OCI agent image is the cross-runtime package for Docker and Incus container mode.
 
 ## Requirements
 

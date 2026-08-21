@@ -32,6 +32,7 @@ fs.mkdirSync(groupDir, { recursive: true });
 fs.mkdirSync(sessionDir, { recursive: true });
 fs.writeFileSync(path.join(groupDir, 'agent.txt'), 'agent-definition\n');
 fs.writeFileSync(path.join(sessionDir, 'in.txt'), 'session-input\n');
+fs.writeFileSync(path.join(sessionDir, 'existing.db'), 'before\n', { mode: 0o600 });
 fs.writeFileSync(hostSecretPath, 'host-only-secret\n');
 
 const plan = buildIncusRuntimePlan({
@@ -57,6 +58,9 @@ try {
   }
   if (fs.readFileSync(path.join(sessionDir, 'result.txt'), 'utf8').trim() !== 'session-ok') {
     throw new Error('Guest write did not land in the session workspace.');
+  }
+  if (fs.readFileSync(path.join(sessionDir, 'existing.db'), 'utf8').trim() !== 'after') {
+    throw new Error('Guest could not update an existing private session database file.');
   }
   if (fs.existsSync(path.join(groupDir, 'should-not-write'))) {
     throw new Error('Guest wrote into the read-only agent definition mount.');
@@ -97,6 +101,7 @@ test -r /workspace/in.txt || fail "session input is missing"
 
 echo session-ok > /workspace/result.txt
 test -f /workspace/result.txt || fail "session workspace write did not persist"
+echo after > /workspace/existing.db || fail "existing private session file was not writable"
 
 if echo forbidden > /workspace/agent/should-not-write 2>/tmp/ro.err; then
   fail "agent definition mount was writable"

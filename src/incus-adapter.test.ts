@@ -6,6 +6,7 @@ import path from 'path';
 import {
   applyIncusRuntimePlan,
   ensureIncusAvailable,
+  ensureIncusRuntimeReady,
   quarantineIncusInstance,
   stopIncusInstance,
 } from './incus-adapter.js';
@@ -46,7 +47,7 @@ describe('Incus adapter', () => {
     ]);
     expect(executor).toHaveBeenCalledWith([
       'init',
-      'images:debian/12/cloud',
+      'local:area51-agent-v2',
       'area51-support-agent',
       '--project',
       'area51-support',
@@ -64,6 +65,7 @@ describe('Incus adapter', () => {
         'workspace',
         'disk',
         `source=${plan.mounts.find((mount) => mount.path === '/workspace')?.source}`,
+        'shift=true',
         'path=/workspace',
       ]),
     );
@@ -124,9 +126,6 @@ describe('Incus adapter', () => {
       applyIncusRuntimePlan(plan, { executor });
 
       expect(fs.statSync(path.join(sessionDir, 'agent')).isDirectory()).toBe(true);
-      if (process.platform !== 'win32') {
-        expect(fs.statSync(sessionDir).mode & 0o777).toBe(0o777);
-      }
       const calls = executor.mock.calls.map(([argv]) => argv as string[]);
       const agentDevice = calls.find((argv) => argv.includes('path=/workspace/agent'));
       const start = calls.find((argv) => argv[0] === 'start');
@@ -160,6 +159,80 @@ describe('Incus adapter', () => {
 
     expect(result.commands.some((command) => command.output === 'already exists')).toBe(true);
     expect(result.commands.every((command) => command.ok)).toBe(true);
+  });
+
+  it('reuses an existing session instance and its devices on restart', () => {
+    const executor = vi.fn((argv: string[]) => {
+      if (argv[0] === 'init' || (argv[0] === 'config' && argv[1] === 'device' && argv[2] === 'add')) {
+        throw new Error('already exists');
+      }
+      if (argv[0] === 'start') throw new Error('Instance is already running');
+    });
+    const plan = buildIncusRuntimePlan({
+      agentGroupFolder: 'support',
+      groupDir: '/srv/area51/groups/support',
+      sessionDir: '/srv/area51/sessions/support/sess-1',
+    });
+
+    const result = applyIncusRuntimePlan(plan, { executor });
+
+    expect(result.commands.every((command) => command.ok)).toBe(true);
+    expect(result.commands.some((command) => command.output === 'already exists')).toBe(true);
+    expect(result.commands.some((command) => command.output === 'already running')).toBe(true);
+  });
+
+  it('checks that a live instance contains the Area51 runtime', () => {
+    const executor = vi.fn();
+    const plan = buildIncusRuntimePlan({ agentGroupFolder: 'support', groupDir: '/srv/area51/groups/support' });
+
+    ensureIncusRuntimeReady(plan, { executor });
+
+    expect(executor).toHaveBeenCalledWith([
+      'exec',
+      'area51-support-agent',
+      '--project',
+      'area51-support',
+      '--',
+      'test',
+      '-x',
+      '/usr/local/bin/bun',
+    ]);
+    expect(executor).toHaveBeenCalledWith(expect.arrayContaining(['test', '-d', '/app/node_modules']));
+  });
+
+  it('adds only a loopback-bound OneCLI proxy relay', () => {
+    const executor = vi.fn();
+    const plan = buildIncusRuntimePlan({
+      agentGroupFolder: 'support',
+      groupDir: '/srv/area51/groups/support',
+      gatewayProxy: { listen: 'tcp:127.0.0.1:10255', connect: 'tcp:127.0.0.1:10255' },
+    });
+
+    applyIncusRuntimePlan(plan, { executor });
+
+    expect(executor).toHaveBeenCalledWith([
+      'config',
+      'device',
+      'add',
+      'area51-support-agent',
+      'onecli-gateway',
+      'proxy',
+      'listen=tcp:127.0.0.1:10255',
+      'connect=tcp:127.0.0.1:10255',
+      'bind=instance',
+      '--project',
+      'area51-support',
+    ]);
+  });
+
+  it('rejects a gateway relay that exposes a non-loopback endpoint', () => {
+    const plan = buildIncusRuntimePlan({
+      agentGroupFolder: 'support',
+      groupDir: '/srv/area51/groups/support',
+      gatewayProxy: { listen: 'tcp:0.0.0.0:10255', connect: 'tcp:127.0.0.1:10255' },
+    });
+
+    expect(() => applyIncusRuntimePlan(plan, { executor: vi.fn() })).toThrow('Unsafe Incus gateway proxy listen');
   });
 
   it('preserves mount paths as argv values instead of interpolating shell strings', () => {

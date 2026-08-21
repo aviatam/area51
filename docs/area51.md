@@ -46,9 +46,21 @@ Live agent execution can opt into the Incus backend with:
 
 ```bash
 AREA51_RUNTIME_BACKEND=incus
-AREA51_INCUS_IMAGE=images:debian/12/cloud
+AREA51_INCUS_IMAGE=local:area51-agent-v2
 AREA51_INCUS_INSTANCE_KIND=vm   # optional: container by default, vm for high-risk work
 ```
+
+Build the required runtime image first with `bash container/incus/build.sh`.
+Area51 does not fall back to a stock distribution image: a bootable Debian or
+Ubuntu guest does not contain Bun, the agent-runner dependencies, or the pinned
+provider CLI. Every spawn verifies Bun and `/app/node_modules`; an incompatible
+guest is stopped and the session fails closed.
+
+Incus containers do not receive a general-purpose NIC. OneCLI credentials,
+certificates, and proxy variables are fetched per agent and exposed through a
+guest-loopback proxy relay. If that configuration is unavailable, Area51 does
+not start the agent. VM execution remains blocked until its required NIC is
+protected by an audited deny-by-default ACL.
 
 In that mode the host builds the normal Area51 session/group/runner/skill mount
 set, applies an Incus runtime plan, and starts the runner with `incus exec`.
