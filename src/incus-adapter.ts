@@ -40,10 +40,7 @@ export function ensureIncusAvailable(options: IncusAdapterOptions = {}): IncusAd
 }
 
 /** Verify that the guest can execute the Area51 agent runner. */
-export function ensureIncusRuntimeReady(
-  plan: IncusRuntimePlan,
-  options: IncusAdapterOptions = {},
-): IncusAdapterResult {
+export function ensureIncusRuntimeReady(plan: IncusRuntimePlan, options: IncusAdapterOptions = {}): IncusAdapterResult {
   validatePlan(plan);
   return runCommands(
     [

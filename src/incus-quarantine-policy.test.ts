@@ -68,7 +68,11 @@ function report(compromised: boolean): AgentGateReport {
         ]
       : [],
     quarantine: compromised
-      ? { enabled: true, path: '/srv/groups/support/quarantine', files: ['/srv/groups/support/quarantine/findings.json'] }
+      ? {
+          enabled: true,
+          path: '/srv/groups/support/quarantine',
+          files: ['/srv/groups/support/quarantine/findings.json'],
+        }
       : { enabled: true, files: [] },
     recommendations: compromised ? ['quarantine'] : [],
   };

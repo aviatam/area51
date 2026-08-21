@@ -1,9 +1,5 @@
 import type { AgentGateReport } from './agent-gate.js';
-import {
-  quarantineIncusInstance,
-  type IncusAdapterOptions,
-  type IncusAdapterResult,
-} from './incus-adapter.js';
+import { quarantineIncusInstance, type IncusAdapterOptions, type IncusAdapterResult } from './incus-adapter.js';
 import type { IncusRuntimePlan } from './incus-runtime.js';
 import { selectRuntimePolicy, type RuntimePolicyDecision } from './runtime-policy.js';
 

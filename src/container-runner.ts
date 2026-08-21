@@ -31,12 +31,7 @@ import { getContainerConfig } from './db/container-configs.js';
 import { updateContainerConfigScalars } from './db/container-configs.js';
 import { CONTAINER_RUNTIME_BIN, hostGatewayArgs, readonlyMountArgs, stopContainer } from './container-runtime.js';
 import { EGRESS_NETWORK, egressNetworkArgs, ensureEgressNetwork } from './egress-lockdown.js';
-import {
-  applyIncusRuntimePlan,
-  ensureIncusRuntimeReady,
-  spawnIncusExec,
-  stopIncusInstance,
-} from './incus-adapter.js';
+import { applyIncusRuntimePlan, ensureIncusRuntimeReady, spawnIncusExec, stopIncusInstance } from './incus-adapter.js';
 import { buildIncusRuntimePlan, type IncusRuntimePlan } from './incus-runtime.js';
 import { prepareIncusOneCliConfig } from './incus-onecli.js';
 import { enforceIncusPreflight } from './incus-quarantine-policy.js';
@@ -322,10 +317,9 @@ async function spawnIncusAgent(args: {
     } catch {
       // Preserve the readiness failure as the actionable root cause.
     }
-    throw new Error(
-      `Incus image ${plan.image} is not Area51-ready: Bun and /app/node_modules are required`,
-      { cause: error },
-    );
+    throw new Error(`Incus image ${plan.image} is not Area51-ready: Bun and /app/node_modules are required`, {
+      cause: error,
+    });
   }
   const gateReport = await scanAgentGate({
     groupDir: path.resolve(GROUPS_DIR, agentGroup.folder),
