@@ -73,6 +73,18 @@ try {
   }
 
   console.log('Live Incus hostile containment E2E passed.');
+} catch (error) {
+  try {
+    const diagnostics = execFileSync('incus', ['info', '--show-log', plan.instance, '--project', plan.project], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+      timeout: 30_000,
+    });
+    console.error(`Incus instance diagnostics:\n${diagnostics}`);
+  } catch (diagnosticError) {
+    console.error('Unable to collect Incus instance diagnostics.', diagnosticError);
+  }
+  throw error;
 } finally {
   cleanup(plan, applied);
   fs.rmSync(root, { recursive: true, force: true });
