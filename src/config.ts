@@ -105,7 +105,7 @@ export const AREA51_RUNTIME_BACKEND: Area51RuntimeBackend =
     : 'docker';
 
 export const AREA51_INCUS_IMAGE =
-  process.env.AREA51_INCUS_IMAGE || envConfig.AREA51_INCUS_IMAGE || 'images:debian/12/cloud';
+  process.env.AREA51_INCUS_IMAGE || envConfig.AREA51_INCUS_IMAGE || 'local:area51-agent-v2';
 
 export const AREA51_INCUS_INSTANCE_KIND: 'container' | 'vm' =
   (process.env.AREA51_INCUS_INSTANCE_KIND || envConfig.AREA51_INCUS_INSTANCE_KIND || 'container').toLowerCase() === 'vm'

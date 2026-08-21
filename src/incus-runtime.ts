@@ -10,6 +10,7 @@ export interface IncusRuntimePlanOptions {
   quarantineProfile?: string;
   instanceSuffix?: string;
   mounts?: Array<{ source: string; path: string; readonly: boolean }>;
+  gatewayProxy?: { listen: string; connect: string };
 }
 
 export interface IncusRuntimePlan {
@@ -20,6 +21,7 @@ export interface IncusRuntimePlan {
   profiles: string[];
   mounts: Array<{ source: string; path: string; readonly: boolean }>;
   restrictions: Record<string, string>;
+  gatewayProxy?: { listen: string; connect: string };
   commands: {
     createProject: string[];
     createProfiles: string[];
@@ -28,7 +30,7 @@ export interface IncusRuntimePlan {
   };
 }
 
-const DEFAULT_IMAGE = 'images:debian/12/cloud';
+const DEFAULT_IMAGE = 'local:area51-agent-v2';
 const DEFAULT_NETWORK_PROFILE = 'area51-agent-net';
 const DEFAULT_QUARANTINE_PROFILE = 'area51-quarantine';
 
@@ -66,6 +68,7 @@ export function buildIncusRuntimePlan(options: IncusRuntimePlanOptions): IncusRu
     profiles,
     mounts,
     restrictions,
+    gatewayProxy: options.gatewayProxy,
     commands: {
       createProject: [
         `incus project create ${project}`,

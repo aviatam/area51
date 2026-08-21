@@ -32,6 +32,7 @@ fs.mkdirSync(groupDir, { recursive: true });
 fs.mkdirSync(sessionDir, { recursive: true });
 fs.writeFileSync(path.join(groupDir, 'agent.txt'), 'agent-definition\n');
 fs.writeFileSync(path.join(sessionDir, 'in.txt'), 'session-input\n');
+fs.writeFileSync(path.join(sessionDir, 'existing.db'), 'before\n', { mode: 0o600 });
 fs.writeFileSync(hostSecretPath, 'host-only-secret\n');
 
 const plan = buildIncusRuntimePlan({
@@ -58,6 +59,9 @@ try {
   if (fs.readFileSync(path.join(sessionDir, 'result.txt'), 'utf8').trim() !== 'session-ok') {
     throw new Error('Guest write did not land in the session workspace.');
   }
+  if (fs.readFileSync(path.join(sessionDir, 'existing.db'), 'utf8').trim() !== 'after') {
+    throw new Error('Guest could not update an existing private session database file.');
+  }
   if (fs.existsSync(path.join(groupDir, 'should-not-write'))) {
     throw new Error('Guest wrote into the read-only agent definition mount.');
   }
@@ -69,6 +73,18 @@ try {
   }
 
   console.log('Live Incus hostile containment E2E passed.');
+} catch (error) {
+  try {
+    const diagnostics = execFileSync('incus', ['info', '--show-log', plan.instance, '--project', plan.project], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+      timeout: 30_000,
+    });
+    console.error(`Incus instance diagnostics:\n${diagnostics}`);
+  } catch (diagnosticError) {
+    console.error('Unable to collect Incus instance diagnostics.', diagnosticError);
+  }
+  throw error;
 } finally {
   cleanup(plan, applied);
   fs.rmSync(root, { recursive: true, force: true });
@@ -97,6 +113,7 @@ test -r /workspace/in.txt || fail "session input is missing"
 
 echo session-ok > /workspace/result.txt
 test -f /workspace/result.txt || fail "session workspace write did not persist"
+echo after > /workspace/existing.db || fail "existing private session file was not writable"
 
 if echo forbidden > /workspace/agent/should-not-write 2>/tmp/ro.err; then
   fail "agent definition mount was writable"
@@ -155,7 +172,7 @@ function longRunningIncus(argv: string[]): string {
 }
 
 function runGuest(plan: IncusRuntimePlan, script: string): Promise<{ stdout: string; stderr: string }> {
-  const child = spawnIncusExec(plan, 'sh', ['-lc', script], {}, { user: '65534', group: '65534' });
+  const child = spawnIncusExec(plan, 'sh', ['-lc', script], {}, { user: '1000', group: '1000' });
   return collect(child);
 }
 

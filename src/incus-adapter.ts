@@ -39,10 +39,23 @@ export function ensureIncusAvailable(options: IncusAdapterOptions = {}): IncusAd
   return runCommands([['version']], options);
 }
 
+/** Verify that the guest can execute the Area51 agent runner. */
+export function ensureIncusRuntimeReady(plan: IncusRuntimePlan, options: IncusAdapterOptions = {}): IncusAdapterResult {
+  validatePlan(plan);
+  return runCommands(
+    [
+      ['exec', plan.instance, '--project', plan.project, '--', 'test', '-x', '/usr/local/bin/bun'],
+      ['exec', plan.instance, '--project', plan.project, '--', 'test', '-d', '/app/node_modules'],
+    ],
+    options,
+  );
+}
+
 export function applyIncusRuntimePlan(plan: IncusRuntimePlan, options: IncusAdapterOptions = {}): IncusAdapterResult {
   validatePlan(plan);
-  prepareWritableMountSources(plan);
   prepareNestedMountTargets(plan);
+
+  const hostIdentity = writableMountHostIdentity(plan);
 
   const commands: string[][] = [
     ['project', 'create', plan.project],
@@ -51,6 +64,16 @@ export function applyIncusRuntimePlan(plan: IncusRuntimePlan, options: IncusAdap
     ['project', 'set', plan.project, 'restricted.devices.disk=allow'],
     ['project', 'set', plan.project, `restricted.devices.disk.paths=${allowedDiskPaths(plan)}`],
   ];
+  if (hostIdentity) {
+    commands.push(
+      ['project', 'set', plan.project, 'restricted.containers.lowlevel=allow'],
+      ['project', 'set', plan.project, `restricted.idmap.uid=${hostIdentity.uid}`],
+      ['project', 'set', plan.project, `restricted.idmap.gid=${hostIdentity.gid}`],
+    );
+  }
+  if (plan.gatewayProxy) {
+    commands.push(['project', 'set', plan.project, 'restricted.devices.proxy=allow']);
+  }
   const rootDiskPool = process.env.AREA51_INCUS_STORAGE_POOL;
   if (rootDiskPool) {
     commands.push([
@@ -82,6 +105,16 @@ export function applyIncusRuntimePlan(plan: IncusRuntimePlan, options: IncusAdap
   for (const [key, value] of Object.entries(plan.restrictions)) {
     commands.push(['config', 'set', plan.instance, `${key}=${value}`, '--project', plan.project]);
   }
+  if (hostIdentity) {
+    commands.push([
+      'config',
+      'set',
+      plan.instance,
+      `raw.idmap=uid ${hostIdentity.uid} 1000\ngid ${hostIdentity.gid} 1000`,
+      '--project',
+      plan.project,
+    ]);
+  }
 
   for (const mount of plan.mounts) {
     const device = mountDeviceName(mount.path);
@@ -100,9 +133,34 @@ export function applyIncusRuntimePlan(plan: IncusRuntimePlan, options: IncusAdap
     if (mount.readonly) argv.splice(8, 0, 'readonly=true');
     commands.push(argv);
   }
+  if (plan.gatewayProxy) {
+    commands.push([
+      'config',
+      'device',
+      'add',
+      plan.instance,
+      'onecli-gateway',
+      'proxy',
+      `listen=${plan.gatewayProxy.listen}`,
+      `connect=${plan.gatewayProxy.connect}`,
+      'bind=instance',
+      '--project',
+      plan.project,
+    ]);
+  }
   commands.push(['start', plan.instance, '--project', plan.project]);
 
   return runCommands(commands, options);
+}
+
+function writableMountHostIdentity(plan: IncusRuntimePlan): { uid: number; gid: number } | undefined {
+  if (!plan.mounts.some((mount) => !mount.readonly)) return undefined;
+  const uid = process.getuid?.();
+  const gid = process.getgid?.();
+  if (uid == null || gid == null || uid <= 0 || gid <= 0) {
+    throw new Error('Incus writable mounts require an unprivileged host UID/GID for a narrow raw.idmap');
+  }
+  return { uid, gid };
 }
 
 export function quarantineIncusInstance(
@@ -165,6 +223,10 @@ function runCommands(commands: string[][], options: IncusAdapterOptions): IncusA
         results.push({ argv, ok: true, output: 'already exists' });
         continue;
       }
+      if (argv[0] === 'start' && isAlreadyRunningError(error)) {
+        results.push({ argv, ok: true, output: 'already running' });
+        continue;
+      }
       results.push({ argv, ok: false, error });
       throw new Error(`Incus command failed: incus ${argv.join(' ')}`, { cause: error });
     }
@@ -185,6 +247,18 @@ function validatePlan(plan: IncusRuntimePlan): void {
   assertSafeName(plan.instance, 'instance');
   for (const profile of plan.profiles) assertSafeName(profile, 'profile');
   validateMounts(plan);
+  if (plan.gatewayProxy) {
+    assertSafeProxyEndpoint(plan.gatewayProxy.listen, 'listen');
+    assertSafeProxyEndpoint(plan.gatewayProxy.connect, 'connect');
+  }
+}
+
+function assertSafeProxyEndpoint(value: string, label: string): void {
+  if (!/^tcp:(127\.0\.0\.1|\[::1\]):[1-9][0-9]{0,4}$/.test(value)) {
+    throw new Error(`Unsafe Incus gateway proxy ${label}: ${value}`);
+  }
+  const port = Number(value.slice(value.lastIndexOf(':') + 1));
+  if (port > 65535) throw new Error(`Unsafe Incus gateway proxy ${label}: ${value}`);
 }
 
 function assertSafeName(value: string, label: string): void {
@@ -216,7 +290,17 @@ function isAlreadyExistsError(error: unknown): boolean {
 function isAlreadyExists(argv: string[], error: unknown): boolean {
   if (!isAlreadyExistsError(error)) return false;
   if ((argv[0] === 'project' || argv[0] === 'profile') && argv[1] === 'create') return true;
-  return argv[0] === 'profile' && argv[1] === 'device' && argv[2] === 'add';
+  if (argv[0] === 'profile' && argv[1] === 'device' && argv[2] === 'add') return true;
+  if (argv[0] === 'init') return true;
+  return argv[0] === 'config' && argv[1] === 'device' && argv[2] === 'add';
+}
+
+function isAlreadyRunningError(error: unknown): boolean {
+  const text =
+    error instanceof Error
+      ? `${error.message}\n${String((error as { stderr?: unknown }).stderr ?? '')}`
+      : String(error);
+  return /already running/i.test(text);
 }
 
 function validateMounts(plan: IncusRuntimePlan): void {
@@ -268,13 +352,6 @@ function prepareNestedMountTargets(plan: IncusRuntimePlan): void {
       fs.mkdirSync(path.dirname(hostTarget), { recursive: true });
       if (!fs.existsSync(hostTarget)) fs.closeSync(fs.openSync(hostTarget, 'w'));
     }
-  }
-}
-
-function prepareWritableMountSources(plan: IncusRuntimePlan): void {
-  for (const mount of plan.mounts.filter((candidate) => !candidate.readonly)) {
-    if (!fs.existsSync(mount.source)) continue;
-    fs.chmodSync(mount.source, 0o777);
   }
 }
 

@@ -31,8 +31,11 @@ import { getContainerConfig } from './db/container-configs.js';
 import { updateContainerConfigScalars } from './db/container-configs.js';
 import { CONTAINER_RUNTIME_BIN, hostGatewayArgs, readonlyMountArgs, stopContainer } from './container-runtime.js';
 import { EGRESS_NETWORK, egressNetworkArgs, ensureEgressNetwork } from './egress-lockdown.js';
-import { applyIncusRuntimePlan, spawnIncusExec, stopIncusInstance } from './incus-adapter.js';
+import { applyIncusRuntimePlan, ensureIncusRuntimeReady, spawnIncusExec, stopIncusInstance } from './incus-adapter.js';
 import { buildIncusRuntimePlan, type IncusRuntimePlan } from './incus-runtime.js';
+import { prepareIncusOneCliConfig } from './incus-onecli.js';
+import { enforceIncusPreflight } from './incus-quarantine-policy.js';
+import { scanAgentGate } from './agent-gate.js';
 import { composeGroupClaudeMd } from './claude-md-compose.js';
 import { getAgentGroup } from './db/agent-groups.js';
 import { getDb, hasTable } from './db/connection.js';
@@ -266,8 +269,24 @@ async function spawnIncusAgent(args: {
   timezone: string;
 }): Promise<void> {
   const { session, agentGroup, mounts, providerContribution, containerName, agentIdentifier, timezone } = args;
+  if (AREA51_INCUS_INSTANCE_KIND === 'vm') {
+    throw new Error(
+      'Incus VM mode is blocked until the OneCLI-only NIC/ACL path is configured; refusing open VM egress',
+    );
+  }
+  let gatewayEnv: Record<string, string> = {};
+  let securedMounts = mounts;
   if (agentIdentifier) {
     await onecli.ensureAgent({ name: agentGroup.name, identifier: agentIdentifier });
+    const gatewayConfig = await onecli.getContainerConfig({ agent: agentIdentifier });
+    const prepared = prepareIncusOneCliConfig(
+      gatewayConfig,
+      path.join(DATA_DIR, 'incus-onecli', agentGroup.id, session.id),
+    );
+    gatewayEnv = prepared.env;
+    securedMounts = [...mounts, ...prepared.mounts];
+  } else {
+    throw new Error('Incus runtime requires a OneCLI agent identity; refusing credential-less open egress');
   }
 
   const plan = buildIncusRuntimePlan({
@@ -277,7 +296,8 @@ async function spawnIncusAgent(args: {
     instanceKind: AREA51_INCUS_INSTANCE_KIND,
     instanceSuffix: session.id,
     image: AREA51_INCUS_IMAGE,
-    mounts: hardenIncusMounts(mounts),
+    mounts: hardenIncusMounts(securedMounts),
+    gatewayProxy: { listen: 'tcp:127.0.0.1:10255', connect: 'tcp:127.0.0.1:10255' },
   });
 
   log.info('Spawning Incus agent runtime', {
@@ -289,11 +309,39 @@ async function spawnIncusAgent(args: {
 
   fs.rmSync(heartbeatPath(agentGroup.id, session.id), { force: true });
   applyIncusRuntimePlan(plan);
+  try {
+    ensureIncusRuntimeReady(plan);
+  } catch (error) {
+    try {
+      stopIncusInstance(plan);
+    } catch {
+      // Preserve the readiness failure as the actionable root cause.
+    }
+    throw new Error(`Incus image ${plan.image} is not Area51-ready: Bun and /app/node_modules are required`, {
+      cause: error,
+    });
+  }
+  const gateReport = await scanAgentGate({
+    groupDir: path.resolve(GROUPS_DIR, agentGroup.folder),
+    // Agent Gate needs proof that the provider credential route exists, not
+    // the real secret. The successful OneCLI config fetch above is that proof.
+    env: { ANTHROPIC_API_KEY: 'onecli-managed' },
+    quarantine: true,
+  });
+  const preflight = enforceIncusPreflight(gateReport, plan);
+  if (preflight.decision.action === 'quarantine') {
+    throw new Error(
+      `Agent Gate quarantined ${plan.project}/${plan.instance}: ${preflight.decision.reasons.join('; ')}`,
+    );
+  }
 
   const env: Record<string, string> = {
     HOME: '/home/node',
     TZ: timezone,
     ...(providerContribution.env ?? {}),
+    // Host-owned gateway values win over provider contributions so a provider
+    // cannot accidentally restore host.docker.internal or bypass the relay.
+    ...gatewayEnv,
   };
   const container = spawnIncusExec(plan, 'bash', ['-lc', 'exec bun run /app/src/index.ts'], env, {
     user: '1000',
