@@ -255,6 +255,33 @@ describe('Incus adapter', () => {
     expect(() => applyIncusRuntimePlan(plan, { executor: vi.fn() })).toThrow('Unsafe Incus gateway proxy listen');
   });
 
+  it('rejects VM writable host-path mounts below the container-runner guard', () => {
+    const plan = buildIncusRuntimePlan({
+      agentGroupFolder: 'maximum',
+      groupDir: '/srv/area51/groups/maximum',
+      sessionDir: '/srv/area51/sessions/maximum/sess-1',
+      instanceKind: 'vm',
+    });
+
+    expect(() => applyIncusRuntimePlan(plan, { executor: vi.fn() })).toThrow(
+      'Incus VM writable host-path mounts require an audited VM disk transport',
+    );
+  });
+
+  it('rejects container-style loopback proxy devices for VMs', () => {
+    const plan = buildIncusRuntimePlan({
+      agentGroupFolder: 'maximum',
+      groupDir: '/srv/area51/groups/maximum',
+      mounts: [{ source: '/srv/area51/groups/maximum', path: '/workspace/agent', readonly: true }],
+      instanceKind: 'vm',
+      gatewayProxy: { listen: 'tcp:127.0.0.1:10255', connect: 'tcp:127.0.0.1:10255' },
+    });
+
+    expect(() => applyIncusRuntimePlan(plan, { executor: vi.fn() })).toThrow(
+      'Incus VM OneCLI proxying requires a dedicated NIC and deny-by-default ACL',
+    );
+  });
+
   it('preserves mount paths as argv values instead of interpolating shell strings', () => {
     const executor = vi.fn();
     const plan = buildIncusRuntimePlan({
