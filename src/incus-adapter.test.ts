@@ -13,14 +13,21 @@ import {
 import { buildIncusRuntimePlan } from './incus-runtime.js';
 
 describe('Incus adapter', () => {
+  const originalGetuid = Object.getOwnPropertyDescriptor(process, 'getuid');
+  const originalGetgid = Object.getOwnPropertyDescriptor(process, 'getgid');
+
   beforeEach(() => {
-    vi.spyOn(process, 'getuid').mockReturnValue(1001);
-    vi.spyOn(process, 'getgid').mockReturnValue(1001);
+    Object.defineProperty(process, 'getuid', { configurable: true, value: () => 1001 });
+    Object.defineProperty(process, 'getgid', { configurable: true, value: () => 1001 });
   });
 
   afterEach(() => {
     vi.unstubAllEnvs();
     vi.restoreAllMocks();
+    if (originalGetuid) Object.defineProperty(process, 'getuid', originalGetuid);
+    else delete (process as { getuid?: unknown }).getuid;
+    if (originalGetgid) Object.defineProperty(process, 'getgid', originalGetgid);
+    else delete (process as { getgid?: unknown }).getgid;
   });
 
   it('checks the Incus CLI without shell execution', () => {
