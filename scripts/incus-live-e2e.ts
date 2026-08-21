@@ -160,7 +160,7 @@ function longRunningIncus(argv: string[]): string {
 }
 
 function runGuest(plan: IncusRuntimePlan, script: string): Promise<{ stdout: string; stderr: string }> {
-  const child = spawnIncusExec(plan, 'sh', ['-lc', script], {}, { user: '65534', group: '65534' });
+  const child = spawnIncusExec(plan, 'sh', ['-lc', script], {}, { user: '1000', group: '1000' });
   return collect(child);
 }
 

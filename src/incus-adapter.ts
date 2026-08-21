@@ -55,6 +55,8 @@ export function applyIncusRuntimePlan(plan: IncusRuntimePlan, options: IncusAdap
   validatePlan(plan);
   prepareNestedMountTargets(plan);
 
+  const hostIdentity = writableMountHostIdentity(plan);
+
   const commands: string[][] = [
     ['project', 'create', plan.project],
     ['project', 'set', plan.project, 'restricted=true'],
@@ -62,6 +64,13 @@ export function applyIncusRuntimePlan(plan: IncusRuntimePlan, options: IncusAdap
     ['project', 'set', plan.project, 'restricted.devices.disk=allow'],
     ['project', 'set', plan.project, `restricted.devices.disk.paths=${allowedDiskPaths(plan)}`],
   ];
+  if (hostIdentity) {
+    commands.push(
+      ['project', 'set', plan.project, 'restricted.containers.lowlevel=allow'],
+      ['project', 'set', plan.project, `restricted.idmap.uid=${hostIdentity.uid}`],
+      ['project', 'set', plan.project, `restricted.idmap.gid=${hostIdentity.gid}`],
+    );
+  }
   if (plan.gatewayProxy) {
     commands.push(['project', 'set', plan.project, 'restricted.devices.proxy=allow']);
   }
@@ -96,6 +105,16 @@ export function applyIncusRuntimePlan(plan: IncusRuntimePlan, options: IncusAdap
   for (const [key, value] of Object.entries(plan.restrictions)) {
     commands.push(['config', 'set', plan.instance, `${key}=${value}`, '--project', plan.project]);
   }
+  if (hostIdentity) {
+    commands.push([
+      'config',
+      'set',
+      plan.instance,
+      `raw.idmap=uid ${hostIdentity.uid} 1000\ngid ${hostIdentity.gid} 1000`,
+      '--project',
+      plan.project,
+    ]);
+  }
 
   for (const mount of plan.mounts) {
     const device = mountDeviceName(mount.path);
@@ -112,7 +131,6 @@ export function applyIncusRuntimePlan(plan: IncusRuntimePlan, options: IncusAdap
       plan.project,
     ];
     if (mount.readonly) argv.splice(8, 0, 'readonly=true');
-    else argv.splice(8, 0, 'shift=true');
     commands.push(argv);
   }
   if (plan.gatewayProxy) {
@@ -133,6 +151,16 @@ export function applyIncusRuntimePlan(plan: IncusRuntimePlan, options: IncusAdap
   commands.push(['start', plan.instance, '--project', plan.project]);
 
   return runCommands(commands, options);
+}
+
+function writableMountHostIdentity(plan: IncusRuntimePlan): { uid: number; gid: number } | undefined {
+  if (!plan.mounts.some((mount) => !mount.readonly)) return undefined;
+  const uid = process.getuid?.();
+  const gid = process.getgid?.();
+  if (uid == null || gid == null || uid <= 0 || gid <= 0) {
+    throw new Error('Incus writable mounts require an unprivileged host UID/GID for a narrow raw.idmap');
+  }
+  return { uid, gid };
 }
 
 export function quarantineIncusInstance(

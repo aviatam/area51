@@ -199,8 +199,9 @@ If OneCLI configuration cannot be fetched, the Incus spawn fails closed. Incus
 VM mode is also blocked for now: a VM requires a NIC and audited ACL rules, and
 Area51 will not silently attach the default internet-enabled network.
 
-Writable session mounts use Incus ownership shifting rather than making the
-host directory world-writable. The live hostile E2E verifies that the guest can
+Writable session mounts use a narrow Incus ID map from the unprivileged host
+UID/GID to guest UID/GID 1000 rather than making the host directory
+world-writable. The live hostile E2E verifies that the guest can
 update an existing mode-`0600` session file while agent material stays
 read-only. Run the manual `Live Incus Containment` workflow on a disposable,
 dedicated runner labelled `linux`, `incus`, and `disposable`.

@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -13,8 +13,14 @@ import {
 import { buildIncusRuntimePlan } from './incus-runtime.js';
 
 describe('Incus adapter', () => {
+  beforeEach(() => {
+    vi.spyOn(process, 'getuid').mockReturnValue(1001);
+    vi.spyOn(process, 'getgid').mockReturnValue(1001);
+  });
+
   afterEach(() => {
     vi.unstubAllEnvs();
+    vi.restoreAllMocks();
   });
 
   it('checks the Incus CLI without shell execution', () => {
@@ -65,10 +71,17 @@ describe('Incus adapter', () => {
         'workspace',
         'disk',
         `source=${plan.mounts.find((mount) => mount.path === '/workspace')?.source}`,
-        'shift=true',
         'path=/workspace',
       ]),
     );
+    expect(executor).toHaveBeenCalledWith([
+      'config',
+      'set',
+      'area51-support-agent',
+      expect.stringMatching(/^raw\.idmap=uid \d+ 1000\ngid \d+ 1000$/),
+      '--project',
+      'area51-support',
+    ]);
     expect(executor).toHaveBeenCalledWith(
       expect.arrayContaining([
         'config',
