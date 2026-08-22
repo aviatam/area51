@@ -16,6 +16,8 @@ export interface IncusVmDiskOptions {
 }
 
 export interface IncusVmDiskPlan extends IncusVmDiskOptions {
+  prepareCommands: string[][];
+  attachCommands: string[][];
   commands: string[][];
 }
 
@@ -30,7 +32,8 @@ export function buildIncusVmDiskPlan(options: IncusVmDiskOptions): IncusVmDiskPl
 
   const names = new Set<string>();
   const targets = new Set<string>();
-  const commands: string[][] = [];
+  const prepareCommands: string[][] = [];
+  const attachCommands: string[][] = [];
 
   for (const [index, volume] of options.volumes.entries()) {
     validateName(volume.name, 'volume');
@@ -49,7 +52,7 @@ export function buildIncusVmDiskPlan(options: IncusVmDiskOptions): IncusVmDiskPl
     }
 
     const projectArgs = ['--project', options.project];
-    commands.push(
+    prepareCommands.push(
       [
         'storage',
         'volume',
@@ -94,10 +97,15 @@ export function buildIncusVmDiskPlan(options: IncusVmDiskOptions): IncusVmDiskPl
     ];
     if (volume.readonly) attach.push('readonly=true');
     attach.push(...projectArgs);
-    commands.push(attach);
+    attachCommands.push(attach);
   }
 
-  return { ...options, commands };
+  return {
+    ...options,
+    prepareCommands,
+    attachCommands,
+    commands: [...prepareCommands, ...attachCommands],
+  };
 }
 
 function validateName(value: string, label: string): void {
