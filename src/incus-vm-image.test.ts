@@ -4,6 +4,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const script = fs.readFileSync(path.join(process.cwd(), 'container', 'incus', 'build-vm.sh'), 'utf8');
+const workflow = fs.readFileSync(path.join(process.cwd(), '.github', 'workflows', 'incus-vm-image.yml'), 'utf8');
 
 describe('Incus VM image builder', () => {
   it('requires KVM and launches the VM image variant', () => {
@@ -28,5 +29,13 @@ describe('Incus VM image builder', () => {
   it('strips setuid bits before publishing', () => {
     expect(script).toContain('find / -xdev -perm -4000 -type f -exec chmod u-s {} +');
     expect(script).toContain('incus publish "$BUILDER" --alias "$ALIAS"');
+  });
+
+  it('probes nested KVM on a disposable GitHub-hosted runner', () => {
+    expect(workflow).toContain('runs-on: ubuntu-latest');
+    expect(workflow).toContain('test -r /dev/kvm');
+    expect(workflow).toContain('sudo apt-get install -y incus acl');
+    expect(workflow).toContain('sudo incus admin init --minimal');
+    expect(workflow).not.toContain('self-hosted');
   });
 });
