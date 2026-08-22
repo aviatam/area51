@@ -10,12 +10,14 @@ describe('Incus VM image builder', () => {
   it('requires KVM and launches the VM image variant', () => {
     expect(script).toContain('[[ ! -e /dev/kvm ]]');
     expect(script).toContain('incus launch "$BASE_IMAGE" "$BUILDER" --vm');
+    expect(script).toContain('-c limits.cpu=2 -c limits.memory=3GiB');
     expect(script).toContain('Incus guest agent did not become ready');
   });
 
   it('bakes the runner into the VM instead of relying on host mounts', () => {
     expect(script).toContain('agent-runner/src');
     expect(script).toContain('"$BUILDER/app/"');
+    expect(script).toContain('export PNPM_HOME=/usr/local/bin');
     expect(script).toContain('test -f /app/src/index.ts');
     expect(script).toContain('/etc/area51/image-kind');
   });
@@ -33,13 +35,19 @@ describe('Incus VM image builder', () => {
 
   it('probes nested KVM on a disposable GitHub-hosted runner', () => {
     expect(workflow).toContain('runs-on: ubuntu-latest');
+    expect(workflow).toContain('pull_request:');
+    expect(workflow).toContain("grep -E -m1 '(vmx|svm)' /proc/cpuinfo");
+    expect(workflow).toContain('test -e /dev/kvm');
+    expect(workflow).toContain('sudo chmod 0666 /dev/kvm');
     expect(workflow).toContain('test -r /dev/kvm');
-    expect(workflow).toContain('sudo apt-get install -y incus acl');
+    expect(workflow).toContain('sudo apt-get install -y incus acl qemu-system-x86');
     expect(workflow).toContain('sudo incus admin init --minimal');
-    expect(workflow).toContain('incus profile device remove default eth0');
-    expect(workflow.indexOf('incus profile device remove default eth0')).toBeLessThan(
-      workflow.indexOf('incus profile device add default eth0'),
-    );
+    expect(workflow).toContain('incus profile device show default');
+    expect(workflow).toContain('incus network list');
+    expect(workflow).toContain('sudo sysctl -w net.ipv4.ip_forward=1');
+    expect(workflow).toContain('sudo iptables -I FORWARD 1 -i incusbr0');
+    expect(workflow).toContain('sudo iptables -t nat -I POSTROUTING 1');
+    expect(workflow).not.toContain('incus profile device add default eth0');
     expect(workflow).not.toContain('self-hosted');
   });
 });
