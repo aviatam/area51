@@ -17,6 +17,7 @@ describe('Incus VM image builder', () => {
   it('bakes the runner into the VM instead of relying on host mounts', () => {
     expect(script).toContain('agent-runner/src');
     expect(script).toContain('"$BUILDER/app/"');
+    expect(script).toContain('export PNPM_HOME=/usr/local/bin');
     expect(script).toContain('test -f /app/src/index.ts');
     expect(script).toContain('/etc/area51/image-kind');
   });
