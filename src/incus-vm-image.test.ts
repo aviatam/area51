@@ -33,6 +33,10 @@ describe('Incus VM image builder', () => {
 
   it('probes nested KVM on a disposable GitHub-hosted runner', () => {
     expect(workflow).toContain('runs-on: ubuntu-latest');
+    expect(workflow).toContain('pull_request:');
+    expect(workflow).toContain("grep -E -m1 '(vmx|svm)' /proc/cpuinfo");
+    expect(workflow).toContain('test -e /dev/kvm');
+    expect(workflow).toContain('sudo chmod 0666 /dev/kvm');
     expect(workflow).toContain('test -r /dev/kvm');
     expect(workflow).toContain('sudo apt-get install -y incus acl');
     expect(workflow).toContain('sudo incus admin init --minimal');
