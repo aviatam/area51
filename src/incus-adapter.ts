@@ -247,9 +247,20 @@ function validatePlan(plan: IncusRuntimePlan): void {
   assertSafeName(plan.instance, 'instance');
   for (const profile of plan.profiles) assertSafeName(profile, 'profile');
   validateMounts(plan);
+  validateVmBoundary(plan);
   if (plan.gatewayProxy) {
     assertSafeProxyEndpoint(plan.gatewayProxy.listen, 'listen');
     assertSafeProxyEndpoint(plan.gatewayProxy.connect, 'connect');
+  }
+}
+
+function validateVmBoundary(plan: IncusRuntimePlan): void {
+  if (plan.instanceKind !== 'vm') return;
+  if (plan.mounts.some((mount) => !mount.readonly)) {
+    throw new Error('Incus VM writable host-path mounts require an audited VM disk transport');
+  }
+  if (plan.gatewayProxy) {
+    throw new Error('Incus VM OneCLI proxying requires a dedicated NIC and deny-by-default ACL');
   }
 }
 

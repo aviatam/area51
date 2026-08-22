@@ -198,6 +198,10 @@ and relays it to the host-loopback OneCLI gateway; the agent receives no NIC.
 If OneCLI configuration cannot be fetched, the Incus spawn fails closed. Incus
 VM mode is also blocked for now: a VM requires a NIC and audited ACL rules, and
 Area51 will not silently attach the default internet-enabled network.
+The Incus adapter independently rejects container-style writable host-path
+mounts and loopback proxy devices for VM plans, so callers cannot bypass the
+top-level runtime guard. VM enablement requires both a dedicated disk transport
+and a dedicated NIC whose unmatched ingress and egress are rejected.
 
 Writable session mounts use a narrow Incus ID map from the unprivileged host
 UID/GID to guest UID/GID 1000 rather than making the host directory
