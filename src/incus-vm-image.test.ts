@@ -36,6 +36,10 @@ describe('Incus VM image builder', () => {
     expect(workflow).toContain('test -r /dev/kvm');
     expect(workflow).toContain('sudo apt-get install -y incus acl');
     expect(workflow).toContain('sudo incus admin init --minimal');
+    expect(workflow).toContain('incus profile device remove default eth0');
+    expect(workflow.indexOf('incus profile device remove default eth0')).toBeLessThan(
+      workflow.indexOf('incus profile device add default eth0'),
+    );
     expect(workflow).not.toContain('self-hosted');
   });
 });
