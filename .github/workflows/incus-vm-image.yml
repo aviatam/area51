@@ -32,9 +32,8 @@ jobs:
           sudo apt-get install -y incus acl qemu-system-x86
           sudo incus admin init --minimal
           sudo setfacl -m "u:${USER}:rw" /var/lib/incus/unix.socket
-          incus network create area51-vm-build ipv4.address=auto ipv4.nat=true ipv6.address=none
-          incus profile device remove default eth0 >/dev/null 2>&1 || true
-          incus profile device add default eth0 nic network=area51-vm-build
+          incus profile device show default
+          incus network list
           incus version
       - name: Build VM-native Area51 image
         env:
@@ -66,4 +65,3 @@ jobs:
         run: |
           incus delete area51-vm-image-smoke-${{ github.run_id }} --force >/dev/null 2>&1 || true
           incus image delete "$AREA51_INCUS_VM_IMAGE_ALIAS" >/dev/null 2>&1 || true
-          incus network delete area51-vm-build >/dev/null 2>&1 || true

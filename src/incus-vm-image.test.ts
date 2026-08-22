@@ -40,13 +40,9 @@ describe('Incus VM image builder', () => {
     expect(workflow).toContain('test -r /dev/kvm');
     expect(workflow).toContain('sudo apt-get install -y incus acl qemu-system-x86');
     expect(workflow).toContain('sudo incus admin init --minimal');
-    expect(workflow).toContain(
-      'incus network create area51-vm-build ipv4.address=auto ipv4.nat=true ipv6.address=none',
-    );
-    expect(workflow).toContain('incus profile device remove default eth0');
-    expect(workflow.indexOf('incus profile device remove default eth0')).toBeLessThan(
-      workflow.indexOf('incus profile device add default eth0'),
-    );
+    expect(workflow).toContain('incus profile device show default');
+    expect(workflow).toContain('incus network list');
+    expect(workflow).not.toContain('incus profile device add default eth0');
     expect(workflow).not.toContain('self-hosted');
   });
 });
