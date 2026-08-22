@@ -25,7 +25,7 @@ fs.writeFileSync(path.join(groupDir, 'agent.txt'), 'agent-definition\n');
 
 const sessionVolume = `session-${suffix}`;
 const groupVolume = `group-${suffix}`;
-const network = `vm-net-${suffix}`;
+const network = `vme${suffix}`;
 const acl = `vm-acl-${suffix}`;
 const plan = buildIncusRuntimePlan({
   agentGroupFolder: `vm-e2e-${suffix}`,

@@ -6,7 +6,7 @@ describe('Incus VM network contract', () => {
   const options = {
     project: 'area51-maximum',
     instance: 'area51-maximum-agent',
-    network: 'area51-maximum-vm-net',
+    network: 'a51-max-vm-net',
     acl: 'area51-maximum-onecli-only',
     ipv4Cidr: '10.51.0.1/24',
     oneCliAddress: '10.51.0.1',
@@ -80,6 +80,7 @@ describe('Incus VM network contract', () => {
     ['loopback gateway', { oneCliAddress: '127.0.0.1' }],
     ['zero port', { oneCliPort: 0 }],
     ['unsafe network name', { network: 'net;open' }],
+    ['long bridge name', { network: 'area51-maximum-vm-net' }],
   ])('fails closed for %s', (_label, override) => {
     expect(() => buildIncusVmNetworkPlan({ ...options, ...override })).toThrow();
   });

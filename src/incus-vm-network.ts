@@ -24,7 +24,7 @@ export interface IncusVmNetworkPlan extends IncusVmNetworkOptions {
 export function buildIncusVmNetworkPlan(options: IncusVmNetworkOptions): IncusVmNetworkPlan {
   validateName(options.project, 'project');
   validateName(options.instance, 'instance');
-  validateName(options.network, 'network');
+  validateNetworkName(options.network);
   validateName(options.acl, 'ACL');
   const { address, networkAddress, prefix } = parsePrivateIpv4Cidr(options.ipv4Cidr);
   if (isIP(options.oneCliAddress) !== 4 || !isPrivateIpv4(options.oneCliAddress)) {
@@ -100,6 +100,11 @@ function validateName(value: string, label: string): void {
   if (!/^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,63}$/.test(value)) {
     throw new Error(`Invalid Incus VM ${label} name: ${value}`);
   }
+}
+
+function validateNetworkName(value: string): void {
+  validateName(value, 'network');
+  if (value.length > 15) throw new Error(`Incus VM bridge name exceeds Linux's 15-character limit: ${value}`);
 }
 
 function parsePrivateIpv4Cidr(value: string): { address: string; networkAddress: number; prefix: number } {
