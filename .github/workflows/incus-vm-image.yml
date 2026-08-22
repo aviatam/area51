@@ -34,6 +34,12 @@ jobs:
           sudo setfacl -m "u:${USER}:rw" /var/lib/incus/unix.socket
           incus profile device show default
           incus network list
+          subnet="$(incus network get incusbr0 ipv4.address)"
+          uplink="$(ip -4 route show default | awk '{print $5; exit}')"
+          sudo sysctl -w net.ipv4.ip_forward=1
+          sudo iptables -I FORWARD 1 -i incusbr0 -o "$uplink" -j ACCEPT
+          sudo iptables -I FORWARD 1 -i "$uplink" -o incusbr0 -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+          sudo iptables -t nat -I POSTROUTING 1 -s "$subnet" -o "$uplink" -j MASQUERADE
           incus version
       - name: Build VM-native Area51 image
         env:

@@ -42,6 +42,9 @@ describe('Incus VM image builder', () => {
     expect(workflow).toContain('sudo incus admin init --minimal');
     expect(workflow).toContain('incus profile device show default');
     expect(workflow).toContain('incus network list');
+    expect(workflow).toContain('sudo sysctl -w net.ipv4.ip_forward=1');
+    expect(workflow).toContain('sudo iptables -I FORWARD 1 -i incusbr0');
+    expect(workflow).toContain('sudo iptables -t nat -I POSTROUTING 1');
     expect(workflow).not.toContain('incus profile device add default eth0');
     expect(workflow).not.toContain('self-hosted');
   });
