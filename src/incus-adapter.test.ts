@@ -290,7 +290,7 @@ describe('Incus adapter', () => {
       mounts: [],
       instanceKind: 'vm',
       vmNetwork: {
-        network: 'area51-maximum-net',
+        network: 'a51-max-vm-net',
         acl: 'area51-maximum-onecli',
         ipv4Cidr: '10.51.0.1/24',
         oneCliAddress: '10.51.0.1',
@@ -322,7 +322,7 @@ describe('Incus adapter', () => {
       '--config',
       'features.storage.volumes=true',
     ]);
-    expect(executor).toHaveBeenCalledWith(expect.arrayContaining(['network=area51-maximum-net']));
+    expect(executor).toHaveBeenCalledWith(expect.arrayContaining(['network=a51-max-vm-net']));
     expect(executor).toHaveBeenCalledWith(expect.arrayContaining(['pool=area51-secure', 'source=maximum-session']));
     expect(executor.mock.calls.flatMap(([argv]) => argv as string[]).join(' ')).not.toContain(
       'source=/srv/area51/sessions',
@@ -348,7 +348,7 @@ describe('Incus adapter', () => {
       mounts: [],
       instanceKind: 'vm',
       vmNetwork: {
-        network: 'area51-maximum-net',
+        network: 'a51-max-vm-net',
         acl: 'area51-maximum-onecli',
         ipv4Cidr: '10.51.0.1/24',
         oneCliAddress: '10.51.0.1',
