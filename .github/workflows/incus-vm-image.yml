@@ -29,7 +29,7 @@ jobs:
       - name: Install and initialize Incus
         run: |
           sudo apt-get update
-          sudo apt-get install -y incus acl
+          sudo apt-get install -y incus acl qemu-system-x86
           sudo incus admin init --minimal
           sudo setfacl -m "u:${USER}:rw" /var/lib/incus/unix.socket
           incus network create area51-vm-build ipv4.address=auto ipv6.address=none

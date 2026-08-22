@@ -38,7 +38,7 @@ describe('Incus VM image builder', () => {
     expect(workflow).toContain('test -e /dev/kvm');
     expect(workflow).toContain('sudo chmod 0666 /dev/kvm');
     expect(workflow).toContain('test -r /dev/kvm');
-    expect(workflow).toContain('sudo apt-get install -y incus acl');
+    expect(workflow).toContain('sudo apt-get install -y incus acl qemu-system-x86');
     expect(workflow).toContain('sudo incus admin init --minimal');
     expect(workflow).toContain('incus profile device remove default eth0');
     expect(workflow.indexOf('incus profile device remove default eth0')).toBeLessThan(
