@@ -66,4 +66,15 @@ describe('buildIncusRuntimePlan', () => {
     expect(plan.instance).toBe('area51-support-session-12345678-agent');
     expect(plan.instance.length).toBeLessThanOrEqual(63);
   });
+
+  it('isolates VM resources in a separate project', () => {
+    const plan = buildIncusRuntimePlan({
+      agentGroupFolder: 'support',
+      groupDir: '.',
+      mounts: [],
+      instanceKind: 'vm',
+    });
+
+    expect(plan.project).toBe('area51-support-vm');
+  });
 });
