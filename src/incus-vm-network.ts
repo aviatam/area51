@@ -46,6 +46,7 @@ export function buildIncusVmNetworkPlan(options: IncusVmNetworkOptions): IncusVm
       'network',
       'create',
       options.network,
+      '--type=bridge',
       `ipv4.address=${options.ipv4Cidr}`,
       'ipv4.nat=false',
       'ipv6.address=none',

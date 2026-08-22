@@ -20,6 +20,7 @@ describe('Incus VM network contract', () => {
       'network',
       'create',
       options.network,
+      '--type=bridge',
       'ipv4.address=10.51.0.1/24',
       'ipv4.nat=false',
       'ipv6.address=none',
