@@ -25,7 +25,7 @@
     "lint:fix": "eslint src/ --fix",
     "test": "vitest run",
     "test:incus:e2e": "tsx scripts/incus-live-e2e.ts",
-    "test:portable:windows": "vitest run src/area51-demo.test.ts src/area51-exposure.test.ts src/agent-gate.test.ts src/runtime-policy.test.ts src/incus-adapter.test.ts src/incus-vm-network.test.ts src/attachment-naming.test.ts src/container-config.test.ts src/container-runner.test.ts src/container-runtime.test.ts src/db/container-configs.test.ts src/modules/scheduling/db.test.ts src/modules/scheduling/recurrence.test.ts setup/channels/run-channel-skill.test.ts scripts/skill-directives.test.ts",
+    "test:portable:windows": "vitest run src/area51-demo.test.ts src/area51-exposure.test.ts src/agent-gate.test.ts src/runtime-policy.test.ts src/incus-adapter.test.ts src/incus-vm-network.test.ts src/incus-vm-disk.test.ts src/attachment-naming.test.ts src/container-config.test.ts src/container-runner.test.ts src/container-runtime.test.ts src/db/container-configs.test.ts src/modules/scheduling/db.test.ts src/modules/scheduling/recurrence.test.ts setup/channels/run-channel-skill.test.ts scripts/skill-directives.test.ts",
     "audit:high": "corepack pnpm audit --audit-level high",
     "verify": "corepack pnpm run audit:high && corepack pnpm run typecheck && corepack pnpm run test:portable:windows",
     "test:watch": "vitest"
