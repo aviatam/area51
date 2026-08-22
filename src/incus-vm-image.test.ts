@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 
 const script = fs.readFileSync(path.join(process.cwd(), 'container', 'incus', 'build-vm.sh'), 'utf8');
 const workflow = fs.readFileSync(path.join(process.cwd(), '.github', 'workflows', 'incus-vm-image.yml'), 'utf8');
+const containment = fs.readFileSync(path.join(process.cwd(), 'scripts', 'incus-vm-containment-e2e.ts'), 'utf8');
 
 describe('Incus VM image builder', () => {
   it('requires KVM and launches the VM image variant', () => {
@@ -49,5 +50,14 @@ describe('Incus VM image builder', () => {
     expect(workflow).toContain('sudo iptables -t nat -I POSTROUTING 1');
     expect(workflow).not.toContain('incus profile device add default eth0');
     expect(workflow).not.toContain('self-hosted');
+  });
+
+  it('runs a real VM containment test before VM enablement', () => {
+    expect(workflow).toContain('scripts/incus-vm-containment-e2e.ts');
+    expect(containment).toContain('applyIncusRuntimePlan(plan');
+    expect(containment).toContain('spawnIncusExec(plan');
+    expect(containment).toContain('non-relay internet egress succeeded');
+    expect(containment).toContain('host control path visible');
+    expect(containment).toContain("['project', 'delete', plan.project]");
   });
 });

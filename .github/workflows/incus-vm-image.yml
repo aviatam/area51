@@ -8,6 +8,11 @@ on:
       - container/incus/build-vm.sh
       - container/agent-runner/**
       - container/skills/**
+      - scripts/incus-vm-containment-e2e.ts
+      - src/incus-adapter.ts
+      - src/incus-runtime.ts
+      - src/incus-vm-disk.ts
+      - src/incus-vm-network.ts
 
 permissions:
   contents: read
@@ -18,6 +23,12 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7.0.1
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
       - name: Enable and verify nested KVM
         run: |
           grep -E -m1 '(vmx|svm)' /proc/cpuinfo
@@ -64,6 +75,11 @@ jobs:
           incus exec "$instance" -- test -d /app/node_modules
           incus exec "$instance" -- test -f /app/src/index.ts
           incus exec "$instance" -- grep -qx vm /etc/area51/image-kind
+      - name: Run VM containment E2E
+        env:
+          AREA51_INCUS_VM_IMAGE_ALIAS: area51-agent-v2-vm-ci-${{ github.run_id }}
+          AREA51_INCUS_STORAGE_POOL: default
+        run: pnpm exec tsx scripts/incus-vm-containment-e2e.ts
       - name: Cleanup
         if: always()
         env:
