@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { resolve } from 'node:path';
 
 import { buildIncusVmDiskPlan } from './incus-vm-disk.js';
 
@@ -52,7 +53,7 @@ describe('Incus VM managed disk contract', () => {
       '1000',
       '--gid',
       '1000',
-      '/srv/area51/data/v2-sessions/group/session',
+      resolve('/srv/area51/data/v2-sessions/group/session'),
       'area51-secure',
       'maximum-session/',
       '--project',
