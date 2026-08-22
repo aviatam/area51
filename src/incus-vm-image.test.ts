@@ -10,6 +10,7 @@ describe('Incus VM image builder', () => {
   it('requires KVM and launches the VM image variant', () => {
     expect(script).toContain('[[ ! -e /dev/kvm ]]');
     expect(script).toContain('incus launch "$BASE_IMAGE" "$BUILDER" --vm');
+    expect(script).toContain('-c limits.cpu=2 -c limits.memory=3GiB');
     expect(script).toContain('Incus guest agent did not become ready');
   });
 

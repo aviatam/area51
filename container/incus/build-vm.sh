@@ -24,7 +24,7 @@ if incus image info "$ALIAS" >/dev/null 2>&1; then
   exit 2
 fi
 
-incus launch "$BASE_IMAGE" "$BUILDER" --vm
+incus launch "$BASE_IMAGE" "$BUILDER" --vm -c limits.cpu=2 -c limits.memory=3GiB
 
 ready=false
 for _ in $(seq 1 90); do
