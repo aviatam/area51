@@ -202,6 +202,11 @@ The Incus adapter independently rejects container-style writable host-path
 mounts and loopback proxy devices for VM plans, so callers cannot bypass the
 top-level runtime guard. VM enablement requires both a dedicated disk transport
 and a dedicated NIC whose unmatched ingress and egress are rejected.
+VM adapter plans now require both contracts together and isolate them in a
+separate `area51-<group>-vm` project. They stage data through Incus-managed
+filesystem volumes, disable NAT, IPv6, and DNS on the VM bridge, and permit only
+the OneCLI relay through a default-reject ACL. The runner-level VM block remains
+until this combined path passes a live test on a disposable KVM-capable host.
 
 Writable session mounts use a narrow Incus ID map from the unprivileged host
 UID/GID to guest UID/GID 1000 rather than making the host directory

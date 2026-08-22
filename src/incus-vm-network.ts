@@ -2,6 +2,7 @@ import { isIP } from 'node:net';
 
 export interface IncusVmNetworkOptions {
   project: string;
+  instance: string;
   network: string;
   acl: string;
   ipv4Cidr: string;
@@ -10,6 +11,8 @@ export interface IncusVmNetworkOptions {
 }
 
 export interface IncusVmNetworkPlan extends IncusVmNetworkOptions {
+  prepareCommands: string[][];
+  attachCommands: string[][];
   commands: string[][];
 }
 
@@ -20,6 +23,7 @@ export interface IncusVmNetworkPlan extends IncusVmNetworkOptions {
  */
 export function buildIncusVmNetworkPlan(options: IncusVmNetworkOptions): IncusVmNetworkPlan {
   validateName(options.project, 'project');
+  validateName(options.instance, 'instance');
   validateName(options.network, 'network');
   validateName(options.acl, 'ACL');
   const { address, networkAddress, prefix } = parsePrivateIpv4Cidr(options.ipv4Cidr);
@@ -37,44 +41,58 @@ export function buildIncusVmNetworkPlan(options: IncusVmNetworkOptions): IncusVm
   }
 
   const projectArgs = ['--project', options.project];
-  return {
-    ...options,
-    commands: [
-      [
-        'network',
-        'create',
-        options.network,
-        `ipv4.address=${options.ipv4Cidr}`,
-        'ipv4.nat=false',
-        'ipv6.address=none',
-        'dns.mode=none',
-        ...projectArgs,
-      ],
-      ['network', 'acl', 'create', options.acl, ...projectArgs],
-      [
-        'network',
-        'acl',
-        'rule',
-        'add',
-        options.acl,
-        'egress',
-        'action=allow',
-        `destination=${options.oneCliAddress}/32`,
-        'protocol=tcp',
-        `destination_port=${options.oneCliPort}`,
-        ...projectArgs,
-      ],
-      [
-        'network',
-        'set',
-        options.network,
-        `security.acls=${options.acl}`,
-        'security.acls.default.ingress.action=reject',
-        'security.acls.default.egress.action=reject',
-        ...projectArgs,
-      ],
+  const prepareCommands = [
+    [
+      'network',
+      'create',
+      options.network,
+      `ipv4.address=${options.ipv4Cidr}`,
+      'ipv4.nat=false',
+      'ipv6.address=none',
+      'dns.mode=none',
+      ...projectArgs,
     ],
-  };
+    ['network', 'acl', 'create', options.acl, ...projectArgs],
+    [
+      'network',
+      'acl',
+      'rule',
+      'add',
+      options.acl,
+      'egress',
+      'action=allow',
+      `destination=${options.oneCliAddress}/32`,
+      'protocol=tcp',
+      `destination_port=${options.oneCliPort}`,
+      ...projectArgs,
+    ],
+    [
+      'network',
+      'set',
+      options.network,
+      `security.acls=${options.acl}`,
+      'security.acls.default.ingress.action=reject',
+      'security.acls.default.egress.action=reject',
+      ...projectArgs,
+    ],
+  ];
+  const attachCommands = [
+    [
+      'config',
+      'device',
+      'add',
+      options.instance,
+      'area51-vm-net',
+      'nic',
+      `network=${options.network}`,
+      `security.acls=${options.acl}`,
+      'security.acls.default.ingress.action=reject',
+      'security.acls.default.egress.action=reject',
+      '--project',
+      options.project,
+    ],
+  ];
+  return { ...options, prepareCommands, attachCommands, commands: [...prepareCommands, ...attachCommands] };
 }
 
 function validateName(value: string, label: string): void {

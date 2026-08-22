@@ -1,5 +1,8 @@
 import path from 'path';
 
+import type { IncusVmDiskOptions } from './incus-vm-disk.js';
+import type { IncusVmNetworkOptions } from './incus-vm-network.js';
+
 export interface IncusRuntimePlanOptions {
   agentGroupFolder: string;
   groupDir: string;
@@ -11,6 +14,8 @@ export interface IncusRuntimePlanOptions {
   instanceSuffix?: string;
   mounts?: Array<{ source: string; path: string; readonly: boolean }>;
   gatewayProxy?: { listen: string; connect: string };
+  vmNetwork?: Omit<IncusVmNetworkOptions, 'project' | 'instance'>;
+  vmDisks?: Omit<IncusVmDiskOptions, 'project' | 'instance'>;
 }
 
 export interface IncusRuntimePlan {
@@ -22,6 +27,8 @@ export interface IncusRuntimePlan {
   mounts: Array<{ source: string; path: string; readonly: boolean }>;
   restrictions: Record<string, string>;
   gatewayProxy?: { listen: string; connect: string };
+  vmNetwork?: IncusVmNetworkOptions;
+  vmDisks?: IncusVmDiskOptions;
   commands: {
     createProject: string[];
     createProfiles: string[];
@@ -37,14 +44,14 @@ const DEFAULT_QUARANTINE_PROFILE = 'area51-quarantine';
 export function buildIncusRuntimePlan(options: IncusRuntimePlanOptions): IncusRuntimePlan {
   const safeFolder = safeIncusName(options.agentGroupFolder, 'agent group folder');
   const safeSuffix = options.instanceSuffix ? safeIncusName(options.instanceSuffix, 'instance suffix') : undefined;
-  const project = `area51-${safeFolder}`;
+  const instanceKind = options.instanceKind ?? 'container';
+  const project = `area51-${safeFolder}${instanceKind === 'vm' ? '-vm' : ''}`;
   const instance = safeSuffix
     ? `area51-${safeFolder.slice(0, 32)}-${safeSuffix.slice(0, 16)}-agent`
     : `area51-${safeFolder}-agent`;
   const networkProfile = options.networkProfile ?? DEFAULT_NETWORK_PROFILE;
   const quarantineProfile = options.quarantineProfile ?? DEFAULT_QUARANTINE_PROFILE;
   const image = options.image ?? DEFAULT_IMAGE;
-  const instanceKind = options.instanceKind ?? 'container';
   const groupDir = path.resolve(options.groupDir);
   const sessionDir = options.sessionDir ? path.resolve(options.sessionDir) : undefined;
 
@@ -52,13 +59,15 @@ export function buildIncusRuntimePlan(options: IncusRuntimePlanOptions): IncusRu
     ...(sessionDir ? [{ source: sessionDir, path: '/workspace', readonly: false }] : []),
     { source: groupDir, path: '/workspace/agent', readonly: true },
   ];
-  const profiles = ['default', networkProfile];
-  const restrictions = {
+  const profiles = instanceKind === 'vm' ? ['default'] : ['default', networkProfile];
+  const restrictions: Record<string, string> = {
     'limits.cpu': '2',
     'limits.memory': '2GiB',
-    'security.nesting': 'false',
-    'security.privileged': 'false',
   };
+  if (instanceKind === 'container') {
+    restrictions['security.nesting'] = 'false';
+    restrictions['security.privileged'] = 'false';
+  }
 
   return {
     project,
@@ -69,6 +78,8 @@ export function buildIncusRuntimePlan(options: IncusRuntimePlanOptions): IncusRu
     mounts,
     restrictions,
     gatewayProxy: options.gatewayProxy,
+    vmNetwork: options.vmNetwork ? { ...options.vmNetwork, project, instance } : undefined,
+    vmDisks: options.vmDisks ? { ...options.vmDisks, project, instance } : undefined,
     commands: {
       createProject: [
         `incus project create ${project}`,

@@ -6,6 +6,8 @@ import os from 'os';
 import path from 'path';
 
 import type { IncusRuntimePlan } from './incus-runtime.js';
+import { buildIncusVmDiskPlan } from './incus-vm-disk.js';
+import { buildIncusVmNetworkPlan } from './incus-vm-network.js';
 
 export interface IncusCommandResult {
   argv: string[];
@@ -55,10 +57,20 @@ export function applyIncusRuntimePlan(plan: IncusRuntimePlan, options: IncusAdap
   validatePlan(plan);
   prepareNestedMountTargets(plan);
 
+  const vmNetwork = plan.vmNetwork ? buildIncusVmNetworkPlan(plan.vmNetwork) : undefined;
+  const vmDisks = plan.vmDisks ? buildIncusVmDiskPlan(plan.vmDisks) : undefined;
+
   const hostIdentity = writableMountHostIdentity(plan);
 
   const commands: string[][] = [
-    ['project', 'create', plan.project],
+    [
+      'project',
+      'create',
+      plan.project,
+      ...(plan.instanceKind === 'vm'
+        ? ['--config', 'features.networks=true', '--config', 'features.storage.volumes=true']
+        : []),
+    ],
     ['project', 'set', plan.project, 'restricted=true'],
     ['project', 'set', plan.project, 'limits.instances=3'],
     ['project', 'set', plan.project, 'restricted.devices.disk=allow'],
@@ -74,6 +86,8 @@ export function applyIncusRuntimePlan(plan: IncusRuntimePlan, options: IncusAdap
   if (plan.gatewayProxy) {
     commands.push(['project', 'set', plan.project, 'restricted.devices.proxy=allow']);
   }
+  if (vmNetwork) commands.push(...vmNetwork.prepareCommands);
+  if (vmDisks) commands.push(...vmDisks.prepareCommands);
   const rootDiskPool = process.env.AREA51_INCUS_STORAGE_POOL;
   if (rootDiskPool) {
     commands.push([
@@ -101,6 +115,8 @@ export function applyIncusRuntimePlan(plan: IncusRuntimePlan, options: IncusAdap
   if (plan.instanceKind === 'vm') init.push('--vm');
   for (const profile of plan.profiles) init.push('--profile', profile);
   commands.push(init);
+  if (vmNetwork) commands.push(...vmNetwork.attachCommands);
+  if (vmDisks) commands.push(...vmDisks.attachCommands);
 
   for (const [key, value] of Object.entries(plan.restrictions)) {
     commands.push(['config', 'set', plan.instance, `${key}=${value}`, '--project', plan.project]);
@@ -256,11 +272,19 @@ function validatePlan(plan: IncusRuntimePlan): void {
 
 function validateVmBoundary(plan: IncusRuntimePlan): void {
   if (plan.instanceKind !== 'vm') return;
-  if (plan.mounts.some((mount) => !mount.readonly)) {
-    throw new Error('Incus VM writable host-path mounts require an audited VM disk transport');
+  if (plan.mounts.length > 0) {
+    throw new Error('Incus VM host-path mounts are forbidden; use managed VM disks');
   }
   if (plan.gatewayProxy) {
     throw new Error('Incus VM OneCLI proxying requires a dedicated NIC and deny-by-default ACL');
+  }
+  if (!plan.vmNetwork) throw new Error('Incus VM plan requires a deny-by-default managed network');
+  if (!plan.vmDisks) throw new Error('Incus VM plan requires managed disk transport');
+  if (plan.vmNetwork.project !== plan.project || plan.vmNetwork.instance !== plan.instance) {
+    throw new Error('Incus VM network scope must match its runtime plan');
+  }
+  if (plan.vmDisks.project !== plan.project || plan.vmDisks.instance !== plan.instance) {
+    throw new Error('Incus VM disk scope must match its runtime plan');
   }
 }
 
@@ -301,6 +325,9 @@ function isAlreadyExistsError(error: unknown): boolean {
 function isAlreadyExists(argv: string[], error: unknown): boolean {
   if (!isAlreadyExistsError(error)) return false;
   if ((argv[0] === 'project' || argv[0] === 'profile') && argv[1] === 'create') return true;
+  if (argv[0] === 'network' && argv[1] === 'create') return true;
+  if (argv[0] === 'network' && argv[1] === 'acl' && argv[2] === 'create') return true;
+  if (argv[0] === 'storage' && argv[1] === 'volume' && argv[2] === 'create') return true;
   if (argv[0] === 'profile' && argv[1] === 'device' && argv[2] === 'add') return true;
   if (argv[0] === 'init') return true;
   return argv[0] === 'config' && argv[1] === 'device' && argv[2] === 'add';

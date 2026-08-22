@@ -5,6 +5,7 @@ import { buildIncusVmNetworkPlan } from './incus-vm-network.js';
 describe('Incus VM network contract', () => {
   const options = {
     project: 'area51-maximum',
+    instance: 'area51-maximum-agent',
     network: 'area51-maximum-vm-net',
     acl: 'area51-maximum-onecli-only',
     ipv4Cidr: '10.51.0.1/24',
@@ -42,6 +43,20 @@ describe('Incus VM network contract', () => {
       'destination=10.51.0.1/32',
       'protocol=tcp',
       'destination_port=10255',
+      '--project',
+      options.project,
+    ]);
+    expect(plan.attachCommands).toContainEqual([
+      'config',
+      'device',
+      'add',
+      options.instance,
+      'area51-vm-net',
+      'nic',
+      `network=${options.network}`,
+      `security.acls=${options.acl}`,
+      'security.acls.default.ingress.action=reject',
+      'security.acls.default.egress.action=reject',
       '--project',
       options.project,
     ]);
