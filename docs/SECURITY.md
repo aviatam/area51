@@ -187,6 +187,14 @@ instance is stopped and the session remains pending for operator repair.
 Build the image with `bash container/incus/build.sh`. It contains runtime
 dependencies only; agent source remains a read-only host mount.
 
+VM mode uses a separate image contract because it cannot depend on container
+host mounts. Build `local:area51-agent-v2-vm` with
+`bash container/incus/build-vm.sh` on a KVM-capable Linux host. The VM image
+bakes the runner source and dependencies into `/app` and stamps
+`/etc/area51/image-kind`. Run the manual `Incus VM Image Smoke` workflow on a
+disposable runner labelled `linux`, `incus`, `disposable`, and `kvm` before
+considering VM enablement.
+
 ### Incus credential and egress boundary
 
 Incus sessions fetch their per-agent OneCLI configuration before the guest is

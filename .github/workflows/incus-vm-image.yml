@@ -1,0 +1,49 @@
+name: Incus VM Image Smoke
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  vm-image:
+    runs-on: [self-hosted, linux, incus, disposable, kvm]
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: Verify KVM and Incus
+        run: |
+          test -r /dev/kvm
+          test -w /dev/kvm
+          incus version
+      - name: Build VM-native Area51 image
+        env:
+          AREA51_INCUS_VM_IMAGE_ALIAS: area51-agent-v2-vm-ci-${{ github.run_id }}
+        run: bash container/incus/build-vm.sh
+      - name: Boot and verify baked runtime
+        env:
+          AREA51_INCUS_VM_IMAGE_ALIAS: area51-agent-v2-vm-ci-${{ github.run_id }}
+        run: |
+          instance="area51-vm-image-smoke-${{ github.run_id }}"
+          incus launch "local:${AREA51_INCUS_VM_IMAGE_ALIAS}" "$instance" --vm
+          ready=false
+          for _ in $(seq 1 90); do
+            if incus exec "$instance" -- true >/dev/null 2>&1; then
+              ready=true
+              break
+            fi
+            sleep 2
+          done
+          test "$ready" = true
+          incus exec "$instance" -- test -x /usr/local/bin/bun
+          incus exec "$instance" -- test -d /app/node_modules
+          incus exec "$instance" -- test -f /app/src/index.ts
+          incus exec "$instance" -- grep -qx vm /etc/area51/image-kind
+      - name: Cleanup
+        if: always()
+        env:
+          AREA51_INCUS_VM_IMAGE_ALIAS: area51-agent-v2-vm-ci-${{ github.run_id }}
+        run: |
+          incus delete area51-vm-image-smoke-${{ github.run_id }} --force >/dev/null 2>&1 || true
+          incus image delete "$AREA51_INCUS_VM_IMAGE_ALIAS" >/dev/null 2>&1 || true
