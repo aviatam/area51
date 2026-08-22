@@ -40,7 +40,6 @@ export function buildIncusVmNetworkPlan(options: IncusVmNetworkOptions): IncusVm
     throw new Error(`Invalid Incus VM OneCLI port: ${options.oneCliPort}`);
   }
 
-  const projectArgs = ['--project', options.project];
   const prepareCommands = [
     [
       'network',
@@ -51,9 +50,8 @@ export function buildIncusVmNetworkPlan(options: IncusVmNetworkOptions): IncusVm
       'ipv4.nat=false',
       'ipv6.address=none',
       'dns.mode=none',
-      ...projectArgs,
     ],
-    ['network', 'acl', 'create', options.acl, ...projectArgs],
+    ['network', 'acl', 'create', options.acl],
     [
       'network',
       'acl',
@@ -65,7 +63,6 @@ export function buildIncusVmNetworkPlan(options: IncusVmNetworkOptions): IncusVm
       `destination=${options.oneCliAddress}/32`,
       'protocol=tcp',
       `destination_port=${options.oneCliPort}`,
-      ...projectArgs,
     ],
     [
       'network',
@@ -74,7 +71,6 @@ export function buildIncusVmNetworkPlan(options: IncusVmNetworkOptions): IncusVm
       `security.acls=${options.acl}`,
       'security.acls.default.ingress.action=reject',
       'security.acls.default.egress.action=reject',
-      ...projectArgs,
     ],
   ];
   const attachCommands = [

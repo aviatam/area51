@@ -134,8 +134,8 @@ function cleanup(): void {
     ['delete', plan.instance, '--project', plan.project, '--force'],
     ['storage', 'volume', 'delete', pool, sessionVolume, '--project', plan.project],
     ['storage', 'volume', 'delete', pool, groupVolume, '--project', plan.project],
-    ['network', 'delete', network, '--project', plan.project],
-    ['network', 'acl', 'delete', acl, '--project', plan.project],
+    ['network', 'delete', network],
+    ['network', 'acl', 'delete', acl],
     ['project', 'delete', plan.project],
   ];
   for (const argv of commands) {

@@ -318,9 +318,16 @@ describe('Incus adapter', () => {
       'create',
       'area51-maximum-vm',
       '--config',
-      'features.networks=true',
+      'features.networks=false',
       '--config',
       'features.storage.volumes=true',
+    ]);
+    expect(executor).toHaveBeenCalledWith(['project', 'set', 'area51-maximum-vm', 'restricted.devices.nic=allow']);
+    expect(executor).toHaveBeenCalledWith([
+      'project',
+      'set',
+      'area51-maximum-vm',
+      'restricted.networks=a51-max-vm-net',
     ]);
     expect(executor).toHaveBeenCalledWith(expect.arrayContaining(['network=a51-max-vm-net']));
     expect(executor).toHaveBeenCalledWith(expect.arrayContaining(['pool=area51-secure', 'source=maximum-session']));

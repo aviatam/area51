@@ -25,8 +25,6 @@ describe('Incus VM network contract', () => {
       'ipv4.nat=false',
       'ipv6.address=none',
       'dns.mode=none',
-      '--project',
-      options.project,
     ]);
   });
 
@@ -44,8 +42,6 @@ describe('Incus VM network contract', () => {
       'destination=10.51.0.1/32',
       'protocol=tcp',
       'destination_port=10255',
-      '--project',
-      options.project,
     ]);
     expect(plan.attachCommands).toContainEqual([
       'config',
@@ -68,8 +64,6 @@ describe('Incus VM network contract', () => {
       `security.acls=${options.acl}`,
       'security.acls.default.ingress.action=reject',
       'security.acls.default.egress.action=reject',
-      '--project',
-      options.project,
     ]);
   });
 

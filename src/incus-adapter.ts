@@ -68,7 +68,7 @@ export function applyIncusRuntimePlan(plan: IncusRuntimePlan, options: IncusAdap
       'create',
       plan.project,
       ...(plan.instanceKind === 'vm'
-        ? ['--config', 'features.networks=true', '--config', 'features.storage.volumes=true']
+        ? ['--config', 'features.networks=false', '--config', 'features.storage.volumes=true']
         : []),
     ],
     ['project', 'set', plan.project, 'restricted=true'],
@@ -86,7 +86,13 @@ export function applyIncusRuntimePlan(plan: IncusRuntimePlan, options: IncusAdap
   if (plan.gatewayProxy) {
     commands.push(['project', 'set', plan.project, 'restricted.devices.proxy=allow']);
   }
-  if (vmNetwork) commands.push(...vmNetwork.prepareCommands);
+  if (vmNetwork) {
+    commands.push(
+      ...vmNetwork.prepareCommands,
+      ['project', 'set', plan.project, 'restricted.devices.nic=allow'],
+      ['project', 'set', plan.project, `restricted.networks=${vmNetwork.network}`],
+    );
+  }
   if (vmDisks) commands.push(...vmDisks.prepareCommands);
   const rootDiskPool = process.env.AREA51_INCUS_STORAGE_POOL;
   if (rootDiskPool) {
