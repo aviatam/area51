@@ -255,7 +255,7 @@ describe('Incus adapter', () => {
     expect(() => applyIncusRuntimePlan(plan, { executor: vi.fn() })).toThrow('Unsafe Incus gateway proxy listen');
   });
 
-  it('rejects VM writable host-path mounts below the container-runner guard', () => {
+  it('rejects all VM host-path mounts below the container-runner guard', () => {
     const plan = buildIncusRuntimePlan({
       agentGroupFolder: 'maximum',
       groupDir: '/srv/area51/groups/maximum',
@@ -264,7 +264,7 @@ describe('Incus adapter', () => {
     });
 
     expect(() => applyIncusRuntimePlan(plan, { executor: vi.fn() })).toThrow(
-      'Incus VM writable host-path mounts require an audited VM disk transport',
+      'Incus VM host-path mounts are forbidden; use managed VM disks',
     );
   });
 
@@ -272,7 +272,7 @@ describe('Incus adapter', () => {
     const plan = buildIncusRuntimePlan({
       agentGroupFolder: 'maximum',
       groupDir: '/srv/area51/groups/maximum',
-      mounts: [{ source: '/srv/area51/groups/maximum', path: '/workspace/agent', readonly: true }],
+      mounts: [],
       instanceKind: 'vm',
       gatewayProxy: { listen: 'tcp:127.0.0.1:10255', connect: 'tcp:127.0.0.1:10255' },
     });
@@ -280,6 +280,98 @@ describe('Incus adapter', () => {
     expect(() => applyIncusRuntimePlan(plan, { executor: vi.fn() })).toThrow(
       'Incus VM OneCLI proxying requires a dedicated NIC and deny-by-default ACL',
     );
+  });
+
+  it('wires validated managed network and disk contracts into a VM plan', () => {
+    const executor = vi.fn();
+    const plan = buildIncusRuntimePlan({
+      agentGroupFolder: 'maximum',
+      groupDir: '/srv/area51/groups/maximum',
+      mounts: [],
+      instanceKind: 'vm',
+      vmNetwork: {
+        network: 'area51-maximum-net',
+        acl: 'area51-maximum-onecli',
+        ipv4Cidr: '10.51.0.1/24',
+        oneCliAddress: '10.51.0.1',
+        oneCliPort: 10255,
+      },
+      vmDisks: {
+        pool: 'area51-secure',
+        volumes: [
+          {
+            name: 'maximum-session',
+            source: '/srv/area51/sessions/maximum/sess-1',
+            path: '/workspace',
+            readonly: false,
+            size: '2GiB',
+          },
+        ],
+      },
+    });
+
+    applyIncusRuntimePlan(plan, { executor });
+
+    expect(plan.project).toBe('area51-maximum-vm');
+    expect(executor).toHaveBeenCalledWith([
+      'project',
+      'create',
+      'area51-maximum-vm',
+      '--config',
+      'features.networks=true',
+      '--config',
+      'features.storage.volumes=true',
+    ]);
+    expect(executor).toHaveBeenCalledWith(expect.arrayContaining(['network=area51-maximum-net']));
+    expect(executor).toHaveBeenCalledWith(expect.arrayContaining(['pool=area51-secure', 'source=maximum-session']));
+    expect(executor.mock.calls.flatMap(([argv]) => argv as string[]).join(' ')).not.toContain(
+      'source=/srv/area51/sessions',
+    );
+  });
+
+  it('reuses existing VM networks, ACLs, volumes, and devices', () => {
+    const executor = vi.fn((argv: string[]) => {
+      if (
+        (argv[0] === 'project' && argv[1] === 'create') ||
+        (argv[0] === 'network' && argv[1] === 'create') ||
+        (argv[0] === 'network' && argv[1] === 'acl' && argv[2] === 'create') ||
+        (argv[0] === 'storage' && argv[1] === 'volume' && argv[2] === 'create') ||
+        argv[0] === 'init' ||
+        (argv[0] === 'config' && argv[1] === 'device' && argv[2] === 'add')
+      ) {
+        throw new Error('already exists');
+      }
+    });
+    const plan = buildIncusRuntimePlan({
+      agentGroupFolder: 'maximum',
+      groupDir: '/srv/area51/groups/maximum',
+      mounts: [],
+      instanceKind: 'vm',
+      vmNetwork: {
+        network: 'area51-maximum-net',
+        acl: 'area51-maximum-onecli',
+        ipv4Cidr: '10.51.0.1/24',
+        oneCliAddress: '10.51.0.1',
+        oneCliPort: 10255,
+      },
+      vmDisks: {
+        pool: 'area51-secure',
+        volumes: [
+          {
+            name: 'maximum-session',
+            source: '/srv/area51/sessions/maximum/sess-1',
+            path: '/workspace',
+            readonly: false,
+            size: '2GiB',
+          },
+        ],
+      },
+    });
+
+    const result = applyIncusRuntimePlan(plan, { executor });
+
+    expect(result.commands.every((command) => command.ok)).toBe(true);
+    expect(result.commands.filter((command) => command.output === 'already exists')).toHaveLength(7);
   });
 
   it('preserves mount paths as argv values instead of interpolating shell strings', () => {
