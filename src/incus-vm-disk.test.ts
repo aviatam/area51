@@ -36,9 +36,6 @@ describe('Incus VM managed disk contract', () => {
       'area51-secure',
       'maximum-session',
       'size=2GiB',
-      'initial.uid=1000',
-      'initial.gid=1000',
-      'initial.mode=0700',
       '--project',
       'area51-maximum',
     ]);
@@ -58,6 +55,15 @@ describe('Incus VM managed disk contract', () => {
       'maximum-session/',
       '--project',
       'area51-maximum',
+    ]);
+  });
+
+  it('initializes writable mount ownership inside the running guest', () => {
+    const plan = buildIncusVmDiskPlan(options);
+
+    expect(plan.initializeCommands).toEqual([
+      ['exec', 'area51-maximum-session-agent', '--project', 'area51-maximum', '--', 'chown', '1000:1000', '/workspace'],
+      ['exec', 'area51-maximum-session-agent', '--project', 'area51-maximum', '--', 'chmod', '0700', '/workspace'],
     ]);
   });
 
