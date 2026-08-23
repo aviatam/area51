@@ -15,6 +15,32 @@ import { buildIncusRuntimePlan } from './incus-runtime.js';
 describe('Incus adapter', () => {
   const originalGetuid = Object.getOwnPropertyDescriptor(process, 'getuid');
   const originalGetgid = Object.getOwnPropertyDescriptor(process, 'getgid');
+  const vmPlan = () =>
+    buildIncusRuntimePlan({
+      agentGroupFolder: 'readiness',
+      groupDir: '/srv/area51/groups/readiness',
+      mounts: [],
+      instanceKind: 'vm',
+      vmNetwork: {
+        network: 'a51-ready-net',
+        acl: 'area51-readiness-onecli',
+        ipv4Cidr: '10.52.0.1/24',
+        oneCliAddress: '10.52.0.1',
+        oneCliPort: 10255,
+      },
+      vmDisks: {
+        pool: 'area51-secure',
+        volumes: [
+          {
+            name: 'readiness-session',
+            source: '/srv/area51/sessions/readiness/session-1',
+            path: '/workspace',
+            readonly: false,
+            size: '1GiB',
+          },
+        ],
+      },
+    });
 
   beforeEach(() => {
     Object.defineProperty(process, 'getuid', { configurable: true, value: () => 1001 });
@@ -343,6 +369,33 @@ describe('Incus adapter', () => {
     expect(executor.mock.calls.flatMap(([argv]) => argv as string[]).join(' ')).not.toContain(
       'source=/srv/area51/sessions',
     );
+  });
+
+  it('waits for a delayed VM agent before post-boot initialization', () => {
+    let unavailable = 2;
+    const executor = vi.fn((argv: string[]) => {
+      if (argv[0] === 'exec' && unavailable-- > 0) throw new Error("VM agent isn't currently running");
+    });
+
+    const result = applyIncusRuntimePlan(vmPlan(), {
+      executor,
+      vmAgentRetryAttempts: 3,
+      vmAgentRetryDelayMs: 0,
+    });
+
+    expect(result.commands.every((command) => command.ok)).toBe(true);
+    expect(executor.mock.calls.filter(([argv]) => (argv as string[])[0] === 'exec')).toHaveLength(4);
+  });
+
+  it('fails closed when the VM agent never becomes ready', () => {
+    const executor = vi.fn((argv: string[]) => {
+      if (argv[0] === 'exec') throw new Error("VM agent isn't currently running");
+    });
+
+    expect(() =>
+      applyIncusRuntimePlan(vmPlan(), { executor, vmAgentRetryAttempts: 2, vmAgentRetryDelayMs: 0 }),
+    ).toThrow('Incus command failed');
+    expect(executor.mock.calls.filter(([argv]) => (argv as string[])[0] === 'exec')).toHaveLength(2);
   });
 
   it('reuses existing VM networks, ACLs, volumes, and devices', () => {
