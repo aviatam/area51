@@ -72,7 +72,14 @@ export function applyIncusRuntimePlan(plan: IncusRuntimePlan, options: IncusAdap
       'create',
       plan.project,
       ...(plan.instanceKind === 'vm'
-        ? ['--config', 'features.networks=false', '--config', 'features.storage.volumes=true']
+        ? [
+            '--config',
+            'features.images=false',
+            '--config',
+            'features.networks=false',
+            '--config',
+            'features.storage.volumes=true',
+          ]
         : []),
     ],
     ['project', 'set', plan.project, 'restricted=true'],
