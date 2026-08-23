@@ -109,8 +109,6 @@ describe('Incus VM managed disk contract', () => {
         'area51-maximum',
         '--',
         'chown',
-        '--recursive',
-        '--one-file-system',
         '1000:1000',
         '/workspace',
       ],
