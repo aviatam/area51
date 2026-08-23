@@ -313,6 +313,7 @@ describe('Incus adapter', () => {
     applyIncusRuntimePlan(plan, { executor });
 
     expect(plan.project).toBe('area51-maximum-vm');
+    expect(executor).toHaveBeenNthCalledWith(1, ['storage', 'volume', 'file', 'push', '--help']);
     expect(executor).toHaveBeenCalledWith([
       'project',
       'create',
