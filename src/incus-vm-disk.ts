@@ -84,8 +84,6 @@ export function buildIncusVmDiskPlan(options: IncusVmDiskOptions): IncusVmDiskPl
           ...projectArgs,
           '--',
           'chown',
-          '--recursive',
-          '--one-file-system',
           '1000:1000',
           target,
         ],
