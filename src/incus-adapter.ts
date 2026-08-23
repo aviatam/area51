@@ -167,6 +167,7 @@ export function applyIncusRuntimePlan(plan: IncusRuntimePlan, options: IncusAdap
     ]);
   }
   commands.push(['start', plan.instance, '--project', plan.project]);
+  if (vmDisks) commands.push(...vmDisks.initializeCommands);
 
   return runCommands(commands, options);
 }
