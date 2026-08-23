@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { resolve } from 'node:path';
+import fs from 'node:fs';
+import os from 'node:os';
+import path, { resolve } from 'node:path';
 
 import { buildIncusVmDiskPlan } from './incus-vm-disk.js';
 
@@ -44,7 +46,7 @@ describe('Incus VM managed disk contract', () => {
       'volume',
       'file',
       'push',
-      '--recursive',
+      '--create-dirs',
       '--no-dereference',
       '--uid',
       '1000',
@@ -56,6 +58,32 @@ describe('Incus VM managed disk contract', () => {
       '--project',
       'area51-maximum',
     ]);
+  });
+
+  it('stages directory trees one entry at a time without recursive CLI flags', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'area51-vm-disk-'));
+    try {
+      fs.mkdirSync(path.join(root, 'nested'));
+      fs.writeFileSync(path.join(root, 'top.txt'), 'top');
+      fs.writeFileSync(path.join(root, 'nested', 'child.txt'), 'child');
+
+      const plan = buildIncusVmDiskPlan({
+        ...options,
+        volumes: [{ ...options.volumes[0], source: root }],
+      });
+      const pushes = plan.prepareCommands.filter(
+        (command) => command.slice(0, 4).join(' ') === 'storage volume file push',
+      );
+
+      expect(pushes).toHaveLength(2);
+      expect(pushes.flat()).not.toContain('--recursive');
+      expect(pushes).toContainEqual(expect.arrayContaining([path.join(root, 'top.txt'), 'maximum-session/top.txt']));
+      expect(pushes).toContainEqual(
+        expect.arrayContaining([path.join(root, 'nested', 'child.txt'), 'maximum-session/nested/child.txt']),
+      );
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
   });
 
   it('initializes writable mount ownership inside the running guest', () => {
