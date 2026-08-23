@@ -361,8 +361,6 @@ describe('Incus adapter', () => {
       'area51-maximum-vm',
       '--',
       'chown',
-      '--recursive',
-      '--one-file-system',
       '1000:1000',
       '/workspace',
     ]);
