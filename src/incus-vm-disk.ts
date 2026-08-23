@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import { isAbsolute, normalize, parse, resolve } from 'node:path';
 
 export interface IncusVmVolume {
@@ -56,22 +57,7 @@ export function buildIncusVmDiskPlan(options: IncusVmDiskOptions): IncusVmDiskPl
     const projectArgs = ['--project', options.project];
     prepareCommands.push(
       ['storage', 'volume', 'create', options.pool, volume.name, `size=${volume.size}`, ...projectArgs],
-      [
-        'storage',
-        'volume',
-        'file',
-        'push',
-        '--recursive',
-        '--no-dereference',
-        '--uid',
-        '1000',
-        '--gid',
-        '1000',
-        source,
-        options.pool,
-        `${volume.name}/`,
-        ...projectArgs,
-      ],
+      ...buildFilePushCommands(source, options.pool, volume.name, projectArgs),
     );
 
     const device = `area51-disk-${index + 1}`;
@@ -105,6 +91,42 @@ export function buildIncusVmDiskPlan(options: IncusVmDiskOptions): IncusVmDiskPl
     initializeCommands,
     commands: [...prepareCommands, ...attachCommands, ...initializeCommands],
   };
+}
+
+function buildFilePushCommands(source: string, pool: string, volume: string, projectArgs: string[]): string[][] {
+  const entries =
+    fs.existsSync(source) && fs.lstatSync(source).isDirectory() ? listVolumeEntries(source) : [{ source, target: '' }];
+  return entries.map((entry) => [
+    'storage',
+    'volume',
+    'file',
+    'push',
+    '--create-dirs',
+    '--no-dereference',
+    '--uid',
+    '1000',
+    '--gid',
+    '1000',
+    entry.source,
+    pool,
+    `${volume}/${entry.target}`,
+    ...projectArgs,
+  ]);
+}
+
+function listVolumeEntries(root: string): Array<{ source: string; target: string }> {
+  const entries: Array<{ source: string; target: string }> = [];
+  const visit = (directory: string, prefix: string): void => {
+    for (const name of fs.readdirSync(directory).sort()) {
+      const source = resolve(directory, name);
+      const target = prefix ? `${prefix}/${name}` : name;
+      const stats = fs.lstatSync(source);
+      if (stats.isDirectory()) visit(source, target);
+      else entries.push({ source, target });
+    }
+  };
+  visit(root, '');
+  return entries;
 }
 
 function validateName(value: string, label: string): void {
