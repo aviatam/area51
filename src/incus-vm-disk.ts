@@ -18,6 +18,7 @@ export interface IncusVmDiskOptions {
 export interface IncusVmDiskPlan extends IncusVmDiskOptions {
   prepareCommands: string[][];
   attachCommands: string[][];
+  initializeCommands: string[][];
   commands: string[][];
 }
 
@@ -34,6 +35,7 @@ export function buildIncusVmDiskPlan(options: IncusVmDiskOptions): IncusVmDiskPl
   const targets = new Set<string>();
   const prepareCommands: string[][] = [];
   const attachCommands: string[][] = [];
+  const initializeCommands: string[][] = [];
 
   for (const [index, volume] of options.volumes.entries()) {
     validateName(volume.name, 'volume');
@@ -53,18 +55,7 @@ export function buildIncusVmDiskPlan(options: IncusVmDiskOptions): IncusVmDiskPl
 
     const projectArgs = ['--project', options.project];
     prepareCommands.push(
-      [
-        'storage',
-        'volume',
-        'create',
-        options.pool,
-        volume.name,
-        `size=${volume.size}`,
-        'initial.uid=1000',
-        'initial.gid=1000',
-        'initial.mode=0700',
-        ...projectArgs,
-      ],
+      ['storage', 'volume', 'create', options.pool, volume.name, `size=${volume.size}`, ...projectArgs],
       [
         'storage',
         'volume',
@@ -98,13 +89,21 @@ export function buildIncusVmDiskPlan(options: IncusVmDiskOptions): IncusVmDiskPl
     if (volume.readonly) attach.push('readonly=true');
     attach.push(...projectArgs);
     attachCommands.push(attach);
+
+    if (!volume.readonly) {
+      initializeCommands.push(
+        ['exec', options.instance, ...projectArgs, '--', 'chown', '1000:1000', target],
+        ['exec', options.instance, ...projectArgs, '--', 'chmod', '0700', target],
+      );
+    }
   }
 
   return {
     ...options,
     prepareCommands,
     attachCommands,
-    commands: [...prepareCommands, ...attachCommands],
+    initializeCommands,
+    commands: [...prepareCommands, ...attachCommands, ...initializeCommands],
   };
 }
 
