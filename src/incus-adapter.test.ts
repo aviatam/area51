@@ -325,6 +325,16 @@ describe('Incus adapter', () => {
     expect(executor).toHaveBeenCalledWith(['project', 'set', 'area51-maximum-vm', 'restricted.devices.nic=managed']);
     expect(executor).toHaveBeenCalledWith(expect.arrayContaining(['network=a51-max-vm-net']));
     expect(executor).toHaveBeenCalledWith(expect.arrayContaining(['pool=area51-secure', 'source=maximum-session']));
+    expect(executor).toHaveBeenCalledWith([
+      'exec',
+      'area51-maximum-agent',
+      '--project',
+      'area51-maximum-vm',
+      '--',
+      'chown',
+      '1000:1000',
+      '/workspace',
+    ]);
     expect(executor.mock.calls.flatMap(([argv]) => argv as string[]).join(' ')).not.toContain(
       'source=/srv/area51/sessions',
     );
