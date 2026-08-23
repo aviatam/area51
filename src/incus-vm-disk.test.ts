@@ -46,7 +46,6 @@ describe('Incus VM managed disk contract', () => {
       'volume',
       'file',
       'push',
-      '--no-dereference',
       '--uid',
       '1000',
       '--gid',
@@ -79,6 +78,18 @@ describe('Incus VM managed disk contract', () => {
       expect(pushes).toContainEqual(expect.arrayContaining([path.join(root, 'top.txt'), 'maximum-session/top.txt']));
       expect(pushes).toContainEqual(
         expect.arrayContaining([path.join(root, 'nested', 'child.txt'), 'maximum-session/nested/child.txt']),
+      );
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it.runIf(process.platform !== 'win32')('rejects symlinks instead of relying on newer Incus CLI flags', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'area51-vm-disk-link-'));
+    try {
+      fs.symlinkSync('/etc/passwd', path.join(root, 'escape'));
+      expect(() => buildIncusVmDiskPlan({ ...options, volumes: [{ ...options.volumes[0], source: root }] })).toThrow(
+        'Unsupported Incus VM volume source type',
       );
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
