@@ -87,11 +87,7 @@ export function applyIncusRuntimePlan(plan: IncusRuntimePlan, options: IncusAdap
     commands.push(['project', 'set', plan.project, 'restricted.devices.proxy=allow']);
   }
   if (vmNetwork) {
-    commands.push(
-      ...vmNetwork.prepareCommands,
-      ['project', 'set', plan.project, 'restricted.devices.nic=allow'],
-      ['project', 'set', plan.project, `restricted.networks=${vmNetwork.network}`],
-    );
+    commands.push(...vmNetwork.prepareCommands, ['project', 'set', plan.project, 'restricted.devices.nic=managed']);
   }
   if (vmDisks) commands.push(...vmDisks.prepareCommands);
   const rootDiskPool = process.env.AREA51_INCUS_STORAGE_POOL;
