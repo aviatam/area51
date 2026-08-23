@@ -101,7 +101,6 @@ function buildFilePushCommands(source: string, pool: string, volume: string, pro
     'volume',
     'file',
     'push',
-    '--create-dirs',
     '--no-dereference',
     '--uid',
     '1000',
