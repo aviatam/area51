@@ -41,8 +41,11 @@ describe('Incus VM image builder', () => {
     expect(workflow).toContain('test -e /dev/kvm');
     expect(workflow).toContain('sudo chmod 0666 /dev/kvm');
     expect(workflow).toContain('test -r /dev/kvm');
+    expect(workflow).toContain('URIs: https://pkgs.zabbly.com/incus/lts-7.0');
     expect(workflow).toContain('sudo apt-get install -y incus acl qemu-system-x86');
-    expect(workflow).toContain('sudo incus admin init --minimal');
+    expect(workflow).toContain('incus admin init --minimal');
+    expect(workflow).not.toContain('sudo incus admin init --minimal');
+    expect(workflow.indexOf('sudo setfacl -m')).toBeLessThan(workflow.indexOf('incus admin init --minimal'));
     expect(workflow).toContain('incus profile device show default');
     expect(workflow).toContain('incus network list');
     expect(workflow).toContain('sudo sysctl -w net.ipv4.ip_forward=1');
