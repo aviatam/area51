@@ -319,6 +319,8 @@ describe('Incus adapter', () => {
       'create',
       'area51-maximum-vm',
       '--config',
+      'features.images=false',
+      '--config',
       'features.networks=false',
       '--config',
       'features.storage.volumes=true',
