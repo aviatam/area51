@@ -78,7 +78,17 @@ export function buildIncusVmDiskPlan(options: IncusVmDiskOptions): IncusVmDiskPl
 
     if (!volume.readonly) {
       initializeCommands.push(
-        ['exec', options.instance, ...projectArgs, '--', 'chown', '1000:1000', target],
+        [
+          'exec',
+          options.instance,
+          ...projectArgs,
+          '--',
+          'chown',
+          '--recursive',
+          '--one-file-system',
+          '1000:1000',
+          target,
+        ],
         ['exec', options.instance, ...projectArgs, '--', 'chmod', '0700', target],
       );
     }
@@ -101,10 +111,6 @@ function buildFilePushCommands(source: string, pool: string, volume: string, pro
     'volume',
     'file',
     'push',
-    '--uid',
-    '1000',
-    '--gid',
-    '1000',
     entry.source,
     pool,
     `${volume}/${entry.target}`,
