@@ -101,7 +101,6 @@ function buildFilePushCommands(source: string, pool: string, volume: string, pro
     'volume',
     'file',
     'push',
-    '--no-dereference',
     '--uid',
     '1000',
     '--gid',
@@ -121,7 +120,8 @@ function listVolumeEntries(root: string): Array<{ source: string; target: string
       const target = prefix ? `${prefix}/${name}` : name;
       const stats = fs.lstatSync(source);
       if (stats.isDirectory()) visit(source, target);
-      else entries.push({ source, target });
+      else if (stats.isFile()) entries.push({ source, target });
+      else throw new Error(`Unsupported Incus VM volume source type: ${source}`);
     }
   };
   visit(root, '');
@@ -139,6 +139,12 @@ function validateHostSource(value: string): string {
   const source = resolve(value);
   const root = parse(source).root;
   if (source === root) throw new Error('Incus VM volume source cannot be the host root');
+  if (fs.existsSync(source)) {
+    const stats = fs.lstatSync(source);
+    if (!stats.isDirectory() && !stats.isFile()) {
+      throw new Error(`Unsupported Incus VM volume source type: ${value}`);
+    }
+  }
   const normalized = normalize(source).replace(/\\/g, '/').toLowerCase();
   const sensitiveParts = new Set(['.ssh', '.gnupg', '.aws', '.azure', '.gcloud', '.kube', '.docker']);
   if (normalized.split('/').some((part) => sensitiveParts.has(part)) || normalized.includes('/.config/area51')) {
