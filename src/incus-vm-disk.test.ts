@@ -46,7 +46,6 @@ describe('Incus VM managed disk contract', () => {
       'volume',
       'file',
       'push',
-      '--create-dirs',
       '--no-dereference',
       '--uid',
       '1000',
