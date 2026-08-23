@@ -62,7 +62,11 @@ export function applyIncusRuntimePlan(plan: IncusRuntimePlan, options: IncusAdap
 
   const hostIdentity = writableMountHostIdentity(plan);
 
-  const commands: string[][] = [
+  const commands: string[][] = [];
+  if (plan.instanceKind === 'vm') {
+    commands.push(['storage', 'volume', 'file', 'push', '--help']);
+  }
+  commands.push(
     [
       'project',
       'create',
@@ -75,7 +79,7 @@ export function applyIncusRuntimePlan(plan: IncusRuntimePlan, options: IncusAdap
     ['project', 'set', plan.project, 'limits.instances=3'],
     ['project', 'set', plan.project, 'restricted.devices.disk=allow'],
     ['project', 'set', plan.project, `restricted.devices.disk.paths=${allowedDiskPaths(plan)}`],
-  ];
+  );
   if (hostIdentity) {
     commands.push(
       ['project', 'set', plan.project, 'restricted.containers.lowlevel=allow'],
