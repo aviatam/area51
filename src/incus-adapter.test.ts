@@ -5,6 +5,8 @@ import path from 'path';
 
 import {
   applyIncusRuntimePlan,
+  cleanupIncusOrphans,
+  deleteIncusRuntime,
   ensureIncusAvailable,
   ensureIncusRuntimeReady,
   quarantineIncusInstance,
@@ -449,6 +451,99 @@ describe('Incus adapter', () => {
       applyIncusRuntimePlan(vmPlan(), { executor, vmAgentRetryAttempts: 2, vmAgentRetryDelayMs: 0 }),
     ).toThrow('Incus command failed');
     expect(executor.mock.calls.filter(([argv]) => (argv as string[])[0] === 'exec')).toHaveLength(2);
+  });
+
+  it('deletes a normal VM and all of its per-session managed volumes', () => {
+    const executor = vi.fn();
+    const plan = vmPlan();
+
+    deleteIncusRuntime(plan, { executor });
+
+    expect(executor).toHaveBeenNthCalledWith(1, ['delete', plan.instance, '--force', '--project', plan.project]);
+    expect(executor).toHaveBeenNthCalledWith(2, [
+      'storage',
+      'volume',
+      'delete',
+      'area51-secure',
+      'readiness-session',
+      '--project',
+      plan.project,
+    ]);
+  });
+
+  it('treats repeated runtime deletion as already complete', () => {
+    const executor = vi.fn(() => {
+      throw new Error('Instance not found');
+    });
+
+    const result = deleteIncusRuntime(vmPlan(), { executor });
+
+    expect(result.commands.every((command) => command.ok && command.output === 'already absent')).toBe(true);
+  });
+
+  it('reaps only this install runtime and preserves quarantined evidence', () => {
+    const executor = vi.fn((argv: string[]) => {
+      if (argv[0] !== 'list') return;
+      return JSON.stringify([
+        {
+          name: 'area51-owned-agent',
+          project: 'area51-owned-vm',
+          expanded_config: {
+            'user.area51.install': 'install-a',
+            'user.area51.vm_volumes': JSON.stringify([{ pool: 'default', name: 'owned-session' }]),
+          },
+        },
+        {
+          name: 'area51-evidence-agent',
+          project: 'area51-evidence-vm',
+          expanded_config: {
+            'user.area51.install': 'install-a',
+            'user.area51.quarantine_reason': 'package-risk',
+          },
+        },
+        {
+          name: 'area51-peer-agent',
+          project: 'area51-peer-vm',
+          expanded_config: { 'user.area51.install': 'install-b' },
+        },
+      ]);
+    });
+
+    cleanupIncusOrphans('install-a', { executor });
+
+    expect(executor).toHaveBeenCalledWith(['list', '--all-projects', '--format=json']);
+    expect(executor).toHaveBeenCalledWith(['delete', 'area51-owned-agent', '--force', '--project', 'area51-owned-vm']);
+    expect(executor).toHaveBeenCalledWith([
+      'storage',
+      'volume',
+      'delete',
+      'default',
+      'owned-session',
+      '--project',
+      'area51-owned-vm',
+    ]);
+    expect(executor.mock.calls.flat().flat().join(' ')).not.toContain('area51-evidence-agent');
+    expect(executor.mock.calls.flat().flat().join(' ')).not.toContain('area51-peer-agent');
+  });
+
+  it('fails closed on malformed managed-volume recovery metadata', () => {
+    const executor = vi.fn((argv: string[]) => {
+      if (argv[0] === 'list') {
+        return JSON.stringify([
+          {
+            name: 'area51-owned-agent',
+            project: 'area51-owned-vm',
+            config: {
+              'user.area51.install': 'install-a',
+              'user.area51.vm_volumes': 'not-json',
+            },
+          },
+        ]);
+      }
+    });
+
+    expect(() => cleanupIncusOrphans('install-a', { executor })).toThrow('Invalid Area51 managed volume metadata');
+    expect(executor).not.toHaveBeenCalledWith(expect.arrayContaining(['delete']));
   });
 
   it('reuses existing VM networks, ACLs, volumes, and devices', () => {
