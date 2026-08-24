@@ -21,6 +21,12 @@ const envConfig = readEnvFile([
   'AREA51_RUNTIME_BACKEND',
   'AREA51_INCUS_IMAGE',
   'AREA51_INCUS_INSTANCE_KIND',
+  'AREA51_INCUS_STORAGE_POOL',
+  'AREA51_INCUS_VM_NETWORK',
+  'AREA51_INCUS_VM_ACL',
+  'AREA51_INCUS_VM_IPV4_CIDR',
+  'AREA51_INCUS_VM_ONECLI_ADDRESS',
+  'AREA51_INCUS_VM_ONECLI_PORT',
   'ONECLI_GATEWAY_CONTAINER',
 ]);
 
@@ -104,13 +110,29 @@ export const AREA51_RUNTIME_BACKEND: Area51RuntimeBackend =
     ? 'incus'
     : 'docker';
 
-export const AREA51_INCUS_IMAGE =
-  process.env.AREA51_INCUS_IMAGE || envConfig.AREA51_INCUS_IMAGE || 'local:area51-agent-v2';
-
 export const AREA51_INCUS_INSTANCE_KIND: 'container' | 'vm' =
   (process.env.AREA51_INCUS_INSTANCE_KIND || envConfig.AREA51_INCUS_INSTANCE_KIND || 'container').toLowerCase() === 'vm'
     ? 'vm'
     : 'container';
+
+export const AREA51_INCUS_IMAGE =
+  process.env.AREA51_INCUS_IMAGE ||
+  envConfig.AREA51_INCUS_IMAGE ||
+  (AREA51_INCUS_INSTANCE_KIND === 'vm' ? 'local:area51-agent-v2-vm' : 'local:area51-agent-v2');
+
+export const AREA51_INCUS_STORAGE_POOL =
+  process.env.AREA51_INCUS_STORAGE_POOL || envConfig.AREA51_INCUS_STORAGE_POOL || 'default';
+export const AREA51_INCUS_VM_NETWORK =
+  process.env.AREA51_INCUS_VM_NETWORK || envConfig.AREA51_INCUS_VM_NETWORK || 'area51vm0';
+export const AREA51_INCUS_VM_ACL =
+  process.env.AREA51_INCUS_VM_ACL || envConfig.AREA51_INCUS_VM_ACL || 'area51-vm-onecli';
+export const AREA51_INCUS_VM_IPV4_CIDR =
+  process.env.AREA51_INCUS_VM_IPV4_CIDR || envConfig.AREA51_INCUS_VM_IPV4_CIDR || '10.251.0.1/24';
+export const AREA51_INCUS_VM_ONECLI_ADDRESS =
+  process.env.AREA51_INCUS_VM_ONECLI_ADDRESS || envConfig.AREA51_INCUS_VM_ONECLI_ADDRESS || '10.251.0.1';
+export const AREA51_INCUS_VM_ONECLI_PORT = Number(
+  process.env.AREA51_INCUS_VM_ONECLI_PORT || envConfig.AREA51_INCUS_VM_ONECLI_PORT || '10255',
+);
 
 // Timezone for scheduled tasks, message formatting, etc.
 // Validates each candidate is a real IANA identifier before accepting.
