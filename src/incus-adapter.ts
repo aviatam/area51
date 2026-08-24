@@ -405,7 +405,7 @@ function isAlreadyAbsent(argv: string[], error: unknown): boolean {
 
 function isVmAgentUnavailable(argv: string[], error: unknown): boolean {
   if (argv[0] !== 'exec' && !(argv[0] === 'file' && argv[1] === 'push')) return false;
-  return /VM agent isn't currently running/i.test(errorText(error));
+  return /VM agent isn't currently running|Instance is not running/i.test(errorText(error));
 }
 
 function sleepSync(milliseconds: number): void {
@@ -501,11 +501,17 @@ function errorText(error: unknown): string {
 }
 
 function isAlreadyExists(argv: string[], error: unknown): boolean {
-  if (!isAlreadyExistsError(error)) return false;
+  const aclRuleAdd = argv[0] === 'network' && argv[1] === 'acl' && argv[2] === 'rule' && argv[3] === 'add';
+  if (
+    !isAlreadyExistsError(error) &&
+    !(aclRuleAdd && /Duplicate of (?:ingress|egress) rule \d+/i.test(errorText(error)))
+  ) {
+    return false;
+  }
   if ((argv[0] === 'project' || argv[0] === 'profile') && argv[1] === 'create') return true;
   if (argv[0] === 'network' && argv[1] === 'create') return true;
   if (argv[0] === 'network' && argv[1] === 'acl' && argv[2] === 'create') return true;
-  if (argv[0] === 'network' && argv[1] === 'acl' && argv[2] === 'rule' && argv[3] === 'add') return true;
+  if (aclRuleAdd) return true;
   if (argv[0] === 'storage' && argv[1] === 'volume' && argv[2] === 'create') return true;
   if (argv[0] === 'profile' && argv[1] === 'device' && argv[2] === 'add') return true;
   if (argv[0] === 'init') return true;

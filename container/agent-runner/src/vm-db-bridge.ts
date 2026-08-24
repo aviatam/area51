@@ -1,5 +1,5 @@
 /**
- * Root-only Incus VM database bridge.
+ * Root-only Incus VM session bridge.
  *
  * VM managed volumes are copy-based: the host and guest do not share an
  * inode.  This helper merges host-owned inbound snapshots into the live guest
@@ -8,7 +8,9 @@
  * by the unprivileged agent process.
  */
 import { Database } from 'bun:sqlite';
+import { createHash } from 'node:crypto';
 import fs from 'node:fs';
+import path from 'node:path';
 
 const WORKSPACE_INBOUND = '/workspace/inbound.db';
 const WORKSPACE_OUTBOUND = '/workspace/outbound.db';
@@ -16,6 +18,13 @@ const STAGED_INBOUND = '/run/area51-sync/inbound.db';
 const STAGED_OUTBOUND = '/run/area51-sync/outbound.db';
 const STAGED_HEARTBEAT = '/run/area51-sync/heartbeat';
 const WORKSPACE_HEARTBEAT = '/workspace/.heartbeat';
+const PROVIDER_STATE = '/home/node/.claude';
+const STAGED_PROVIDER_STATE = '/run/area51-sync/provider-state';
+const STAGED_PROVIDER_MANIFEST = '/run/area51-sync/provider-state.json';
+
+const MAX_PROVIDER_STATE_FILES = 2_048;
+const MAX_PROVIDER_STATE_FILE_BYTES = 16 * 1024 * 1024;
+const MAX_PROVIDER_STATE_TOTAL_BYTES = 64 * 1024 * 1024;
 
 const INBOUND_TABLES = ['messages_in', 'delivered', 'destinations', 'session_routing'] as const;
 
@@ -60,10 +69,62 @@ export function exportOutboundSnapshot(): void {
   fs.chmodSync(STAGED_HEARTBEAT, 0o600);
 }
 
+/** Snapshot bounded regular provider-state files into a root-owned staging tree. */
+export function exportProviderStateSnapshot(): void {
+  fs.rmSync(STAGED_PROVIDER_STATE, { recursive: true, force: true });
+  fs.mkdirSync(STAGED_PROVIDER_STATE, { recursive: true, mode: 0o700 });
+  const files: Array<{ path: string; size: number; sha256: string }> = [];
+  let totalBytes = 0;
+
+  const visit = (directory: string, prefix: string): void => {
+    for (const name of fs.readdirSync(directory).sort()) {
+      const source = path.join(directory, name);
+      const relative = prefix ? `${prefix}/${name}` : name;
+      const stats = fs.lstatSync(source);
+      if (stats.isSymbolicLink()) continue;
+      if (stats.isDirectory()) {
+        visit(source, relative);
+        continue;
+      }
+      if (!stats.isFile()) throw new Error(`Unsupported provider-state entry: ${relative}`);
+      if (files.length >= MAX_PROVIDER_STATE_FILES) throw new Error('Provider state exceeds 2048 files');
+
+      const destination = path.join(STAGED_PROVIDER_STATE, ...relative.split('/'));
+      fs.mkdirSync(path.dirname(destination), { recursive: true, mode: 0o700 });
+      const descriptor = fs.openSync(source, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
+      let content: Buffer;
+      try {
+        const opened = fs.fstatSync(descriptor);
+        if (!opened.isFile()) throw new Error(`Provider-state entry changed type: ${relative}`);
+        content = fs.readFileSync(descriptor);
+      } finally {
+        fs.closeSync(descriptor);
+      }
+      if (content.byteLength > MAX_PROVIDER_STATE_FILE_BYTES) {
+        throw new Error(`Provider-state file exceeds ${MAX_PROVIDER_STATE_FILE_BYTES} bytes: ${relative}`);
+      }
+      totalBytes += content.byteLength;
+      if (totalBytes > MAX_PROVIDER_STATE_TOTAL_BYTES) throw new Error('Provider state exceeds 64 MiB');
+      fs.writeFileSync(destination, content, { mode: 0o600 });
+      fs.chmodSync(destination, 0o600);
+      files.push({
+        path: relative,
+        size: content.byteLength,
+        sha256: createHash('sha256').update(content).digest('hex'),
+      });
+    }
+  };
+
+  visit(PROVIDER_STATE, '');
+  fs.writeFileSync(STAGED_PROVIDER_MANIFEST, JSON.stringify({ version: 1, files }), { mode: 0o600 });
+  fs.chmodSync(STAGED_PROVIDER_MANIFEST, 0o600);
+}
+
 if (import.meta.main) {
   if (process.getuid?.() !== 0) throw new Error('VM database bridge must run as root');
   const command = process.argv[2];
   if (command === 'import-inbound') importInboundSnapshot();
   else if (command === 'export-outbound') exportOutboundSnapshot();
+  else if (command === 'export-provider-state') exportProviderStateSnapshot();
   else throw new Error(`Unknown VM database bridge command: ${command ?? '(missing)'}`);
 }

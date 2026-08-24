@@ -68,8 +68,12 @@ Docker remains the default backend for local development and cross-platform
 compatibility.
 
 The live Incus path hardens that mount set before it reaches Incus. Only
-`/workspace` stays writable. Agent definitions, shared runtime source, skills,
-provider state, and plugin content are read-only. The adapter also fails closed
+`/workspace` and Claude's exact `/home/node/.claude` provider-state path stay
+writable; VM mode backs both with isolated managed volumes rather than live host
+bind mounts. Agent definitions, shared runtime source, skills, other provider
+paths, and plugin content are read-only. Before controlled VM deletion, bounded
+regular provider files are staged by root, path/size/digest validated by the
+host, and atomically installed for the next VM. The adapter also fails closed
 if a plan tries to mount host roots, home-directory roots, SSH/cloud config
 directories, Docker/Podman sockets, or Incus/LXD sockets.
 

@@ -413,7 +413,7 @@ describe('Incus adapter', () => {
       const executor = vi.fn((argv: string[]) => {
         if (argv[0] === 'file' && argv[1] === 'push' && unavailable) {
           unavailable = false;
-          throw new Error("VM agent isn't currently running");
+          throw new Error('Failed getting instance SFTP connection: Instance is not running');
         }
       });
       const plan = { ...vmPlan(), vmFiles: [{ source, path: '/run/area51/onecli-ca.pem', readonly: true as const }] };
@@ -548,11 +548,13 @@ describe('Incus adapter', () => {
 
   it('reuses existing VM networks, ACLs, volumes, and devices', () => {
     const executor = vi.fn((argv: string[]) => {
+      if (argv[0] === 'network' && argv[1] === 'acl' && argv[2] === 'rule' && argv[3] === 'add') {
+        throw new Error('Duplicate of egress rule 0');
+      }
       if (
         (argv[0] === 'project' && argv[1] === 'create') ||
         (argv[0] === 'network' && argv[1] === 'create') ||
         (argv[0] === 'network' && argv[1] === 'acl' && argv[2] === 'create') ||
-        (argv[0] === 'network' && argv[1] === 'acl' && argv[2] === 'rule' && argv[3] === 'add') ||
         (argv[0] === 'storage' && argv[1] === 'volume' && argv[2] === 'create') ||
         argv[0] === 'init' ||
         (argv[0] === 'config' && argv[1] === 'device' && argv[2] === 'add')
