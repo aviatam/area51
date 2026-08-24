@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { resolve } from 'node:path';
+import fs from 'node:fs';
+import os from 'node:os';
+import path, { resolve } from 'node:path';
 
 import { buildIncusVmDiskPlan } from './incus-vm-disk.js';
 
@@ -36,9 +38,6 @@ describe('Incus VM managed disk contract', () => {
       'area51-secure',
       'maximum-session',
       'size=2GiB',
-      'initial.uid=1000',
-      'initial.gid=1000',
-      'initial.mode=0700',
       '--project',
       'area51-maximum',
     ]);
@@ -47,7 +46,7 @@ describe('Incus VM managed disk contract', () => {
       'volume',
       'file',
       'push',
-      '--recursive',
+      '--create-dirs',
       '--no-dereference',
       '--uid',
       '1000',
@@ -58,6 +57,53 @@ describe('Incus VM managed disk contract', () => {
       'maximum-session/',
       '--project',
       'area51-maximum',
+    ]);
+  });
+
+  it('stages directory trees one entry at a time without recursive CLI flags', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'area51-vm-disk-'));
+    try {
+      fs.mkdirSync(path.join(root, 'nested'));
+      fs.writeFileSync(path.join(root, 'top.txt'), 'top');
+      fs.writeFileSync(path.join(root, 'nested', 'child.txt'), 'child');
+
+      const plan = buildIncusVmDiskPlan({
+        ...options,
+        volumes: [{ ...options.volumes[0], source: root }],
+      });
+      const pushes = plan.prepareCommands.filter(
+        (command) => command.slice(0, 4).join(' ') === 'storage volume file push',
+      );
+
+      expect(pushes).toHaveLength(2);
+      expect(pushes.flat()).not.toContain('--recursive');
+      expect(pushes).toContainEqual(expect.arrayContaining([path.join(root, 'top.txt'), 'maximum-session/top.txt']));
+      expect(pushes).toContainEqual(
+        expect.arrayContaining([path.join(root, 'nested', 'child.txt'), 'maximum-session/nested/child.txt']),
+      );
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it.runIf(process.platform !== 'win32')('rejects symlinks instead of relying on newer Incus CLI flags', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'area51-vm-disk-link-'));
+    try {
+      fs.symlinkSync('/etc/passwd', path.join(root, 'escape'));
+      expect(() => buildIncusVmDiskPlan({ ...options, volumes: [{ ...options.volumes[0], source: root }] })).toThrow(
+        'Unsupported Incus VM volume source type',
+      );
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('initializes writable mount ownership inside the running guest', () => {
+    const plan = buildIncusVmDiskPlan(options);
+
+    expect(plan.initializeCommands).toEqual([
+      ['exec', 'area51-maximum-session-agent', '--project', 'area51-maximum', '--', 'chown', '1000:1000', '/workspace'],
+      ['exec', 'area51-maximum-session-agent', '--project', 'area51-maximum', '--', 'chmod', '0700', '/workspace'],
     ]);
   });
 

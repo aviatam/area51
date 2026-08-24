@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import { isAbsolute, normalize, parse, resolve } from 'node:path';
 
 export interface IncusVmVolume {
@@ -18,6 +19,7 @@ export interface IncusVmDiskOptions {
 export interface IncusVmDiskPlan extends IncusVmDiskOptions {
   prepareCommands: string[][];
   attachCommands: string[][];
+  initializeCommands: string[][];
   commands: string[][];
 }
 
@@ -34,6 +36,7 @@ export function buildIncusVmDiskPlan(options: IncusVmDiskOptions): IncusVmDiskPl
   const targets = new Set<string>();
   const prepareCommands: string[][] = [];
   const attachCommands: string[][] = [];
+  const initializeCommands: string[][] = [];
 
   for (const [index, volume] of options.volumes.entries()) {
     validateName(volume.name, 'volume');
@@ -53,34 +56,8 @@ export function buildIncusVmDiskPlan(options: IncusVmDiskOptions): IncusVmDiskPl
 
     const projectArgs = ['--project', options.project];
     prepareCommands.push(
-      [
-        'storage',
-        'volume',
-        'create',
-        options.pool,
-        volume.name,
-        `size=${volume.size}`,
-        'initial.uid=1000',
-        'initial.gid=1000',
-        'initial.mode=0700',
-        ...projectArgs,
-      ],
-      [
-        'storage',
-        'volume',
-        'file',
-        'push',
-        '--recursive',
-        '--no-dereference',
-        '--uid',
-        '1000',
-        '--gid',
-        '1000',
-        source,
-        options.pool,
-        `${volume.name}/`,
-        ...projectArgs,
-      ],
+      ['storage', 'volume', 'create', options.pool, volume.name, `size=${volume.size}`, ...projectArgs],
+      ...buildFilePushCommands(source, options.pool, volume.name, projectArgs),
     );
 
     const device = `area51-disk-${index + 1}`;
@@ -98,14 +75,59 @@ export function buildIncusVmDiskPlan(options: IncusVmDiskOptions): IncusVmDiskPl
     if (volume.readonly) attach.push('readonly=true');
     attach.push(...projectArgs);
     attachCommands.push(attach);
+
+    if (!volume.readonly) {
+      initializeCommands.push(
+        ['exec', options.instance, ...projectArgs, '--', 'chown', '1000:1000', target],
+        ['exec', options.instance, ...projectArgs, '--', 'chmod', '0700', target],
+      );
+    }
   }
 
   return {
     ...options,
     prepareCommands,
     attachCommands,
-    commands: [...prepareCommands, ...attachCommands],
+    initializeCommands,
+    commands: [...prepareCommands, ...attachCommands, ...initializeCommands],
   };
+}
+
+function buildFilePushCommands(source: string, pool: string, volume: string, projectArgs: string[]): string[][] {
+  const entries =
+    fs.existsSync(source) && fs.lstatSync(source).isDirectory() ? listVolumeEntries(source) : [{ source, target: '' }];
+  return entries.map((entry) => [
+    'storage',
+    'volume',
+    'file',
+    'push',
+    '--create-dirs',
+    '--no-dereference',
+    '--uid',
+    '1000',
+    '--gid',
+    '1000',
+    entry.source,
+    pool,
+    `${volume}/${entry.target}`,
+    ...projectArgs,
+  ]);
+}
+
+function listVolumeEntries(root: string): Array<{ source: string; target: string }> {
+  const entries: Array<{ source: string; target: string }> = [];
+  const visit = (directory: string, prefix: string): void => {
+    for (const name of fs.readdirSync(directory).sort()) {
+      const source = resolve(directory, name);
+      const target = prefix ? `${prefix}/${name}` : name;
+      const stats = fs.lstatSync(source);
+      if (stats.isDirectory()) visit(source, target);
+      else if (stats.isFile()) entries.push({ source, target });
+      else throw new Error(`Unsupported Incus VM volume source type: ${source}`);
+    }
+  };
+  visit(root, '');
+  return entries;
 }
 
 function validateName(value: string, label: string): void {
@@ -119,6 +141,12 @@ function validateHostSource(value: string): string {
   const source = resolve(value);
   const root = parse(source).root;
   if (source === root) throw new Error('Incus VM volume source cannot be the host root');
+  if (fs.existsSync(source)) {
+    const stats = fs.lstatSync(source);
+    if (!stats.isDirectory() && !stats.isFile()) {
+      throw new Error(`Unsupported Incus VM volume source type: ${value}`);
+    }
+  }
   const normalized = normalize(source).replace(/\\/g, '/').toLowerCase();
   const sensitiveParts = new Set(['.ssh', '.gnupg', '.aws', '.azure', '.gcloud', '.kube', '.docker']);
   if (normalized.split('/').some((part) => sensitiveParts.has(part)) || normalized.includes('/.config/area51')) {

@@ -20,6 +20,8 @@ export type IncusExecutor = (argv: string[]) => string | void;
 
 export interface IncusAdapterOptions {
   executor?: IncusExecutor;
+  vmAgentRetryAttempts?: number;
+  vmAgentRetryDelayMs?: number;
 }
 
 export interface IncusQuarantineOptions extends IncusAdapterOptions {
@@ -62,20 +64,31 @@ export function applyIncusRuntimePlan(plan: IncusRuntimePlan, options: IncusAdap
 
   const hostIdentity = writableMountHostIdentity(plan);
 
-  const commands: string[][] = [
+  const commands: string[][] = [];
+  if (plan.instanceKind === 'vm') {
+    commands.push(['storage', 'volume', 'file', 'push', '--help']);
+  }
+  commands.push(
     [
       'project',
       'create',
       plan.project,
       ...(plan.instanceKind === 'vm'
-        ? ['--config', 'features.networks=true', '--config', 'features.storage.volumes=true']
+        ? [
+            '--config',
+            'features.images=false',
+            '--config',
+            'features.networks=false',
+            '--config',
+            'features.storage.volumes=true',
+          ]
         : []),
     ],
     ['project', 'set', plan.project, 'restricted=true'],
     ['project', 'set', plan.project, 'limits.instances=3'],
     ['project', 'set', plan.project, 'restricted.devices.disk=allow'],
     ['project', 'set', plan.project, `restricted.devices.disk.paths=${allowedDiskPaths(plan)}`],
-  ];
+  );
   if (hostIdentity) {
     commands.push(
       ['project', 'set', plan.project, 'restricted.containers.lowlevel=allow'],
@@ -86,7 +99,9 @@ export function applyIncusRuntimePlan(plan: IncusRuntimePlan, options: IncusAdap
   if (plan.gatewayProxy) {
     commands.push(['project', 'set', plan.project, 'restricted.devices.proxy=allow']);
   }
-  if (vmNetwork) commands.push(...vmNetwork.prepareCommands);
+  if (vmNetwork) {
+    commands.push(...vmNetwork.prepareCommands, ['project', 'set', plan.project, 'restricted.devices.nic=managed']);
+  }
   if (vmDisks) commands.push(...vmDisks.prepareCommands);
   const rootDiskPool = process.env.AREA51_INCUS_STORAGE_POOL;
   if (rootDiskPool) {
@@ -165,6 +180,7 @@ export function applyIncusRuntimePlan(plan: IncusRuntimePlan, options: IncusAdap
     ]);
   }
   commands.push(['start', plan.instance, '--project', plan.project]);
+  if (vmDisks) commands.push(...vmDisks.initializeCommands);
 
   return runCommands(commands, options);
 }
@@ -231,23 +247,41 @@ function runCommands(commands: string[][], options: IncusAdapterOptions): IncusA
   const executor = options.executor ?? defaultExecutor;
   const results: IncusCommandResult[] = [];
   for (const argv of commands) {
-    try {
-      const output = executor(argv);
-      results.push({ argv, ok: true, output: typeof output === 'string' ? output : undefined });
-    } catch (error) {
-      if (isAlreadyExists(argv, error)) {
-        results.push({ argv, ok: true, output: 'already exists' });
-        continue;
+    const maxAttempts = Math.max(1, options.vmAgentRetryAttempts ?? 60);
+    for (let attempt = 1; ; attempt += 1) {
+      try {
+        const output = executor(argv);
+        results.push({ argv, ok: true, output: typeof output === 'string' ? output : undefined });
+        break;
+      } catch (error) {
+        if (isVmAgentUnavailable(argv, error) && attempt < maxAttempts) {
+          sleepSync(Math.max(0, options.vmAgentRetryDelayMs ?? 2000));
+          continue;
+        }
+        if (isAlreadyExists(argv, error)) {
+          results.push({ argv, ok: true, output: 'already exists' });
+          break;
+        }
+        if (argv[0] === 'start' && isAlreadyRunningError(error)) {
+          results.push({ argv, ok: true, output: 'already running' });
+          break;
+        }
+        results.push({ argv, ok: false, error });
+        throw new Error(`Incus command failed: incus ${argv.join(' ')}`, { cause: error });
       }
-      if (argv[0] === 'start' && isAlreadyRunningError(error)) {
-        results.push({ argv, ok: true, output: 'already running' });
-        continue;
-      }
-      results.push({ argv, ok: false, error });
-      throw new Error(`Incus command failed: incus ${argv.join(' ')}`, { cause: error });
     }
   }
   return { commands: results };
+}
+
+function isVmAgentUnavailable(argv: string[], error: unknown): boolean {
+  if (argv[0] !== 'exec') return false;
+  return /VM agent isn't currently running/i.test(errorText(error));
+}
+
+function sleepSync(milliseconds: number): void {
+  if (milliseconds <= 0) return;
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, milliseconds);
 }
 
 function defaultExecutor(argv: string[]): string {
@@ -315,11 +349,13 @@ function sanitizeConfigValue(value: string): string {
 }
 
 function isAlreadyExistsError(error: unknown): boolean {
-  const text =
-    error instanceof Error
-      ? `${error.message}\n${String((error as { stderr?: unknown }).stderr ?? '')}`
-      : String(error);
-  return /already exists/i.test(text);
+  return /already exists/i.test(errorText(error));
+}
+
+function errorText(error: unknown): string {
+  return error instanceof Error
+    ? `${error.message}\n${String((error as { stderr?: unknown }).stderr ?? '')}`
+    : String(error);
 }
 
 function isAlreadyExists(argv: string[], error: unknown): boolean {

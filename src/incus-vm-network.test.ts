@@ -6,7 +6,7 @@ describe('Incus VM network contract', () => {
   const options = {
     project: 'area51-maximum',
     instance: 'area51-maximum-agent',
-    network: 'area51-maximum-vm-net',
+    network: 'a51-max-vm-net',
     acl: 'area51-maximum-onecli-only',
     ipv4Cidr: '10.51.0.1/24',
     oneCliAddress: '10.51.0.1',
@@ -20,12 +20,11 @@ describe('Incus VM network contract', () => {
       'network',
       'create',
       options.network,
+      '--type=bridge',
       'ipv4.address=10.51.0.1/24',
       'ipv4.nat=false',
       'ipv6.address=none',
       'dns.mode=none',
-      '--project',
-      options.project,
     ]);
   });
 
@@ -43,8 +42,6 @@ describe('Incus VM network contract', () => {
       'destination=10.51.0.1/32',
       'protocol=tcp',
       'destination_port=10255',
-      '--project',
-      options.project,
     ]);
     expect(plan.attachCommands).toContainEqual([
       'config',
@@ -67,8 +64,6 @@ describe('Incus VM network contract', () => {
       `security.acls=${options.acl}`,
       'security.acls.default.ingress.action=reject',
       'security.acls.default.egress.action=reject',
-      '--project',
-      options.project,
     ]);
   });
 
@@ -79,6 +74,7 @@ describe('Incus VM network contract', () => {
     ['loopback gateway', { oneCliAddress: '127.0.0.1' }],
     ['zero port', { oneCliPort: 0 }],
     ['unsafe network name', { network: 'net;open' }],
+    ['long bridge name', { network: 'area51-maximum-vm-net' }],
   ])('fails closed for %s', (_label, override) => {
     expect(() => buildIncusVmNetworkPlan({ ...options, ...override })).toThrow();
   });

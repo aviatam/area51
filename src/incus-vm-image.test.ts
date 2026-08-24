@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 
 const script = fs.readFileSync(path.join(process.cwd(), 'container', 'incus', 'build-vm.sh'), 'utf8');
 const workflow = fs.readFileSync(path.join(process.cwd(), '.github', 'workflows', 'incus-vm-image.yml'), 'utf8');
+const containment = fs.readFileSync(path.join(process.cwd(), 'scripts', 'incus-vm-containment-e2e.ts'), 'utf8');
 
 describe('Incus VM image builder', () => {
   it('requires KVM and launches the VM image variant', () => {
@@ -40,8 +41,11 @@ describe('Incus VM image builder', () => {
     expect(workflow).toContain('test -e /dev/kvm');
     expect(workflow).toContain('sudo chmod 0666 /dev/kvm');
     expect(workflow).toContain('test -r /dev/kvm');
+    expect(workflow).toContain('URIs: https://pkgs.zabbly.com/incus/lts-7.0');
     expect(workflow).toContain('sudo apt-get install -y incus acl qemu-system-x86');
-    expect(workflow).toContain('sudo incus admin init --minimal');
+    expect(workflow).toContain('incus admin init --minimal');
+    expect(workflow).not.toContain('sudo incus admin init --minimal');
+    expect(workflow.indexOf('sudo setfacl -m')).toBeLessThan(workflow.indexOf('incus admin init --minimal'));
     expect(workflow).toContain('incus profile device show default');
     expect(workflow).toContain('incus network list');
     expect(workflow).toContain('sudo sysctl -w net.ipv4.ip_forward=1');
@@ -49,5 +53,14 @@ describe('Incus VM image builder', () => {
     expect(workflow).toContain('sudo iptables -t nat -I POSTROUTING 1');
     expect(workflow).not.toContain('incus profile device add default eth0');
     expect(workflow).not.toContain('self-hosted');
+  });
+
+  it('runs a real VM containment test before VM enablement', () => {
+    expect(workflow).toContain('scripts/incus-vm-containment-e2e.ts');
+    expect(containment).toContain('applyIncusRuntimePlan(plan');
+    expect(containment).toContain('spawnIncusExec(plan');
+    expect(containment).toContain('non-relay internet egress succeeded');
+    expect(containment).toContain('host control path visible');
+    expect(containment).toContain("['project', 'delete', plan.project]");
   });
 });

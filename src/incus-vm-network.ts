@@ -24,7 +24,7 @@ export interface IncusVmNetworkPlan extends IncusVmNetworkOptions {
 export function buildIncusVmNetworkPlan(options: IncusVmNetworkOptions): IncusVmNetworkPlan {
   validateName(options.project, 'project');
   validateName(options.instance, 'instance');
-  validateName(options.network, 'network');
+  validateNetworkName(options.network);
   validateName(options.acl, 'ACL');
   const { address, networkAddress, prefix } = parsePrivateIpv4Cidr(options.ipv4Cidr);
   if (isIP(options.oneCliAddress) !== 4 || !isPrivateIpv4(options.oneCliAddress)) {
@@ -40,19 +40,18 @@ export function buildIncusVmNetworkPlan(options: IncusVmNetworkOptions): IncusVm
     throw new Error(`Invalid Incus VM OneCLI port: ${options.oneCliPort}`);
   }
 
-  const projectArgs = ['--project', options.project];
   const prepareCommands = [
     [
       'network',
       'create',
       options.network,
+      '--type=bridge',
       `ipv4.address=${options.ipv4Cidr}`,
       'ipv4.nat=false',
       'ipv6.address=none',
       'dns.mode=none',
-      ...projectArgs,
     ],
-    ['network', 'acl', 'create', options.acl, ...projectArgs],
+    ['network', 'acl', 'create', options.acl],
     [
       'network',
       'acl',
@@ -64,7 +63,6 @@ export function buildIncusVmNetworkPlan(options: IncusVmNetworkOptions): IncusVm
       `destination=${options.oneCliAddress}/32`,
       'protocol=tcp',
       `destination_port=${options.oneCliPort}`,
-      ...projectArgs,
     ],
     [
       'network',
@@ -73,7 +71,6 @@ export function buildIncusVmNetworkPlan(options: IncusVmNetworkOptions): IncusVm
       `security.acls=${options.acl}`,
       'security.acls.default.ingress.action=reject',
       'security.acls.default.egress.action=reject',
-      ...projectArgs,
     ],
   ];
   const attachCommands = [
@@ -99,6 +96,11 @@ function validateName(value: string, label: string): void {
   if (!/^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,63}$/.test(value)) {
     throw new Error(`Invalid Incus VM ${label} name: ${value}`);
   }
+}
+
+function validateNetworkName(value: string): void {
+  validateName(value, 'network');
+  if (value.length > 15) throw new Error(`Incus VM bridge name exceeds Linux's 15-character limit: ${value}`);
 }
 
 function parsePrivateIpv4Cidr(value: string): { address: string; networkAddress: number; prefix: number } {
