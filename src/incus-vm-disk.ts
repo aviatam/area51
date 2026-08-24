@@ -123,11 +123,18 @@ function listVolumeEntries(root: string): Array<{ source: string; target: string
       const stats = fs.lstatSync(source);
       if (stats.isDirectory()) visit(source, target);
       else if (stats.isFile()) entries.push({ source, target });
+      else if (stats.isSymbolicLink() && isSafeVolumeSymlink(source)) entries.push({ source, target });
       else throw new Error(`Unsupported Incus VM volume source type: ${source}`);
     }
   };
   visit(root, '');
   return entries;
+}
+
+function isSafeVolumeSymlink(source: string): boolean {
+  const target = fs.readlinkSync(source).replace(/\\/g, '/');
+  if (target.startsWith('/')) return target === '/app' || target.startsWith('/app/');
+  return !target.split('/').includes('..');
 }
 
 function validateName(value: string, label: string): void {
