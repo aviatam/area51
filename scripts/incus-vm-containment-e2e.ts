@@ -7,6 +7,7 @@ import path from 'node:path';
 
 import { applyIncusRuntimePlan, spawnIncusExec } from '../src/incus-adapter.js';
 import { buildIncusRuntimePlan } from '../src/incus-runtime.js';
+import { buildIncusVmRuntimeTransport } from '../src/incus-vm-runtime.js';
 
 const suffix = (process.env.GITHUB_RUN_ID ?? String(Date.now())).replace(/[^0-9]/g, '').slice(-12);
 const image = process.env.AREA51_INCUS_VM_IMAGE_ALIAS;
@@ -22,9 +23,18 @@ fs.mkdirSync(sessionDir);
 fs.mkdirSync(groupDir);
 fs.writeFileSync(path.join(sessionDir, 'input.txt'), 'session-input\n');
 fs.writeFileSync(path.join(groupDir, 'agent.txt'), 'agent-definition\n');
+fs.symlinkSync('/app/CLAUDE.md', path.join(groupDir, '.claude-shared.md'));
+const bootstrapFile = path.join(root, 'onecli-bootstrap');
+fs.writeFileSync(bootstrapFile, 'onecli-bootstrap\n');
 
-const sessionVolume = `session-${suffix}`;
-const groupVolume = `group-${suffix}`;
+const transport = buildIncusVmRuntimeTransport(
+  [
+    { source: sessionDir, path: '/workspace', readonly: false },
+    { source: groupDir, path: '/workspace/agent', readonly: true },
+    { source: bootstrapFile, path: '/run/area51/bootstrap.txt', readonly: true },
+  ],
+  `vm-e2e-${suffix}`,
+);
 const network = `vme${suffix}`;
 const acl = `vm-acl-${suffix}`;
 const plan = buildIncusRuntimePlan({
@@ -43,11 +53,9 @@ const plan = buildIncusRuntimePlan({
   },
   vmDisks: {
     pool,
-    volumes: [
-      { name: sessionVolume, source: sessionDir, path: '/workspace', readonly: false, size: '1GiB' },
-      { name: groupVolume, source: groupDir, path: '/workspace/agent', readonly: true, size: '256MiB' },
-    ],
+    volumes: transport.volumes,
   },
+  vmFiles: transport.files,
 });
 
 let relay: net.Server | undefined;
@@ -96,6 +104,10 @@ done
 test "$ready" = true || fail "managed volumes did not mount"
 [ "$(cat /workspace/input.txt)" = session-input ] || fail "session volume content mismatch"
 [ "$(cat /workspace/agent/agent.txt)" = agent-definition ] || fail "agent volume content mismatch"
+[ "$(cat /run/area51/bootstrap.txt)" = onecli-bootstrap ] || fail "bootstrap file content mismatch"
+[ "$(stat -c %a /run/area51/bootstrap.txt)" = 444 ] || fail "bootstrap file is not read-only"
+[ "$(stat -c %u /run/area51/bootstrap.txt)" = 0 ] || fail "bootstrap file is not root-owned"
+[ "$(readlink /workspace/agent/.claude-shared.md)" = /app/CLAUDE.md ] || fail "safe runtime symlink missing"
 echo guest-write > /workspace/result.txt || fail "managed session volume is not writable"
 if echo forbidden > /workspace/agent/forbidden 2>/tmp/readonly.err; then fail "agent volume is writable"; fi
 
@@ -132,8 +144,7 @@ echo area51-vm-containment-ok
 function cleanup(): void {
   const commands = [
     ['delete', plan.instance, '--project', plan.project, '--force'],
-    ['storage', 'volume', 'delete', pool, sessionVolume, '--project', plan.project],
-    ['storage', 'volume', 'delete', pool, groupVolume, '--project', plan.project],
+    ...transport.volumes.map((volume) => ['storage', 'volume', 'delete', pool, volume.name, '--project', plan.project]),
     ['network', 'delete', network],
     ['network', 'acl', 'delete', acl],
     ['project', 'delete', plan.project],
