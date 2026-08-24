@@ -101,6 +101,23 @@ describe('Incus runtime backend wiring (structural)', () => {
     expect(src).toContain('vmDisks: vmTransport');
     expect(src).toContain('vmFiles: vmTransport?.files');
   });
+
+  it('stamps install/session ownership and deletes normal Incus exits', () => {
+    const src = fs.readFileSync(path.join(process.cwd(), 'src', 'container-runner.ts'), 'utf-8');
+    expect(src).toContain("'user.area51.install': INSTALL_SLUG");
+    expect(src).toContain("'user.area51.session': session.id");
+    expect(src).toContain("'user.area51.vm_volumes'");
+    expect(src).toContain('deleteIncusRuntime(plan)');
+  });
+
+  it('selects Incus recovery without requiring Docker at startup', () => {
+    const src = fs.readFileSync(path.join(process.cwd(), 'src', 'index.ts'), 'utf-8');
+    expect(src).toContain("AREA51_RUNTIME_BACKEND === 'incus'");
+    expect(src).toContain('cleanupIncusOrphans(INSTALL_SLUG)');
+    expect(src).toMatch(
+      /if \(AREA51_RUNTIME_BACKEND === 'incus'\)[\s\S]*?else \{[\s\S]*?ensureContainerRuntimeRunning/,
+    );
+  });
 });
 
 describe('plugins read-only mount (structural)', () => {
