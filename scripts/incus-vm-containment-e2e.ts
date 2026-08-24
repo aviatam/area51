@@ -6,8 +6,10 @@ import os from 'node:os';
 import path from 'node:path';
 
 import { applyIncusRuntimePlan, spawnIncusExec } from '../src/incus-adapter.js';
+import { ensureSchema, insertMessage, openInboundDb, openOutboundDb } from '../src/db/session-db.js';
 import { buildIncusRuntimePlan } from '../src/incus-runtime.js';
 import { buildIncusVmRuntimeTransport } from '../src/incus-vm-runtime.js';
+import { syncIncusVmInbound, syncIncusVmOutbound } from '../src/incus-vm-session-bridge.js';
 
 const suffix = (process.env.GITHUB_RUN_ID ?? String(Date.now())).replace(/[^0-9]/g, '').slice(-12);
 const image = process.env.AREA51_INCUS_VM_IMAGE_ALIAS;
@@ -24,14 +26,38 @@ fs.mkdirSync(groupDir);
 fs.writeFileSync(path.join(sessionDir, 'input.txt'), 'session-input\n');
 fs.writeFileSync(path.join(groupDir, 'agent.txt'), 'agent-definition\n');
 fs.symlinkSync('/app/CLAUDE.md', path.join(groupDir, '.claude-shared.md'));
+const inboundPath = path.join(sessionDir, 'inbound.db');
+const outboundPath = path.join(sessionDir, 'outbound.db');
+ensureSchema(inboundPath, 'inbound');
+ensureSchema(outboundPath, 'outbound');
+const inbound = openInboundDb(inboundPath);
+inbound
+  .prepare(
+    `INSERT INTO destinations (name, display_name, type, channel_type, platform_id, agent_group_id)
+     VALUES ('e2e', 'E2E channel', 'channel', 'test', 'e2e-platform', NULL)`,
+  )
+  .run();
+insertTestMessage(inbound, 'vm-roundtrip-1', 'first message');
+inbound.close();
 const bootstrapFile = path.join(root, 'onecli-bootstrap');
 fs.writeFileSync(bootstrapFile, 'onecli-bootstrap\n');
+const roundtripScript = path.join(root, 'roundtrip.ts');
+fs.writeFileSync(
+  roundtripScript,
+  [
+    "import { runPollLoop } from '/app/src/poll-loop.ts';",
+    "import { MockProvider } from '/app/src/providers/mock.ts';",
+    'const provider = new MockProvider({}, () => \'<message to="e2e">area51-vm-roundtrip-ok</message>\');',
+    "await runPollLoop({ provider, providerName: 'mock', cwd: '/workspace/agent' });",
+  ].join('\n'),
+);
 
 const transport = buildIncusVmRuntimeTransport(
   [
     { source: sessionDir, path: '/workspace', readonly: false },
     { source: groupDir, path: '/workspace/agent', readonly: true },
     { source: bootstrapFile, path: '/run/area51/bootstrap.txt', readonly: true },
+    { source: roundtripScript, path: '/run/area51/roundtrip.ts', readonly: true },
   ],
   `vm-e2e-${suffix}`,
 );
@@ -77,7 +103,21 @@ try {
 
   const result = await guestScript();
   if (!result.includes('area51-vm-containment-ok')) throw new Error(`Guest did not report success: ${result}`);
-  console.log('Live Incus VM containment E2E passed.');
+  const runner = spawnIncusExec(plan, 'bun', ['run', '/run/area51/roundtrip.ts'], {}, { user: '1000', group: '1000' });
+  let runnerStderr = '';
+  runner.stderr?.on('data', (chunk) => (runnerStderr += chunk.toString()));
+  runner.on('error', (error) => {
+    runnerStderr += `\nspawn error: ${String(error)}`;
+  });
+
+  await waitForRoundTrips(1, () => runnerStderr);
+  const followupDb = openInboundDb(inboundPath);
+  insertTestMessage(followupDb, 'vm-roundtrip-2', 'warm follow-up');
+  followupDb.close();
+  syncIncusVmInbound(plan, sessionDir);
+  await waitForRoundTrips(2, () => runnerStderr);
+
+  console.log('Live Incus VM containment and two-message database round-trip E2E passed.');
 } catch (error) {
   primaryFailure = error;
   throw error;
@@ -85,6 +125,51 @@ try {
   relay?.close();
   cleanup(primaryFailure === undefined);
   fs.rmSync(root, { recursive: true, force: true });
+}
+
+function insertTestMessage(db: ReturnType<typeof openInboundDb>, id: string, content: string): void {
+  insertMessage(db, {
+    id,
+    kind: 'chat',
+    timestamp: new Date().toISOString(),
+    platformId: 'e2e-platform',
+    channelType: 'test',
+    threadId: 'e2e-thread',
+    content: JSON.stringify({ text: content, sender_name: 'E2E' }),
+    processAfter: null,
+    recurrence: null,
+  });
+}
+
+async function waitForRoundTrips(expected: number, runnerStderr: () => string): Promise<void> {
+  const deadline = Date.now() + 30_000;
+  let last = 'no snapshot';
+  while (Date.now() < deadline) {
+    try {
+      syncIncusVmOutbound(plan, sessionDir);
+      const out = openOutboundDb(outboundPath);
+      const messages = out.prepare('SELECT content FROM messages_out ORDER BY seq').all() as Array<{ content: string }>;
+      const completed = (
+        out.prepare("SELECT COUNT(*) AS count FROM processing_ack WHERE status = 'completed'").get() as {
+          count: number;
+        }
+      ).count;
+      out.close();
+      const texts = messages.map((row) => (JSON.parse(row.content) as { text?: string }).text);
+      last = `messages=${texts.length}, completed=${completed}, texts=${JSON.stringify(texts)}`;
+      if (
+        messages.length === expected &&
+        completed === expected &&
+        texts.every((text) => text === 'area51-vm-roundtrip-ok')
+      ) {
+        return;
+      }
+    } catch (error) {
+      last = error instanceof Error ? error.message : String(error);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+  throw new Error(`Timed out waiting for ${expected} VM round-trip(s): ${last}; runner stderr=${runnerStderr()}`);
 }
 
 function runIncus(argv: string[]): string {

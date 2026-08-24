@@ -220,6 +220,17 @@ the OneCLI relay through a default-reject ACL. The same combined path is
 exercised by the live containment test on a disposable KVM-capable host before
 VM changes can merge.
 
+Incus managed volumes are copy-based, so VM sessions do not mistake initial
+staging for a live shared filesystem. A root-only bridge in the baked image
+merges complete host-owned `inbound.db` snapshots into the live guest database
+and uses SQLite `VACUUM INTO` to export transactionally consistent guest-owned
+`outbound.db` snapshots. Host replicas are replaced atomically. The bridge
+copies the guest agent's actual heartbeat timestamp instead of generating its
+own, so bridge activity cannot mask a stuck agent. The agent still runs as uid
+1000 and cannot modify the root-owned staging directory or bridge code. Hosted
+KVM CI proves an initial message and a warm follow-up traverse the real poll
+loop and return through this boundary.
+
 ### Incus lifecycle and evidence retention
 
 Every live Incus instance is stamped with the installation and session IDs plus

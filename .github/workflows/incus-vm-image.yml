@@ -14,6 +14,7 @@ on:
       - src/incus-vm-disk.ts
       - src/incus-vm-network.ts
       - src/incus-vm-runtime.ts
+      - src/incus-vm-session-bridge.ts
       - src/container-runner.ts
 
 permissions:
