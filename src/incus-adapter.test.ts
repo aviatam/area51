@@ -548,11 +548,13 @@ describe('Incus adapter', () => {
 
   it('reuses existing VM networks, ACLs, volumes, and devices', () => {
     const executor = vi.fn((argv: string[]) => {
+      if (argv[0] === 'network' && argv[1] === 'acl' && argv[2] === 'rule' && argv[3] === 'add') {
+        throw new Error('Duplicate of egress rule 0');
+      }
       if (
         (argv[0] === 'project' && argv[1] === 'create') ||
         (argv[0] === 'network' && argv[1] === 'create') ||
         (argv[0] === 'network' && argv[1] === 'acl' && argv[2] === 'create') ||
-        (argv[0] === 'network' && argv[1] === 'acl' && argv[2] === 'rule' && argv[3] === 'add') ||
         (argv[0] === 'storage' && argv[1] === 'volume' && argv[2] === 'create') ||
         argv[0] === 'init' ||
         (argv[0] === 'config' && argv[1] === 'device' && argv[2] === 'add')
