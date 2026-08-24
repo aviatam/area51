@@ -92,6 +92,15 @@ describe('Incus runtime backend wiring (structural)', () => {
     expect(src).toContain("user: '1000'");
     expect(src).toContain("group: '1000'");
   });
+
+  it('routes VM sessions through managed disks and the default-reject OneCLI network', () => {
+    const src = fs.readFileSync(path.join(process.cwd(), 'src', 'container-runner.ts'), 'utf-8');
+    expect(src).not.toContain('Incus VM mode is blocked');
+    expect(src).toContain('buildIncusVmRuntimeTransport');
+    expect(src).toContain('vmNetwork: vmMode');
+    expect(src).toContain('vmDisks: vmTransport');
+    expect(src).toContain('vmFiles: vmTransport?.files');
+  });
 });
 
 describe('plugins read-only mount (structural)', () => {
