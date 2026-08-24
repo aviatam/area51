@@ -39,6 +39,13 @@ export interface IncusAdapterResult {
   commands: IncusCommandResult[];
 }
 
+interface IncusListEntry {
+  name?: unknown;
+  project?: unknown;
+  config?: unknown;
+  expanded_config?: unknown;
+}
+
 export function ensureIncusAvailable(options: IncusAdapterOptions = {}): IncusAdapterResult {
   return runCommands([['version']], options);
 }
@@ -273,6 +280,53 @@ export function stopIncusInstance(plan: IncusRuntimePlan, options: IncusAdapterO
   return runCommands([['stop', plan.instance, '--project', plan.project, '--force']], options);
 }
 
+/** Delete a normal runtime and its per-session VM volumes. Quarantine callers must not use this path. */
+export function deleteIncusRuntime(plan: IncusRuntimePlan, options: IncusAdapterOptions = {}): IncusAdapterResult {
+  validatePlan(plan);
+  return runCommands(
+    [
+      ['delete', plan.instance, '--force', '--project', plan.project],
+      ...(plan.vmDisks?.volumes.map((volume) => [
+        'storage',
+        'volume',
+        'delete',
+        plan.vmDisks!.pool,
+        volume.name,
+        '--project',
+        plan.project,
+      ]) ?? []),
+    ],
+    options,
+  );
+}
+
+/** Reap only resources stamped by this installation, preserving quarantined evidence. */
+export function cleanupIncusOrphans(installSlug: string, options: IncusAdapterOptions = {}): IncusAdapterResult {
+  if (!/^[a-zA-Z0-9][a-zA-Z0-9_.-]*$/.test(installSlug)) throw new Error(`Invalid Area51 install slug: ${installSlug}`);
+  const executor = options.executor ?? defaultExecutor;
+  const output = executor(['list', '--all-projects', '--format=json']);
+  const entries = parseIncusList(typeof output === 'string' ? output : '[]');
+  const commands: string[][] = [];
+  for (const entry of entries) {
+    const config = { ...(objectRecord(entry.config) ?? {}), ...(objectRecord(entry.expanded_config) ?? {}) };
+    if (
+      config['user.area51.install'] !== installSlug ||
+      'user.area51.quarantine_reason' in config ||
+      config['user.area51.quarantined'] === 'true'
+    ) {
+      continue;
+    }
+    if (typeof entry.name !== 'string' || typeof entry.project !== 'string') continue;
+    assertSafeName(entry.name, 'instance');
+    assertSafeName(entry.project, 'project');
+    commands.push(['delete', entry.name, '--force', '--project', entry.project]);
+    for (const volume of parseManagedVolumes(config['user.area51.vm_volumes'])) {
+      commands.push(['storage', 'volume', 'delete', volume.pool, volume.name, '--project', entry.project]);
+    }
+  }
+  return runCommands(commands, { ...options, executor });
+}
+
 function runCommands(commands: string[][], options: IncusAdapterOptions): IncusAdapterResult {
   const executor = options.executor ?? defaultExecutor;
   const results: IncusCommandResult[] = [];
@@ -296,12 +350,57 @@ function runCommands(commands: string[][], options: IncusAdapterOptions): IncusA
           results.push({ argv, ok: true, output: 'already running' });
           break;
         }
+        if (isAlreadyAbsent(argv, error)) {
+          results.push({ argv, ok: true, output: 'already absent' });
+          break;
+        }
         results.push({ argv, ok: false, error });
         throw new Error(`Incus command failed: incus ${argv.join(' ')}`, { cause: error });
       }
     }
   }
   return { commands: results };
+}
+
+function parseIncusList(value: string): IncusListEntry[] {
+  try {
+    const parsed: unknown = JSON.parse(value);
+    if (!Array.isArray(parsed)) throw new Error('expected an array');
+    return parsed.filter((entry): entry is IncusListEntry => Boolean(entry) && typeof entry === 'object');
+  } catch (error) {
+    throw new Error('Invalid Incus instance list response', { cause: error });
+  }
+}
+
+function objectRecord(value: unknown): Record<string, string> | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  return Object.fromEntries(
+    Object.entries(value).filter((entry): entry is [string, string] => typeof entry[1] === 'string'),
+  );
+}
+
+function parseManagedVolumes(value: string | undefined): Array<{ pool: string; name: string }> {
+  if (!value) return [];
+  try {
+    const parsed: unknown = JSON.parse(value);
+    if (!Array.isArray(parsed)) throw new Error('expected an array');
+    return parsed.flatMap((entry) => {
+      if (!entry || typeof entry !== 'object') throw new Error('expected a volume object');
+      const pool = (entry as { pool?: unknown }).pool;
+      const name = (entry as { name?: unknown }).name;
+      if (typeof pool !== 'string' || typeof name !== 'string') throw new Error('expected volume pool and name');
+      assertSafeName(pool, 'storage pool');
+      assertSafeName(name, 'volume');
+      return [{ pool, name }];
+    });
+  } catch (error) {
+    throw new Error('Invalid Area51 managed volume metadata', { cause: error });
+  }
+}
+
+function isAlreadyAbsent(argv: string[], error: unknown): boolean {
+  if (argv[0] !== 'delete' && !(argv[0] === 'storage' && argv[1] === 'volume' && argv[2] === 'delete')) return false;
+  return /not found|does not exist|doesn't exist/i.test(errorText(error));
 }
 
 function isVmAgentUnavailable(argv: string[], error: unknown): boolean {
