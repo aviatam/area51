@@ -5,10 +5,11 @@ import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 
-import { applyIncusRuntimePlan, spawnIncusExec } from '../src/incus-adapter.js';
+import { applyIncusRuntimePlan, deleteIncusRuntime, spawnIncusExec } from '../src/incus-adapter.js';
 import { ensureSchema, insertMessage, openInboundDb, openOutboundDb } from '../src/db/session-db.js';
 import { buildIncusRuntimePlan } from '../src/incus-runtime.js';
 import { buildIncusVmRuntimeTransport } from '../src/incus-vm-runtime.js';
+import { syncIncusVmProviderState } from '../src/incus-vm-provider-state.js';
 import { syncIncusVmInbound, syncIncusVmOutbound } from '../src/incus-vm-session-bridge.js';
 
 const suffix = (process.env.GITHUB_RUN_ID ?? String(Date.now())).replace(/[^0-9]/g, '').slice(-12);
@@ -21,8 +22,11 @@ const relayPort = 10255;
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'area51-vm-e2e-'));
 const sessionDir = path.join(root, 'session');
 const groupDir = path.join(root, 'group');
+const providerDir = path.join(root, '.claude-shared');
 fs.mkdirSync(sessionDir);
 fs.mkdirSync(groupDir);
+fs.mkdirSync(providerDir);
+fs.writeFileSync(path.join(providerDir, 'settings.json'), '{}\n');
 fs.writeFileSync(path.join(sessionDir, 'input.txt'), 'session-input\n');
 fs.writeFileSync(path.join(groupDir, 'agent.txt'), 'agent-definition\n');
 fs.symlinkSync('/app/CLAUDE.md', path.join(groupDir, '.claude-shared.md'));
@@ -51,38 +55,60 @@ fs.writeFileSync(
     "await runPollLoop({ provider, providerName: 'mock', cwd: '/workspace/agent' });",
   ].join('\n'),
 );
-
-const transport = buildIncusVmRuntimeTransport(
+const providerStateScript = path.join(root, 'provider-state.ts');
+fs.writeFileSync(
+  providerStateScript,
   [
-    { source: sessionDir, path: '/workspace', readonly: false },
-    { source: groupDir, path: '/workspace/agent', readonly: true },
-    { source: bootstrapFile, path: '/run/area51/bootstrap.txt', readonly: true },
-    { source: roundtripScript, path: '/run/area51/roundtrip.ts', readonly: true },
-  ],
-  `vm-e2e-${suffix}`,
+    "import fs from 'node:fs';",
+    "import { MEMORY_SESSION_HOOK } from '/app/src/memory/session-hook.ts';",
+    "import { ClaudeProvider } from '/app/src/providers/claude.ts';",
+    'new ClaudeProvider({}).registerMemorySessionHook(MEMORY_SESSION_HOOK);',
+    "const marker = '/home/node/.claude/restart-proof.txt';",
+    "if (process.argv[2] === 'write') fs.writeFileSync(marker, 'area51-provider-restart-ok\\n');",
+    "if (fs.readFileSync(marker, 'utf8').trim() !== 'area51-provider-restart-ok') throw new Error('provider marker missing');",
+    "const settings = JSON.parse(fs.readFileSync('/home/node/.claude/settings.json', 'utf8'));",
+    "if (!settings.hooks?.SessionStart?.length) throw new Error('Claude SessionStart hook missing');",
+    "console.log('area51-claude-provider-state-ok');",
+  ].join('\n'),
 );
+
+function makeTransport(name: string) {
+  return buildIncusVmRuntimeTransport(
+    [
+      { source: sessionDir, path: '/workspace', readonly: false },
+      { source: groupDir, path: '/workspace/agent', readonly: true },
+      { source: providerDir, path: '/home/node/.claude', readonly: false },
+      { source: bootstrapFile, path: '/run/area51/bootstrap.txt', readonly: true },
+      { source: roundtripScript, path: '/run/area51/roundtrip.ts', readonly: true },
+      { source: providerStateScript, path: '/run/area51/provider-state.ts', readonly: true },
+    ],
+    name,
+  );
+}
+const transport = makeTransport(`vm-e2e-${suffix}`);
 const network = `vme${suffix}`;
 const acl = `vm-acl-${suffix}`;
-const plan = buildIncusRuntimePlan({
-  agentGroupFolder: `vm-e2e-${suffix}`,
-  groupDir,
-  mounts: [],
-  instanceKind: 'vm',
-  instanceSuffix: suffix,
-  image: `local:${image}`,
-  vmNetwork: {
-    network,
-    acl,
-    ipv4Cidr: `${relayAddress}/24`,
-    oneCliAddress: relayAddress,
-    oneCliPort: relayPort,
-  },
-  vmDisks: {
-    pool,
-    volumes: transport.volumes,
-  },
-  vmFiles: transport.files,
-});
+function makePlan(instanceSuffix: string, runtimeTransport: typeof transport) {
+  return buildIncusRuntimePlan({
+    agentGroupFolder: `vm-e2e-${suffix}`,
+    groupDir,
+    mounts: [],
+    instanceKind: 'vm',
+    instanceSuffix,
+    image: `local:${image}`,
+    vmNetwork: {
+      network,
+      acl,
+      ipv4Cidr: `${relayAddress}/24`,
+      oneCliAddress: relayAddress,
+      oneCliPort: relayPort,
+    },
+    vmDisks: { pool, volumes: runtimeTransport.volumes },
+    vmFiles: runtimeTransport.files,
+  });
+}
+const plan = makePlan(suffix, transport);
+const runtimeResources = [{ plan, transport }];
 
 let relay: net.Server | undefined;
 let primaryFailure: unknown;
@@ -117,7 +143,26 @@ try {
   syncIncusVmInbound(plan, sessionDir);
   await waitForRoundTrips(2, () => runnerStderr);
 
-  console.log('Live Incus VM containment and two-message database round-trip E2E passed.');
+  const providerStart = await runGuest(plan, 'bun', ['run', '/run/area51/provider-state.ts', 'write']);
+  if (!providerStart.includes('area51-claude-provider-state-ok')) {
+    throw new Error(`Claude provider startup failed: ${providerStart}`);
+  }
+  if (!syncIncusVmProviderState(plan)) throw new Error('Claude provider state volume was not synchronized');
+  if (fs.readFileSync(path.join(providerDir, 'restart-proof.txt'), 'utf8').trim() !== 'area51-provider-restart-ok') {
+    throw new Error('Host provider-state snapshot is missing the restart marker');
+  }
+  deleteIncusRuntime(plan);
+
+  const restartTransport = makeTransport(`vm-e2e-${suffix}-restart`);
+  const restartPlan = makePlan(`${suffix}-r`, restartTransport);
+  runtimeResources.push({ plan: restartPlan, transport: restartTransport });
+  applyIncusRuntimePlan(restartPlan, { executor: runIncus });
+  const providerRestart = await runGuest(restartPlan, 'bun', ['run', '/run/area51/provider-state.ts', 'verify']);
+  if (!providerRestart.includes('area51-claude-provider-state-ok')) {
+    throw new Error(`Claude provider restart failed: ${providerRestart}`);
+  }
+
+  console.log('Live Incus VM containment, database round-trip, and Claude provider restart E2E passed.');
 } catch (error) {
   primaryFailure = error;
   throw error;
@@ -217,7 +262,11 @@ fi
 echo area51-vm-containment-ok
 `;
 
-  const child = spawnIncusExec(plan, 'bash', ['-lc', script], {}, { user: '1000', group: '1000' });
+  return runGuest(plan, 'bash', ['-lc', script]);
+}
+
+async function runGuest(runtimePlan: typeof plan, command: string, args: string[]): Promise<string> {
+  const child = spawnIncusExec(runtimePlan, command, args, { HOME: '/home/node' }, { user: '1000', group: '1000' });
   let stdout = '';
   let stderr = '';
   child.stdout?.on('data', (chunk) => (stdout += chunk.toString()));
@@ -232,8 +281,18 @@ echo area51-vm-containment-ok
 
 function cleanup(assertRemoved: boolean): void {
   const commands = [
-    ['delete', plan.instance, '--project', plan.project, '--force'],
-    ...transport.volumes.map((volume) => ['storage', 'volume', 'delete', pool, volume.name, '--project', plan.project]),
+    ...runtimeResources.flatMap(({ plan: runtimePlan, transport: runtimeTransport }) => [
+      ['delete', runtimePlan.instance, '--project', runtimePlan.project, '--force'],
+      ...runtimeTransport.volumes.map((volume) => [
+        'storage',
+        'volume',
+        'delete',
+        pool,
+        volume.name,
+        '--project',
+        runtimePlan.project,
+      ]),
+    ]),
     ['network', 'delete', network],
     ['network', 'acl', 'delete', acl],
     ['project', 'delete', plan.project],

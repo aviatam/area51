@@ -42,6 +42,7 @@ import { applyIncusRuntimePlan, deleteIncusRuntime, ensureIncusRuntimeReady, spa
 import { buildIncusRuntimePlan, type IncusRuntimePlan } from './incus-runtime.js';
 import { prepareIncusOneCliConfig } from './incus-onecli.js';
 import { buildIncusVmRuntimeTransport } from './incus-vm-runtime.js';
+import { syncIncusVmProviderState } from './incus-vm-provider-state.js';
 import { syncIncusVmInbound, syncIncusVmOutbound } from './incus-vm-session-bridge.js';
 import { enforceIncusPreflight } from './incus-quarantine-policy.js';
 import { scanAgentGate } from './agent-gate.js';
@@ -285,6 +286,11 @@ export function killContainer(sessionId: string, reason: string, onExit?: () => 
         } catch (error) {
           log.warn('Failed final Incus VM outbound synchronization', { sessionId, error });
         }
+        try {
+          syncIncusVmProviderState(entry.plan);
+        } catch (error) {
+          log.warn('Failed final Incus VM provider-state synchronization', { sessionId, error });
+        }
       }
       deleteIncusRuntime(entry.plan);
       entry.cleanupStarted = true;
@@ -462,6 +468,11 @@ async function spawnIncusAgent(args: {
         } catch (error) {
           log.warn('Failed final Incus VM outbound synchronization', { sessionId: session.id, error });
         }
+        try {
+          syncIncusVmProviderState(plan);
+        } catch (error) {
+          log.warn('Failed final Incus VM provider-state synchronization', { sessionId: session.id, error });
+        }
       }
       try {
         deleteIncusRuntime(plan);
@@ -492,10 +503,11 @@ async function spawnIncusAgent(args: {
 }
 
 export function hardenIncusMounts(mounts: VolumeMount[]): Array<{ source: string; path: string; readonly: boolean }> {
+  const writableManagedPaths = new Set(['/workspace', '/home/node/.claude']);
   return mounts.map((mount) => ({
     source: mount.hostPath,
     path: mount.containerPath,
-    readonly: mount.containerPath === '/workspace' ? mount.readonly : true,
+    readonly: writableManagedPaths.has(mount.containerPath) ? mount.readonly : true,
   }));
 }
 

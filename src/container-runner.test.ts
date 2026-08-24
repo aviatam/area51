@@ -72,16 +72,20 @@ describe('Incus runtime backend wiring (structural)', () => {
     expect(cfg).toContain("'docker'");
   });
 
-  it('keeps only the session workspace writable for Incus', () => {
+  it('keeps only session and provider state writable for Incus', () => {
     expect(
       hardenIncusMounts([
         { hostPath: '/srv/area51/session', containerPath: '/workspace', readonly: false },
         { hostPath: '/srv/area51/group', containerPath: '/workspace/agent', readonly: false },
+        { hostPath: '/srv/area51/claude', containerPath: '/home/node/.claude', readonly: false },
+        { hostPath: '/srv/area51/codex', containerPath: '/home/node/.codex', readonly: false },
         { hostPath: '/srv/area51/src', containerPath: '/app/src', readonly: true },
       ]),
     ).toEqual([
       { source: '/srv/area51/session', path: '/workspace', readonly: false },
       { source: '/srv/area51/group', path: '/workspace/agent', readonly: true },
+      { source: '/srv/area51/claude', path: '/home/node/.claude', readonly: false },
+      { source: '/srv/area51/codex', path: '/home/node/.codex', readonly: true },
       { source: '/srv/area51/src', path: '/app/src', readonly: true },
     ]);
   });
@@ -115,6 +119,8 @@ describe('Incus runtime backend wiring (structural)', () => {
     expect(src).toContain('syncIncusVmInbound(active.plan, active.sessionDir)');
     expect(src).toContain('syncIncusVmInbound(plan, hostSessionDir)');
     expect(src).toContain('syncIncusVmOutbound(plan, hostSessionDir)');
+    expect(src).toContain('syncIncusVmProviderState(entry.plan)');
+    expect(src).toContain('syncIncusVmProviderState(plan)');
     expect(src).toContain('INCUS_VM_DATABASE_SYNC_MS');
     expect(src.indexOf('syncIncusVmOutbound(entry.plan')).toBeLessThan(src.indexOf('deleteIncusRuntime(entry.plan)'));
   });
