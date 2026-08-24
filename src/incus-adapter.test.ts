@@ -413,7 +413,7 @@ describe('Incus adapter', () => {
       const executor = vi.fn((argv: string[]) => {
         if (argv[0] === 'file' && argv[1] === 'push' && unavailable) {
           unavailable = false;
-          throw new Error("VM agent isn't currently running");
+          throw new Error('Failed getting instance SFTP connection: Instance is not running');
         }
       });
       const plan = { ...vmPlan(), vmFiles: [{ source, path: '/run/area51/onecli-ca.pem', readonly: true as const }] };

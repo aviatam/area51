@@ -405,7 +405,7 @@ function isAlreadyAbsent(argv: string[], error: unknown): boolean {
 
 function isVmAgentUnavailable(argv: string[], error: unknown): boolean {
   if (argv[0] !== 'exec' && !(argv[0] === 'file' && argv[1] === 'push')) return false;
-  return /VM agent isn't currently running/i.test(errorText(error));
+  return /VM agent isn't currently running|Instance is not running/i.test(errorText(error));
 }
 
 function sleepSync(milliseconds: number): void {
