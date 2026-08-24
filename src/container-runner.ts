@@ -19,6 +19,7 @@ import {
   CONTAINER_PIDS_LIMIT,
   DATA_DIR,
   GROUPS_DIR,
+  INSTALL_SLUG,
   AREA51_INCUS_IMAGE,
   AREA51_INCUS_INSTANCE_KIND,
   AREA51_INCUS_STORAGE_POOL,
@@ -37,7 +38,7 @@ import { getContainerConfig } from './db/container-configs.js';
 import { updateContainerConfigScalars } from './db/container-configs.js';
 import { CONTAINER_RUNTIME_BIN, hostGatewayArgs, readonlyMountArgs, stopContainer } from './container-runtime.js';
 import { EGRESS_NETWORK, egressNetworkArgs, ensureEgressNetwork } from './egress-lockdown.js';
-import { applyIncusRuntimePlan, ensureIncusRuntimeReady, spawnIncusExec, stopIncusInstance } from './incus-adapter.js';
+import { applyIncusRuntimePlan, deleteIncusRuntime, ensureIncusRuntimeReady, spawnIncusExec } from './incus-adapter.js';
 import { buildIncusRuntimePlan, type IncusRuntimePlan } from './incus-runtime.js';
 import { prepareIncusOneCliConfig } from './incus-onecli.js';
 import { buildIncusVmRuntimeTransport } from './incus-vm-runtime.js';
@@ -257,7 +258,7 @@ export function killContainer(sessionId: string, reason: string, onExit?: () => 
   log.info('Killing container', { sessionId, reason, containerName: entry.containerName });
   try {
     if (entry.backend === 'incus') {
-      stopIncusInstance(entry.plan);
+      deleteIncusRuntime(entry.plan);
     } else {
       stopContainer(entry.containerName);
     }
@@ -323,6 +324,13 @@ async function spawnIncusAgent(args: {
       : undefined,
     vmDisks: vmTransport ? { pool: AREA51_INCUS_STORAGE_POOL, volumes: vmTransport.volumes } : undefined,
     vmFiles: vmTransport?.files,
+    metadata: {
+      'user.area51.install': INSTALL_SLUG,
+      'user.area51.session': session.id,
+      'user.area51.vm_volumes': JSON.stringify(
+        vmTransport?.volumes.map((volume) => ({ pool: AREA51_INCUS_STORAGE_POOL, name: volume.name })) ?? [],
+      ),
+    },
   });
 
   log.info('Spawning Incus agent runtime', {
@@ -333,12 +341,12 @@ async function spawnIncusAgent(args: {
   });
 
   fs.rmSync(heartbeatPath(agentGroup.id, session.id), { force: true });
-  applyIncusRuntimePlan(plan);
   try {
+    applyIncusRuntimePlan(plan);
     ensureIncusRuntimeReady(plan);
   } catch (error) {
     try {
-      stopIncusInstance(plan);
+      deleteIncusRuntime(plan);
     } catch {
       // Preserve the readiness failure as the actionable root cause.
     }
@@ -346,14 +354,20 @@ async function spawnIncusAgent(args: {
       cause: error,
     });
   }
-  const gateReport = await scanAgentGate({
-    groupDir: path.resolve(GROUPS_DIR, agentGroup.folder),
-    // Agent Gate needs proof that the provider credential route exists, not
-    // the real secret. The successful OneCLI config fetch above is that proof.
-    env: { ANTHROPIC_API_KEY: 'onecli-managed' },
-    quarantine: true,
-  });
-  const preflight = enforceIncusPreflight(gateReport, plan);
+  let preflight;
+  try {
+    const gateReport = await scanAgentGate({
+      groupDir: path.resolve(GROUPS_DIR, agentGroup.folder),
+      // Agent Gate needs proof that the provider credential route exists, not
+      // the real secret. The successful OneCLI config fetch above is that proof.
+      env: { ANTHROPIC_API_KEY: 'onecli-managed' },
+      quarantine: true,
+    });
+    preflight = enforceIncusPreflight(gateReport, plan);
+  } catch (error) {
+    deleteIncusRuntime(plan);
+    throw error;
+  }
   if (preflight.decision.action === 'quarantine') {
     throw new Error(
       `Agent Gate quarantined ${plan.project}/${plan.instance}: ${preflight.decision.reasons.join('; ')}`,
@@ -389,6 +403,11 @@ async function spawnIncusAgent(args: {
     activeContainers.delete(session.id);
     markContainerStopped(session.id);
     stopTypingRefresh(session.id);
+    try {
+      deleteIncusRuntime(plan);
+    } catch (error) {
+      log.warn('Failed to delete exited Incus runtime', { sessionId: session.id, instance: plan.instance, error });
+    }
     if (code !== 0 && code !== null && stderrTail.length > 0) {
       log.warn('Incus agent runtime exited non-zero', { sessionId: session.id, code, containerName, stderrTail });
     } else {
@@ -399,6 +418,11 @@ async function spawnIncusAgent(args: {
     activeContainers.delete(session.id);
     markContainerStopped(session.id);
     stopTypingRefresh(session.id);
+    try {
+      deleteIncusRuntime(plan);
+    } catch (error) {
+      log.warn('Failed to delete failed Incus runtime', { sessionId: session.id, instance: plan.instance, error });
+    }
     log.error('Incus agent runtime spawn error', { sessionId: session.id, err });
   });
 }
