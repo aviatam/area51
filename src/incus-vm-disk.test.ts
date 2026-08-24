@@ -102,16 +102,7 @@ describe('Incus VM managed disk contract', () => {
     const plan = buildIncusVmDiskPlan(options);
 
     expect(plan.initializeCommands).toEqual([
-      [
-        'exec',
-        'area51-maximum-session-agent',
-        '--project',
-        'area51-maximum',
-        '--',
-        'chown',
-        '1000:1000',
-        '/workspace',
-      ],
+      ['exec', 'area51-maximum-session-agent', '--project', 'area51-maximum', '--', 'chown', '1000:1000', '/workspace'],
       ['exec', 'area51-maximum-session-agent', '--project', 'area51-maximum', '--', 'chmod', '0700', '/workspace'],
     ]);
   });
