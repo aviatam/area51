@@ -21,6 +21,12 @@ import {
   GROUPS_DIR,
   AREA51_INCUS_IMAGE,
   AREA51_INCUS_INSTANCE_KIND,
+  AREA51_INCUS_STORAGE_POOL,
+  AREA51_INCUS_VM_ACL,
+  AREA51_INCUS_VM_IPV4_CIDR,
+  AREA51_INCUS_VM_NETWORK,
+  AREA51_INCUS_VM_ONECLI_ADDRESS,
+  AREA51_INCUS_VM_ONECLI_PORT,
   AREA51_RUNTIME_BACKEND,
   ONECLI_API_KEY,
   ONECLI_URL,
@@ -34,6 +40,7 @@ import { EGRESS_NETWORK, egressNetworkArgs, ensureEgressNetwork } from './egress
 import { applyIncusRuntimePlan, ensureIncusRuntimeReady, spawnIncusExec, stopIncusInstance } from './incus-adapter.js';
 import { buildIncusRuntimePlan, type IncusRuntimePlan } from './incus-runtime.js';
 import { prepareIncusOneCliConfig } from './incus-onecli.js';
+import { buildIncusVmRuntimeTransport } from './incus-vm-runtime.js';
 import { enforceIncusPreflight } from './incus-quarantine-policy.js';
 import { scanAgentGate } from './agent-gate.js';
 import { composeGroupClaudeMd } from './claude-md-compose.js';
@@ -269,11 +276,7 @@ async function spawnIncusAgent(args: {
   timezone: string;
 }): Promise<void> {
   const { session, agentGroup, mounts, providerContribution, containerName, agentIdentifier, timezone } = args;
-  if (AREA51_INCUS_INSTANCE_KIND === 'vm') {
-    throw new Error(
-      'Incus VM mode is blocked until the OneCLI-only NIC/ACL path is configured; refusing open VM egress',
-    );
-  }
+  const vmMode = AREA51_INCUS_INSTANCE_KIND === 'vm';
   let gatewayEnv: Record<string, string> = {};
   let securedMounts = mounts;
   if (agentIdentifier) {
@@ -282,6 +285,8 @@ async function spawnIncusAgent(args: {
     const prepared = prepareIncusOneCliConfig(
       gatewayConfig,
       path.join(DATA_DIR, 'incus-onecli', agentGroup.id, session.id),
+      vmMode ? AREA51_INCUS_VM_ONECLI_ADDRESS : '127.0.0.1',
+      AREA51_INCUS_VM_ONECLI_PORT,
     );
     gatewayEnv = prepared.env;
     securedMounts = [...mounts, ...prepared.mounts];
@@ -289,6 +294,10 @@ async function spawnIncusAgent(args: {
     throw new Error('Incus runtime requires a OneCLI agent identity; refusing credential-less open egress');
   }
 
+  const hardenedMounts = hardenIncusMounts(securedMounts);
+  const vmTransport = vmMode
+    ? buildIncusVmRuntimeTransport(hardenedMounts, `${agentGroup.folder}-${session.id}`)
+    : undefined;
   const plan = buildIncusRuntimePlan({
     agentGroupFolder: agentGroup.folder,
     groupDir: path.resolve(GROUPS_DIR, agentGroup.folder),
@@ -296,8 +305,24 @@ async function spawnIncusAgent(args: {
     instanceKind: AREA51_INCUS_INSTANCE_KIND,
     instanceSuffix: session.id,
     image: AREA51_INCUS_IMAGE,
-    mounts: hardenIncusMounts(securedMounts),
-    gatewayProxy: { listen: 'tcp:127.0.0.1:10255', connect: 'tcp:127.0.0.1:10255' },
+    mounts: vmMode ? [] : hardenedMounts,
+    gatewayProxy: vmMode
+      ? undefined
+      : {
+          listen: `tcp:127.0.0.1:${AREA51_INCUS_VM_ONECLI_PORT}`,
+          connect: `tcp:127.0.0.1:${AREA51_INCUS_VM_ONECLI_PORT}`,
+        },
+    vmNetwork: vmMode
+      ? {
+          network: AREA51_INCUS_VM_NETWORK,
+          acl: AREA51_INCUS_VM_ACL,
+          ipv4Cidr: AREA51_INCUS_VM_IPV4_CIDR,
+          oneCliAddress: AREA51_INCUS_VM_ONECLI_ADDRESS,
+          oneCliPort: AREA51_INCUS_VM_ONECLI_PORT,
+        }
+      : undefined,
+    vmDisks: vmTransport ? { pool: AREA51_INCUS_STORAGE_POOL, volumes: vmTransport.volumes } : undefined,
+    vmFiles: vmTransport?.files,
   });
 
   log.info('Spawning Incus agent runtime', {
