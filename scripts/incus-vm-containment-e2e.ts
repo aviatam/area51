@@ -59,6 +59,7 @@ const plan = buildIncusRuntimePlan({
 });
 
 let relay: net.Server | undefined;
+let primaryFailure: unknown;
 try {
   process.env.AREA51_INCUS_STORAGE_POOL = pool;
   applyIncusRuntimePlan(plan, {
@@ -77,9 +78,12 @@ try {
   const result = await guestScript();
   if (!result.includes('area51-vm-containment-ok')) throw new Error(`Guest did not report success: ${result}`);
   console.log('Live Incus VM containment E2E passed.');
+} catch (error) {
+  primaryFailure = error;
+  throw error;
 } finally {
   relay?.close();
-  cleanup();
+  cleanup(primaryFailure === undefined);
   fs.rmSync(root, { recursive: true, force: true });
 }
 
@@ -141,7 +145,7 @@ echo area51-vm-containment-ok
   });
 }
 
-function cleanup(): void {
+function cleanup(assertRemoved: boolean): void {
   const commands = [
     ['delete', plan.instance, '--project', plan.project, '--force'],
     ...transport.volumes.map((volume) => ['storage', 'volume', 'delete', pool, volume.name, '--project', plan.project]),
@@ -152,13 +156,14 @@ function cleanup(): void {
   for (const argv of commands) {
     try {
       execFileSync('incus', argv, { stdio: 'ignore', timeout: 60_000 });
-    } catch {
-      // Continue so a partial setup cannot prevent later cleanup steps.
+    } catch (error) {
+      console.warn(`VM containment cleanup command failed: incus ${argv.join(' ')}`, error);
     }
   }
   try {
     execFileSync('incus', ['project', 'show', plan.project], { stdio: 'ignore', timeout: 30_000 });
-    throw new Error(`VM containment cleanup left project ${plan.project}`);
+    if (assertRemoved) throw new Error(`VM containment cleanup left project ${plan.project}`);
+    console.warn(`VM containment cleanup left project ${plan.project} after the primary failure`);
   } catch (error) {
     if (error instanceof Error && error.message.startsWith('VM containment cleanup left project')) throw error;
   }
