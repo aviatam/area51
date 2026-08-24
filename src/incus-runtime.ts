@@ -16,6 +16,13 @@ export interface IncusRuntimePlanOptions {
   gatewayProxy?: { listen: string; connect: string };
   vmNetwork?: Omit<IncusVmNetworkOptions, 'project' | 'instance'>;
   vmDisks?: Omit<IncusVmDiskOptions, 'project' | 'instance'>;
+  vmFiles?: IncusVmFile[];
+}
+
+export interface IncusVmFile {
+  source: string;
+  path: string;
+  readonly: true;
 }
 
 export interface IncusRuntimePlan {
@@ -29,6 +36,7 @@ export interface IncusRuntimePlan {
   gatewayProxy?: { listen: string; connect: string };
   vmNetwork?: IncusVmNetworkOptions;
   vmDisks?: IncusVmDiskOptions;
+  vmFiles?: IncusVmFile[];
   commands: {
     createProject: string[];
     createProfiles: string[];
@@ -80,6 +88,7 @@ export function buildIncusRuntimePlan(options: IncusRuntimePlanOptions): IncusRu
     gatewayProxy: options.gatewayProxy,
     vmNetwork: options.vmNetwork ? { ...options.vmNetwork, project, instance } : undefined,
     vmDisks: options.vmDisks ? { ...options.vmDisks, project, instance } : undefined,
+    vmFiles: options.vmFiles,
     commands: {
       createProject: [
         `incus project create ${project}`,

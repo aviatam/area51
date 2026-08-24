@@ -46,13 +46,23 @@ export function ensureIncusAvailable(options: IncusAdapterOptions = {}): IncusAd
 /** Verify that the guest can execute the Area51 agent runner. */
 export function ensureIncusRuntimeReady(plan: IncusRuntimePlan, options: IncusAdapterOptions = {}): IncusAdapterResult {
   validatePlan(plan);
-  return runCommands(
-    [
-      ['exec', plan.instance, '--project', plan.project, '--', 'test', '-x', '/usr/local/bin/bun'],
-      ['exec', plan.instance, '--project', plan.project, '--', 'test', '-d', '/app/node_modules'],
-    ],
-    options,
-  );
+  const commands = [
+    ['exec', plan.instance, '--project', plan.project, '--', 'test', '-x', '/usr/local/bin/bun'],
+    ['exec', plan.instance, '--project', plan.project, '--', 'test', '-d', '/app/node_modules'],
+  ];
+  if (plan.vmNetwork) {
+    commands.push([
+      'exec',
+      plan.instance,
+      '--project',
+      plan.project,
+      '--',
+      'bash',
+      '-lc',
+      `exec 3<>/dev/tcp/${plan.vmNetwork.oneCliAddress}/${plan.vmNetwork.oneCliPort}`,
+    ]);
+  }
+  return runCommands(commands, options);
 }
 
 export function applyIncusRuntimePlan(plan: IncusRuntimePlan, options: IncusAdapterOptions = {}): IncusAdapterResult {
@@ -180,6 +190,26 @@ export function applyIncusRuntimePlan(plan: IncusRuntimePlan, options: IncusAdap
     ]);
   }
   commands.push(['start', plan.instance, '--project', plan.project]);
+  if (plan.vmFiles) {
+    for (const file of plan.vmFiles) {
+      commands.push([
+        'file',
+        'push',
+        '--create-dirs',
+        '--no-dereference',
+        '--uid',
+        '0',
+        '--gid',
+        '0',
+        '--mode',
+        '0444',
+        file.source,
+        `${plan.instance}${file.path}`,
+        '--project',
+        plan.project,
+      ]);
+    }
+  }
   if (vmDisks) commands.push(...vmDisks.initializeCommands);
 
   return runCommands(commands, options);
@@ -275,7 +305,7 @@ function runCommands(commands: string[][], options: IncusAdapterOptions): IncusA
 }
 
 function isVmAgentUnavailable(argv: string[], error: unknown): boolean {
-  if (argv[0] !== 'exec') return false;
+  if (argv[0] !== 'exec' && !(argv[0] === 'file' && argv[1] === 'push')) return false;
   return /VM agent isn't currently running/i.test(errorText(error));
 }
 
@@ -314,11 +344,24 @@ function validateVmBoundary(plan: IncusRuntimePlan): void {
   }
   if (!plan.vmNetwork) throw new Error('Incus VM plan requires a deny-by-default managed network');
   if (!plan.vmDisks) throw new Error('Incus VM plan requires managed disk transport');
+  for (const file of plan.vmFiles ?? []) {
+    validateVmFile(file.source, file.path);
+  }
   if (plan.vmNetwork.project !== plan.project || plan.vmNetwork.instance !== plan.instance) {
     throw new Error('Incus VM network scope must match its runtime plan');
   }
   if (plan.vmDisks.project !== plan.project || plan.vmDisks.instance !== plan.instance) {
     throw new Error('Incus VM disk scope must match its runtime plan');
+  }
+}
+
+function validateVmFile(source: string, target: string): void {
+  if (!path.isAbsolute(source) || !fs.existsSync(source) || !fs.lstatSync(source).isFile()) {
+    throw new Error(`Incus VM bootstrap source must be an existing regular file: ${source}`);
+  }
+  const normalized = path.posix.normalize(target.replace(/\\/g, '/'));
+  if (!normalized.startsWith('/') || normalized === '/' || target.split('/').includes('..')) {
+    throw new Error(`Dangerous Incus VM bootstrap target: ${target}`);
   }
 }
 
@@ -363,6 +406,7 @@ function isAlreadyExists(argv: string[], error: unknown): boolean {
   if ((argv[0] === 'project' || argv[0] === 'profile') && argv[1] === 'create') return true;
   if (argv[0] === 'network' && argv[1] === 'create') return true;
   if (argv[0] === 'network' && argv[1] === 'acl' && argv[2] === 'create') return true;
+  if (argv[0] === 'network' && argv[1] === 'acl' && argv[2] === 'rule' && argv[3] === 'add') return true;
   if (argv[0] === 'storage' && argv[1] === 'volume' && argv[2] === 'create') return true;
   if (argv[0] === 'profile' && argv[1] === 'device' && argv[2] === 'add') return true;
   if (argv[0] === 'init') return true;

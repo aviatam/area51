@@ -98,6 +98,19 @@ describe('Incus VM managed disk contract', () => {
     }
   });
 
+  it.runIf(process.platform !== 'win32')('preserves baked-runtime symlinks without following them on the host', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'area51-vm-disk-safe-link-'));
+    try {
+      const link = path.join(root, '.claude-shared.md');
+      fs.symlinkSync('/app/CLAUDE.md', link);
+      const plan = buildIncusVmDiskPlan({ ...options, volumes: [{ ...options.volumes[0], source: root }] });
+
+      expect(plan.prepareCommands).toContainEqual(expect.arrayContaining(['--no-dereference', link]));
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it('initializes writable mount ownership inside the running guest', () => {
     const plan = buildIncusVmDiskPlan(options);
 

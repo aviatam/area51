@@ -246,6 +246,23 @@ describe('Incus adapter', () => {
     expect(executor).toHaveBeenCalledWith(expect.arrayContaining(['test', '-d', '/app/node_modules']));
   });
 
+  it('requires the VM to reach only its configured OneCLI relay before execution', () => {
+    const executor = vi.fn();
+
+    ensureIncusRuntimeReady(vmPlan(), { executor });
+
+    expect(executor).toHaveBeenCalledWith([
+      'exec',
+      'area51-readiness-agent',
+      '--project',
+      'area51-readiness-vm',
+      '--',
+      'bash',
+      '-lc',
+      'exec 3<>/dev/tcp/10.52.0.1/10255',
+    ]);
+  });
+
   it('adds only a loopback-bound OneCLI proxy relay', () => {
     const executor = vi.fn();
     const plan = buildIncusRuntimePlan({
@@ -385,6 +402,44 @@ describe('Incus adapter', () => {
     expect(executor.mock.calls.filter(([argv]) => (argv as string[])[0] === 'exec')).toHaveLength(4);
   });
 
+  it('pushes immutable VM bootstrap files after boot as root-owned read-only files', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'area51-vm-bootstrap-'));
+    try {
+      const source = path.join(root, 'onecli-ca.pem');
+      fs.writeFileSync(source, 'certificate');
+      let unavailable = true;
+      const executor = vi.fn((argv: string[]) => {
+        if (argv[0] === 'file' && argv[1] === 'push' && unavailable) {
+          unavailable = false;
+          throw new Error("VM agent isn't currently running");
+        }
+      });
+      const plan = { ...vmPlan(), vmFiles: [{ source, path: '/run/area51/onecli-ca.pem', readonly: true as const }] };
+
+      applyIncusRuntimePlan(plan, { executor, vmAgentRetryAttempts: 2, vmAgentRetryDelayMs: 0 });
+
+      expect(executor).toHaveBeenCalledWith([
+        'file',
+        'push',
+        '--create-dirs',
+        '--no-dereference',
+        '--uid',
+        '0',
+        '--gid',
+        '0',
+        '--mode',
+        '0444',
+        source,
+        `${plan.instance}/run/area51/onecli-ca.pem`,
+        '--project',
+        plan.project,
+      ]);
+      expect(executor.mock.calls.filter(([argv]) => argv[0] === 'file' && argv[1] === 'push')).toHaveLength(2);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it('fails closed when the VM agent never becomes ready', () => {
     const executor = vi.fn((argv: string[]) => {
       if (argv[0] === 'exec') throw new Error("VM agent isn't currently running");
@@ -402,6 +457,7 @@ describe('Incus adapter', () => {
         (argv[0] === 'project' && argv[1] === 'create') ||
         (argv[0] === 'network' && argv[1] === 'create') ||
         (argv[0] === 'network' && argv[1] === 'acl' && argv[2] === 'create') ||
+        (argv[0] === 'network' && argv[1] === 'acl' && argv[2] === 'rule' && argv[3] === 'add') ||
         (argv[0] === 'storage' && argv[1] === 'volume' && argv[2] === 'create') ||
         argv[0] === 'init' ||
         (argv[0] === 'config' && argv[1] === 'device' && argv[2] === 'add')
@@ -438,7 +494,7 @@ describe('Incus adapter', () => {
     const result = applyIncusRuntimePlan(plan, { executor });
 
     expect(result.commands.every((command) => command.ok)).toBe(true);
-    expect(result.commands.filter((command) => command.output === 'already exists')).toHaveLength(7);
+    expect(result.commands.filter((command) => command.output === 'already exists')).toHaveLength(8);
   });
 
   it('preserves mount paths as argv values instead of interpolating shell strings', () => {

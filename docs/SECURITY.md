@@ -198,23 +198,27 @@ runner and fails closed before building if `/dev/kvm` is unavailable.
 ### Incus credential and egress boundary
 
 Incus sessions fetch their per-agent OneCLI configuration before the guest is
-started. CA material and credential stubs are written mode `0600` and mounted
-read-only. Docker-only `host.docker.internal` proxy URLs are replaced by a
-guest-loopback endpoint. An Incus proxy device exposes only that loopback port
-and relays it to the host-loopback OneCLI gateway; the agent receives no NIC.
+started. CA material and credential stubs are written mode `0600`. Containers
+mount them read-only and replace Docker-only `host.docker.internal` proxy URLs
+with a guest-loopback endpoint. An Incus proxy device exposes only that
+loopback port and relays it to the host-loopback OneCLI gateway; the container
+receives no NIC. VMs receive those non-secret bootstrap files as root-owned,
+mode-`0444` files after boot and point proxy traffic at the private bridge.
 
-If OneCLI configuration cannot be fetched, the Incus spawn fails closed. Incus
-VM mode is also blocked for now: a VM requires a NIC and audited ACL rules, and
-Area51 will not silently attach the default internet-enabled network.
+If OneCLI configuration cannot be fetched, the Incus spawn fails closed. VM
+mode requires a NIC and audited ACL rules; Area51 never silently attaches the
+default internet-enabled network. The host-side OneCLI relay must listen on the
+configured private bridge address and port.
 The Incus adapter independently rejects container-style writable host-path
-mounts and loopback proxy devices for VM plans, so callers cannot bypass the
-top-level runtime guard. VM enablement requires both a dedicated disk transport
-and a dedicated NIC whose unmatched ingress and egress are rejected.
+mounts and loopback proxy devices for VM plans. Live startup translates
+directory mounts into Incus-managed volumes, uses the baked `/app` runtime, and
+rejects writable file mounts or incompatible read-only overrides.
 VM adapter plans now require both contracts together and isolate them in a
 separate `area51-<group>-vm` project. They stage data through Incus-managed
 filesystem volumes, disable NAT, IPv6, and DNS on the VM bridge, and permit only
-the OneCLI relay through a default-reject ACL. The runner-level VM block remains
-until this combined path passes a live test on a disposable KVM-capable host.
+the OneCLI relay through a default-reject ACL. The same combined path is
+exercised by the live containment test on a disposable KVM-capable host before
+VM changes can merge.
 
 Writable session mounts use a narrow Incus ID map from the unprivileged host
 UID/GID to guest UID/GID 1000 rather than making the host directory

@@ -13,6 +13,8 @@ on:
       - src/incus-runtime.ts
       - src/incus-vm-disk.ts
       - src/incus-vm-network.ts
+      - src/incus-vm-runtime.ts
+      - src/container-runner.ts
 
 permissions:
   contents: read
