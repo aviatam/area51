@@ -284,6 +284,8 @@ The Incus backend is Linux-production oriented. Docker remains the recommended l
 
 Normal Incus exits delete the per-session instance and managed VM volumes. Each runtime is stamped with an installation identifier so startup can reap only that installation's crash orphans. Quarantined instances and their volumes are intentionally preserved for evidence and require an explicit operator decision before removal.
 
+VM managed volumes are intentionally treated as copy-based transport, not as live host mounts. Area51 periodically imports the host-owned inbound database into the guest and atomically exports a consistent guest-owned outbound snapshot. The hosted KVM gate verifies both a cold message and a warm follow-up through the baked agent poll loop before VM runtime changes can merge.
+
 ## Requirements
 
 - macOS or Linux, with Windows via WSL2

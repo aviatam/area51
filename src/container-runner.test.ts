@@ -110,6 +110,15 @@ describe('Incus runtime backend wiring (structural)', () => {
     expect(src).toContain('deleteIncusRuntime(plan)');
   });
 
+  it('synchronizes copy-based VM databases on warm wakes, while running, and before cleanup', () => {
+    const src = fs.readFileSync(path.join(process.cwd(), 'src', 'container-runner.ts'), 'utf-8');
+    expect(src).toContain('syncIncusVmInbound(active.plan, active.sessionDir)');
+    expect(src).toContain('syncIncusVmInbound(plan, hostSessionDir)');
+    expect(src).toContain('syncIncusVmOutbound(plan, hostSessionDir)');
+    expect(src).toContain('INCUS_VM_DATABASE_SYNC_MS');
+    expect(src.indexOf('syncIncusVmOutbound(entry.plan')).toBeLessThan(src.indexOf('deleteIncusRuntime(entry.plan)'));
+  });
+
   it('selects Incus recovery without requiring Docker at startup', () => {
     const src = fs.readFileSync(path.join(process.cwd(), 'src', 'index.ts'), 'utf-8');
     expect(src).toContain("AREA51_RUNTIME_BACKEND === 'incus'");

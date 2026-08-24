@@ -42,6 +42,7 @@ import { applyIncusRuntimePlan, deleteIncusRuntime, ensureIncusRuntimeReady, spa
 import { buildIncusRuntimePlan, type IncusRuntimePlan } from './incus-runtime.js';
 import { prepareIncusOneCliConfig } from './incus-onecli.js';
 import { buildIncusVmRuntimeTransport } from './incus-vm-runtime.js';
+import { syncIncusVmInbound, syncIncusVmOutbound } from './incus-vm-session-bridge.js';
 import { enforceIncusPreflight } from './incus-quarantine-policy.js';
 import { scanAgentGate } from './agent-gate.js';
 import { composeGroupClaudeMd } from './claude-md-compose.js';
@@ -75,8 +76,18 @@ const onecli = new OneCLI({ url: ONECLI_URL, apiKey: ONECLI_API_KEY });
 const activeContainers = new Map<
   string,
   | { process: ChildProcess; containerName: string; backend: 'docker' }
-  | { process: ChildProcess; containerName: string; backend: 'incus'; plan: IncusRuntimePlan }
+  | {
+      process: ChildProcess;
+      containerName: string;
+      backend: 'incus';
+      plan: IncusRuntimePlan;
+      sessionDir: string;
+      syncTimer: ReturnType<typeof setInterval>;
+      cleanupStarted: boolean;
+    }
 >();
+
+const INCUS_VM_DATABASE_SYNC_MS = 1_000;
 
 /**
  * In-flight wake promises, keyed by session id. Deduplicates concurrent
@@ -109,8 +120,17 @@ export function isContainerRunning(sessionId: string): boolean {
  * can branch on the boolean.
  */
 export function wakeContainer(session: Session): Promise<boolean> {
-  if (activeContainers.has(session.id)) {
+  const active = activeContainers.get(session.id);
+  if (active) {
     log.debug('Container already running', { sessionId: session.id });
+    if (active.backend === 'incus' && active.plan.instanceKind === 'vm') {
+      try {
+        syncIncusVmInbound(active.plan, active.sessionDir);
+      } catch (err) {
+        log.warn('Failed to synchronize inbound database to running Incus VM', { sessionId: session.id, err });
+        return Promise.resolve(false);
+      }
+    }
     return Promise.resolve(true);
   }
   const existing = wakePromises.get(session.id);
@@ -258,7 +278,16 @@ export function killContainer(sessionId: string, reason: string, onExit?: () => 
   log.info('Killing container', { sessionId, reason, containerName: entry.containerName });
   try {
     if (entry.backend === 'incus') {
+      clearInterval(entry.syncTimer);
+      if (entry.plan.instanceKind === 'vm') {
+        try {
+          syncIncusVmOutbound(entry.plan, entry.sessionDir);
+        } catch (error) {
+          log.warn('Failed final Incus VM outbound synchronization', { sessionId, error });
+        }
+      }
       deleteIncusRuntime(entry.plan);
+      entry.cleanupStarted = true;
     } else {
       stopContainer(entry.containerName);
     }
@@ -382,11 +411,33 @@ async function spawnIncusAgent(args: {
     // cannot accidentally restore host.docker.internal or bypass the relay.
     ...gatewayEnv,
   };
+  const hostSessionDir = sessionDir(agentGroup.id, session.id);
+  if (vmMode) syncIncusVmInbound(plan, hostSessionDir);
   const container = spawnIncusExec(plan, 'bash', ['-lc', 'exec bun run /app/src/index.ts'], env, {
     user: '1000',
     group: '1000',
   });
-  activeContainers.set(session.id, { process: container, containerName, backend: 'incus', plan });
+  const activeEntry = {
+    process: container,
+    containerName,
+    backend: 'incus' as const,
+    plan,
+    sessionDir: hostSessionDir,
+    syncTimer: undefined as unknown as ReturnType<typeof setInterval>,
+    cleanupStarted: false,
+  };
+  activeEntry.syncTimer = setInterval(() => {
+    try {
+      syncIncusVmInbound(plan, hostSessionDir);
+      syncIncusVmOutbound(plan, hostSessionDir);
+    } catch (error) {
+      // Do not fabricate liveness on failure. The host heartbeat is touched
+      // only after a successful snapshot, so host-sweep remains fail-closed.
+      log.warn('Failed periodic Incus VM database synchronization', { sessionId: session.id, error });
+    }
+  }, INCUS_VM_DATABASE_SYNC_MS);
+  activeEntry.syncTimer.unref();
+  activeContainers.set(session.id, activeEntry);
   markContainerRunning(session.id);
 
   const stderrTail: string[] = [];
@@ -400,13 +451,23 @@ async function spawnIncusAgent(args: {
   });
   container.stdout?.on('data', () => {});
   container.on('close', (code) => {
+    clearInterval(activeEntry.syncTimer);
     activeContainers.delete(session.id);
     markContainerStopped(session.id);
     stopTypingRefresh(session.id);
-    try {
-      deleteIncusRuntime(plan);
-    } catch (error) {
-      log.warn('Failed to delete exited Incus runtime', { sessionId: session.id, instance: plan.instance, error });
+    if (!activeEntry.cleanupStarted) {
+      if (vmMode) {
+        try {
+          syncIncusVmOutbound(plan, hostSessionDir);
+        } catch (error) {
+          log.warn('Failed final Incus VM outbound synchronization', { sessionId: session.id, error });
+        }
+      }
+      try {
+        deleteIncusRuntime(plan);
+      } catch (error) {
+        log.warn('Failed to delete exited Incus runtime', { sessionId: session.id, instance: plan.instance, error });
+      }
     }
     if (code !== 0 && code !== null && stderrTail.length > 0) {
       log.warn('Incus agent runtime exited non-zero', { sessionId: session.id, code, containerName, stderrTail });
@@ -415,13 +476,16 @@ async function spawnIncusAgent(args: {
     }
   });
   container.on('error', (err) => {
+    clearInterval(activeEntry.syncTimer);
     activeContainers.delete(session.id);
     markContainerStopped(session.id);
     stopTypingRefresh(session.id);
-    try {
-      deleteIncusRuntime(plan);
-    } catch (error) {
-      log.warn('Failed to delete failed Incus runtime', { sessionId: session.id, instance: plan.instance, error });
+    if (!activeEntry.cleanupStarted) {
+      try {
+        deleteIncusRuntime(plan);
+      } catch (error) {
+        log.warn('Failed to delete failed Incus runtime', { sessionId: session.id, instance: plan.instance, error });
+      }
     }
     log.error('Incus agent runtime spawn error', { sessionId: session.id, err });
   });

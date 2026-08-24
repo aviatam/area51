@@ -61,6 +61,10 @@ describe('Incus VM image builder', () => {
     expect(containment).toContain('spawnIncusExec(plan');
     expect(containment).toContain('non-relay internet egress succeeded');
     expect(containment).toContain('host control path visible');
+    expect(containment).toContain('syncIncusVmInbound(plan, sessionDir)');
+    expect(containment).toContain('syncIncusVmOutbound(plan, sessionDir)');
+    expect(containment).toContain('area51-vm-roundtrip-ok');
+    expect(containment).toContain("'vm-roundtrip-2'");
     expect(containment).toContain("['project', 'delete', plan.project]");
   });
 });
