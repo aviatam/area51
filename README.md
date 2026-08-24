@@ -282,6 +282,8 @@ The Incus mount policy is intentionally stricter than the Docker local path: onl
 
 The Incus backend is Linux-production oriented. Docker remains the recommended local/dev path and the fallback for users who do not want to install Incus. VM execution uses the separate `local:area51-agent-v2-vm` image by default. The host-side OneCLI relay must listen on the configured private bridge address (default `10.251.0.1:10255`); the VM receives no general internet route, and startup fails if its mounts cannot be represented without weakening the managed-disk boundary.
 
+Normal Incus exits delete the per-session instance and managed VM volumes. Each runtime is stamped with an installation identifier so startup can reap only that installation's crash orphans. Quarantined instances and their volumes are intentionally preserved for evidence and require an explicit operator decision before removal.
+
 ## Requirements
 
 - macOS or Linux, with Windows via WSL2

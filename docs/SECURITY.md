@@ -220,6 +220,19 @@ the OneCLI relay through a default-reject ACL. The same combined path is
 exercised by the live containment test on a disposable KVM-capable host before
 VM changes can merge.
 
+### Incus lifecycle and evidence retention
+
+Every live Incus instance is stamped with the installation and session IDs plus
+the exact set of per-session managed volumes. Normal shutdown, process exit,
+readiness failure, and non-quarantine preflight failure delete the instance and
+those volumes. Startup lists all Incus projects and reaps only instances whose
+installation stamp matches the current checkout; malformed recovery metadata
+fails closed instead of guessing which storage to delete.
+
+Quarantine is the exception: an instance carrying the quarantine profile or a
+quarantine reason is never removed by automatic recovery. Its snapshot,
+instance, and volumes remain available for operator review.
+
 Writable session mounts use a narrow Incus ID map from the unprivileged host
 UID/GID to guest UID/GID 1000 rather than making the host directory
 world-writable. The live hostile E2E verifies that the guest can

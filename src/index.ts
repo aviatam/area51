@@ -7,11 +7,12 @@
 import path from 'path';
 
 import { backfillContainerConfigs } from './backfill-container-configs.js';
-import { DATA_DIR } from './config.js';
+import { AREA51_RUNTIME_BACKEND, DATA_DIR, INSTALL_SLUG } from './config.js';
 import { enforceStartupBackoff, resetCircuitBreaker } from './circuit-breaker.js';
 import { initDb } from './db/connection.js';
 import { runMigrations } from './db/migrations/index.js';
 import { ensureContainerRuntimeRunning, cleanupOrphans } from './container-runtime.js';
+import { cleanupIncusOrphans, ensureIncusAvailable } from './incus-adapter.js';
 import { startActiveDeliveryPoll, startSweepDeliveryPoll, setDeliveryAdapter, stopDeliveryPolls } from './delivery.js';
 import { startHostSweep, stopHostSweep } from './host-sweep.js';
 import { startHostModules, stopHostModules } from './host-lifecycle.js';
@@ -81,8 +82,13 @@ async function main(): Promise<void> {
   backfillContainerConfigs();
 
   // 2. Container runtime
-  ensureContainerRuntimeRunning();
-  cleanupOrphans();
+  if (AREA51_RUNTIME_BACKEND === 'incus') {
+    ensureIncusAvailable();
+    cleanupIncusOrphans(INSTALL_SLUG);
+  } else {
+    ensureContainerRuntimeRunning();
+    cleanupOrphans();
+  }
 
   // 3. Channel adapters
   await initChannelAdapters((adapter: ChannelAdapter): ChannelSetup => {
