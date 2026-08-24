@@ -17,6 +17,7 @@ export interface IncusRuntimePlanOptions {
   vmNetwork?: Omit<IncusVmNetworkOptions, 'project' | 'instance'>;
   vmDisks?: Omit<IncusVmDiskOptions, 'project' | 'instance'>;
   vmFiles?: IncusVmFile[];
+  metadata?: Record<string, string>;
 }
 
 export interface IncusVmFile {
@@ -71,6 +72,7 @@ export function buildIncusRuntimePlan(options: IncusRuntimePlanOptions): IncusRu
   const restrictions: Record<string, string> = {
     'limits.cpu': '2',
     'limits.memory': '2GiB',
+    ...(options.metadata ?? {}),
   };
   if (instanceKind === 'container') {
     restrictions['security.nesting'] = 'false';
