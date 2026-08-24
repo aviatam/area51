@@ -78,15 +78,7 @@ export function buildIncusVmDiskPlan(options: IncusVmDiskOptions): IncusVmDiskPl
 
     if (!volume.readonly) {
       initializeCommands.push(
-        [
-          'exec',
-          options.instance,
-          ...projectArgs,
-          '--',
-          'chown',
-          '1000:1000',
-          target,
-        ],
+        ['exec', options.instance, ...projectArgs, '--', 'chown', '1000:1000', target],
         ['exec', options.instance, ...projectArgs, '--', 'chmod', '0700', target],
       );
     }
