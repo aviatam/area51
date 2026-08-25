@@ -6,11 +6,15 @@ import os from 'node:os';
 import path from 'node:path';
 
 import { applyIncusRuntimePlan, deleteIncusRuntime, spawnIncusExec } from '../src/incus-adapter.js';
+import type { AgentGateReport } from '../src/agent-gate.js';
+import type { ContainerConfig } from '../src/container-config.js';
 import { ensureSchema, insertMessage, openInboundDb, openOutboundDb } from '../src/db/session-db.js';
+import { enforceIncusRuntimeDecision } from '../src/incus-quarantine-policy.js';
 import { buildIncusRuntimePlan } from '../src/incus-runtime.js';
 import { buildIncusVmRuntimeTransport } from '../src/incus-vm-runtime.js';
 import { syncIncusVmProviderState } from '../src/incus-vm-provider-state.js';
 import { syncIncusVmInbound, syncIncusVmOutbound } from '../src/incus-vm-session-bridge.js';
+import { selectLiveRuntimePolicy, writeLiveRuntimePolicyDecision } from '../src/live-runtime-policy.js';
 
 const suffix = (process.env.GITHUB_RUN_ID ?? String(Date.now())).replace(/[^0-9]/g, '').slice(-12);
 const image = process.env.AREA51_INCUS_VM_IMAGE_ALIAS;
@@ -30,6 +34,33 @@ fs.writeFileSync(path.join(providerDir, 'settings.json'), '{}\n');
 fs.writeFileSync(path.join(sessionDir, 'input.txt'), 'session-input\n');
 fs.writeFileSync(path.join(groupDir, 'agent.txt'), 'agent-definition\n');
 fs.symlinkSync('/app/CLAUDE.md', path.join(groupDir, '.claude-shared.md'));
+const riskyConfig: ContainerConfig = {
+  mcpServers: {},
+  packages: { apt: ['git'], npm: ['third-party-tool'] },
+  additionalMounts: [{ hostPath: groupDir, containerPath: '/project' }],
+  skills: 'all',
+};
+const gateReport = cleanGateReport(groupDir);
+const blockedLocalDecision = selectLiveRuntimePolicy(gateReport, {
+  backend: 'docker',
+  incusInstanceKind: 'container',
+  containerConfig: riskyConfig,
+});
+if (blockedLocalDecision.action !== 'block' || blockedLocalDecision.runtime !== undefined) {
+  throw new Error(`Risky local policy did not fail closed: ${JSON.stringify(blockedLocalDecision)}`);
+}
+const runtimeDecision = selectLiveRuntimePolicy(gateReport, {
+  backend: 'incus',
+  incusInstanceKind: 'container',
+  containerConfig: riskyConfig,
+});
+if (runtimeDecision.action !== 'allow' || runtimeDecision.runtime !== 'incus-vm') {
+  throw new Error(`Production policy did not escalate to a VM: ${JSON.stringify(runtimeDecision)}`);
+}
+const decisionPath = writeLiveRuntimePolicyDecision(root, `vm-e2e-${suffix}`, runtimeDecision);
+if ((fs.statSync(decisionPath).mode & 0o777) !== 0o600) throw new Error('Runtime Policy decision is not mode 0600');
+if (path.dirname(decisionPath).startsWith(sessionDir))
+  throw new Error('Runtime Policy decision leaked into session mounts');
 const inboundPath = path.join(sessionDir, 'inbound.db');
 const outboundPath = path.join(sessionDir, 'outbound.db');
 ensureSchema(inboundPath, 'inbound');
@@ -93,7 +124,7 @@ function makePlan(instanceSuffix: string, runtimeTransport: typeof transport) {
     agentGroupFolder: `vm-e2e-${suffix}`,
     groupDir,
     mounts: [],
-    instanceKind: 'vm',
+    instanceKind: runtimeDecision.runtime === 'incus-vm' ? 'vm' : 'container',
     instanceSuffix,
     image: `local:${image}`,
     vmNetwork: {
@@ -114,6 +145,7 @@ let relay: net.Server | undefined;
 let primaryFailure: unknown;
 try {
   process.env.AREA51_INCUS_STORAGE_POOL = pool;
+  enforceIncusRuntimeDecision(runtimeDecision, plan);
   applyIncusRuntimePlan(plan, {
     executor(argv) {
       const output = runIncus(argv);
@@ -126,6 +158,13 @@ try {
       return output;
     },
   });
+
+  const liveInstances = JSON.parse(
+    runIncus(['list', plan.instance, '--project', plan.project, '--format', 'json']),
+  ) as Array<{ type?: string }>;
+  if (liveInstances.length !== 1 || liveInstances[0]?.type !== 'virtual-machine') {
+    throw new Error(`Runtime Policy did not create a real Incus VM: ${JSON.stringify(liveInstances)}`);
+  }
 
   const result = await guestScript();
   if (!result.includes('area51-vm-containment-ok')) throw new Error(`Guest did not report success: ${result}`);
@@ -162,7 +201,9 @@ try {
     throw new Error(`Claude provider restart failed: ${providerRestart}`);
   }
 
-  console.log('Live Incus VM containment, database round-trip, and Claude provider restart E2E passed.');
+  console.log(
+    'Live Runtime Policy selection, Incus VM containment, database round-trip, and Claude provider restart E2E passed.',
+  );
 } catch (error) {
   primaryFailure = error;
   throw error;
@@ -184,6 +225,38 @@ function insertTestMessage(db: ReturnType<typeof openInboundDb>, id: string, con
     processAfter: null,
     recurrence: null,
   });
+}
+
+function cleanGateReport(groupPath: string): AgentGateReport {
+  return {
+    schema: 'area51.agent_gate.v1',
+    generated_at: new Date().toISOString(),
+    group_path: groupPath,
+    passed: true,
+    overall_fitness_index: 100,
+    thresholds: { minimum_overall: 80, fail_on_warnings: false },
+    counts: {
+      files_scanned: 3,
+      agent_files: 1,
+      policy_files: 1,
+      scenario_files: 1,
+      mcp_servers: 0,
+      packages: 0,
+      findings: 0,
+      high_findings: 0,
+    },
+    secrets: [{ name: 'ANTHROPIC_API_KEY', present: true, source: 'environment' }],
+    pillars: {
+      capabilities: { score: 100, status: 'pass', highlights: [] },
+      evolution: { score: 100, status: 'pass', highlights: [] },
+      skill_efficiency: { score: 100, status: 'pass', highlights: [] },
+      integration: { score: 100, status: 'pass', highlights: [] },
+      security: { score: 100, status: 'pass', highlights: [] },
+    },
+    findings: [],
+    quarantine: { enabled: true, files: [] },
+    recommendations: [],
+  };
 }
 
 async function waitForRoundTrips(expected: number, runnerStderr: () => string): Promise<void> {

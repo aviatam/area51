@@ -4,6 +4,8 @@ All notable changes to Area51 will be documented in this file.
 
 ## [Unreleased]
 
+- **Hosted KVM CI now proves live Runtime Policy enforcement.** The VM smoke test starts from a configured Incus-container posture, verifies risky package and mount capabilities select a real Incus VM, checks the private host-owned decision record, enforces the exact plan match, and proves the same workload blocks before runtime creation when only Docker is available.
+
 - **Live Runtime Policy now controls every agent spawn.** Agent Gate runs before Docker or Incus resources are created, risky local workloads block instead of silently falling back to Docker, production workloads can escalate from Incus containers to VMs, quarantine stays in the selected isolation tier, and the host persists each decision outside agent mounts.
 
 ## [2.2.1] - 2026-08-16
