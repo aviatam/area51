@@ -80,6 +80,19 @@ describe('selectRuntimePolicy', () => {
     expect(decision.controls).toContain('snapshot evidence');
   });
 
+  it('quarantines maximum-profile evidence inside a VM', () => {
+    const decision = selectRuntimePolicy(compromisedPackageReport(), {
+      profile: 'maximum',
+      trustLevel: 'approved',
+      dataSensitivity: 'business',
+      capabilities: ['package-install'],
+      incusAvailable: true,
+    });
+
+    expect(decision.action).toBe('quarantine');
+    expect(decision.runtime).toBe('incus-vm');
+  });
+
   it('fails closed instead of pretending quarantine works without Incus', () => {
     const decision = selectRuntimePolicy(compromisedPackageReport(), {
       profile: 'production',

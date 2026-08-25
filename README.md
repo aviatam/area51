@@ -239,6 +239,8 @@ Docker remains useful for local compatibility. Incus is the stronger Area51 runt
 
 Runtime Policy is host-owned: the agent cannot select its own isolation level or mount the Incus socket. Local mode can stay on Docker for trusted low-risk work. Production mode prefers Incus containers. Maximum mode can run in Incus VMs through managed storage volumes and a dedicated OneCLI-only bridge with default-reject ingress and egress. Unsupported VM mount shapes fail closed. Compromised-package evidence on the live Incus path freezes and snapshots the instance before execution.
 
+Every live wake now runs Agent Gate before creating Docker or Incus resources. The configured backend and instance kind define the host's posture and Incus availability; Runtime Policy combines that posture with the gate report and stored package/mount capabilities, then names the only runtime Area51 may launch. Risky local work blocks instead of silently falling back to Docker, production work can escalate from an Incus container to a VM, and quarantine evidence is frozen and snapshotted before provider execution. Each decision is written with mode `0600` under `data/runtime-policy/<session-id>.json`, outside all agent mounts.
+
 Area51 keeps Docker as the default local runtime. Packaged installs can pull one
 multi-arch OCI agent image and run those same bytes under Docker or, on Linux
 hosts with Incus OCI support, under Incus containers.
@@ -276,7 +278,7 @@ AREA51_INCUS_VM_ONECLI_ADDRESS=10.251.0.1
 AREA51_INCUS_VM_ONECLI_PORT=10255
 ```
 
-When `AREA51_RUNTIME_BACKEND=incus`, live session wakeups build the host-owned mount set, harden it for Incus, create/apply an Incus runtime plan, then run the agent runner with `incus exec`. The Incus socket is never mounted into the agent instance. The backend uses argv-based CLI calls, not shell-interpolated command strings.
+When `AREA51_RUNTIME_BACKEND=incus`, Incus is available to live Runtime Policy. A normal production decision uses an Incus container; a sufficiently risky decision or maximum posture uses a VM. Area51 builds the host-owned mount set, hardens it for the selected Incus kind, creates/applies the plan, then runs the agent runner with `incus exec`. The Incus socket is never mounted into the agent instance. The backend uses argv-based CLI calls, not shell-interpolated command strings.
 
 The Incus mount policy is intentionally stricter than the Docker local path: only the session workspace and Claude's exact `/home/node/.claude` provider-state path may remain writable. Agent definitions, runner source, skills, other provider paths, and plugin content are read-only, and the Incus adapter refuses dangerous host sources such as filesystem roots, home-directory roots, SSH/cloud config directories, Docker/Podman sockets, and Incus/LXD sockets before invoking Incus. In VM mode the writable paths are isolated managed volumes, never live host bind mounts.
 

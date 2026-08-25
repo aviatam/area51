@@ -44,7 +44,7 @@ import { prepareIncusOneCliConfig } from './incus-onecli.js';
 import { buildIncusVmRuntimeTransport } from './incus-vm-runtime.js';
 import { syncIncusVmProviderState } from './incus-vm-provider-state.js';
 import { syncIncusVmInbound, syncIncusVmOutbound } from './incus-vm-session-bridge.js';
-import { enforceIncusPreflight } from './incus-quarantine-policy.js';
+import { enforceIncusRuntimeDecision } from './incus-quarantine-policy.js';
 import { scanAgentGate } from './agent-gate.js';
 import { composeGroupClaudeMd } from './claude-md-compose.js';
 import { getAgentGroup } from './db/agent-groups.js';
@@ -52,6 +52,7 @@ import { getDb, hasTable } from './db/connection.js';
 import { initGroupFilesystem } from './group-init.js';
 import { stopTypingRefresh } from './modules/typing/index.js';
 import { log } from './log.js';
+import { selectLiveRuntimePolicy, writeLiveRuntimePolicyDecision } from './live-runtime-policy.js';
 import { validateAdditionalMounts } from './modules/mount-security/index.js';
 // Provider host-side config barrel — each provider that needs host-side
 // container setup self-registers on import.
@@ -70,6 +71,7 @@ import {
   writeSessionRouting,
 } from './session-manager.js';
 import type { AgentGroup, Session } from './types.js';
+import type { RuntimePolicyDecision } from './runtime-policy.js';
 
 const onecli = new OneCLI({ url: ONECLI_URL, apiKey: ONECLI_API_KEY });
 
@@ -190,7 +192,32 @@ async function spawnContainer(session: Session): Promise<void> {
   // OneCLI agent identifier is always the agent group id — stable across
   // sessions and reversible via getAgentGroup() for approval routing.
   const agentIdentifier = agentGroup.id;
-  if (AREA51_RUNTIME_BACKEND === 'incus') {
+  await onecli.ensureAgent({ name: agentGroup.name, identifier: agentIdentifier });
+  const gateReport = await scanAgentGate({
+    groupDir: path.resolve(GROUPS_DIR, agentGroup.folder),
+    // The successful OneCLI agent provisioning above proves the provider's
+    // credential route exists without exposing the real secret to the scan.
+    env: { ANTHROPIC_API_KEY: 'onecli-managed' },
+    requiredSecrets: providerName === 'claude' ? ['ANTHROPIC_API_KEY'] : [],
+    quarantine: true,
+  });
+  const runtimeDecision = selectLiveRuntimePolicy(gateReport, {
+    backend: AREA51_RUNTIME_BACKEND,
+    incusInstanceKind: AREA51_INCUS_INSTANCE_KIND,
+    containerConfig,
+  });
+  const decisionPath = writeLiveRuntimePolicyDecision(DATA_DIR, session.id, runtimeDecision);
+  log.info('Live Runtime Policy decision', {
+    sessionId: session.id,
+    action: runtimeDecision.action,
+    runtime: runtimeDecision.runtime,
+    riskScore: runtimeDecision.riskScore,
+    decisionPath,
+  });
+  if (runtimeDecision.action === 'block' || !runtimeDecision.runtime) {
+    throw new Error(`Runtime Policy blocked agent startup: ${runtimeDecision.reasons.join('; ')}`);
+  }
+  if (runtimeDecision.runtime !== 'docker') {
     await spawnIncusAgent({
       session,
       agentGroup,
@@ -199,6 +226,7 @@ async function spawnContainer(session: Session): Promise<void> {
       containerName,
       agentIdentifier,
       timezone: containerConfig.timezone ?? TIMEZONE,
+      runtimeDecision,
     });
     return;
   }
@@ -310,9 +338,20 @@ async function spawnIncusAgent(args: {
   containerName: string;
   agentIdentifier: string;
   timezone: string;
+  runtimeDecision: RuntimePolicyDecision;
 }): Promise<void> {
-  const { session, agentGroup, mounts, providerContribution, containerName, agentIdentifier, timezone } = args;
-  const vmMode = AREA51_INCUS_INSTANCE_KIND === 'vm';
+  const {
+    session,
+    agentGroup,
+    mounts,
+    providerContribution,
+    containerName,
+    agentIdentifier,
+    timezone,
+    runtimeDecision,
+  } = args;
+  const instanceKind = runtimeDecision.runtime === 'incus-vm' ? 'vm' : 'container';
+  const vmMode = instanceKind === 'vm';
   let gatewayEnv: Record<string, string> = {};
   let securedMounts = mounts;
   if (agentIdentifier) {
@@ -338,9 +377,9 @@ async function spawnIncusAgent(args: {
     agentGroupFolder: agentGroup.folder,
     groupDir: path.resolve(GROUPS_DIR, agentGroup.folder),
     sessionDir: sessionDir(agentGroup.id, session.id),
-    instanceKind: AREA51_INCUS_INSTANCE_KIND,
+    instanceKind,
     instanceSuffix: session.id,
-    image: AREA51_INCUS_IMAGE,
+    image: resolveIncusImage(runtimeDecision),
     mounts: vmMode ? [] : hardenedMounts,
     gatewayProxy: vmMode
       ? undefined
@@ -391,14 +430,7 @@ async function spawnIncusAgent(args: {
   }
   let preflight;
   try {
-    const gateReport = await scanAgentGate({
-      groupDir: path.resolve(GROUPS_DIR, agentGroup.folder),
-      // Agent Gate needs proof that the provider credential route exists, not
-      // the real secret. The successful OneCLI config fetch above is that proof.
-      env: { ANTHROPIC_API_KEY: 'onecli-managed' },
-      quarantine: true,
-    });
-    preflight = enforceIncusPreflight(gateReport, plan);
+    preflight = enforceIncusRuntimeDecision(runtimeDecision, plan);
   } catch (error) {
     deleteIncusRuntime(plan);
     throw error;
@@ -500,6 +532,12 @@ async function spawnIncusAgent(args: {
     }
     log.error('Incus agent runtime spawn error', { sessionId: session.id, err });
   });
+}
+
+export function resolveIncusImage(decision: RuntimePolicyDecision): string {
+  const selectedKind = decision.runtime === 'incus-vm' ? 'vm' : 'container';
+  if (selectedKind === AREA51_INCUS_INSTANCE_KIND) return AREA51_INCUS_IMAGE;
+  return selectedKind === 'vm' ? 'local:area51-agent-v2-vm' : 'local:area51-agent-v2';
 }
 
 export function hardenIncusMounts(mounts: VolumeMount[]): Array<{ source: string; path: string; readonly: boolean }> {

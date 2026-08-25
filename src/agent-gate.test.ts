@@ -85,4 +85,16 @@ describe('scanAgentGate', () => {
 
     expect(JSON.parse(fs.readFileSync(reportPath, 'utf8')).schema).toBe('area51.agent_gate.v1');
   });
+
+  it('accepts an explicit empty secret contract for providers authenticated through another route', async () => {
+    const groupDir = tempGroup();
+    writeText(path.join(groupDir, 'AGENTS.md'), 'You are a provider-neutral agent.');
+    writeText(path.join(groupDir, 'security-policy.md'), 'Use host-owned policy.');
+    writeJson(path.join(groupDir, '.area51', 'agent-gate', 'scenarios', 'safe.json'), { expected: 'allow' });
+
+    const report = await scanAgentGate({ groupDir, requiredSecrets: [], env: {} });
+
+    expect(report.secrets).toEqual([]);
+    expect(report.findings.some((finding) => finding.id.startsWith('secret-missing-'))).toBe(false);
+  });
 });
