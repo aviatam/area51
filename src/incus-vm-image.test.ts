@@ -67,4 +67,17 @@ describe('Incus VM image builder', () => {
     expect(containment).toContain("'vm-roundtrip-2'");
     expect(containment).toContain("['project', 'delete', plan.project]");
   });
+
+  it('lets live Runtime Policy select and verify the real Incus VM', () => {
+    expect(containment).toContain('selectLiveRuntimePolicy(gateReport');
+    expect(containment).toContain('blockedLocalDecision.action');
+    expect(containment).toContain('writeLiveRuntimePolicyDecision');
+    expect(containment).toContain('enforceIncusRuntimeDecision(runtimeDecision, plan)');
+    expect(containment).toContain("liveInstances[0]?.type !== 'virtual-machine'");
+    expect(workflow).toContain('src/live-runtime-policy.ts');
+    expect(workflow).toContain('src/runtime-policy.ts');
+    expect(containment.indexOf('blockedLocalDecision.action')).toBeLessThan(
+      containment.indexOf('applyIncusRuntimePlan(plan'),
+    );
+  });
 });

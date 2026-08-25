@@ -17,6 +17,9 @@ on:
       - src/incus-vm-provider-state.ts
       - src/incus-vm-session-bridge.ts
       - src/container-runner.ts
+      - src/incus-quarantine-policy.ts
+      - src/live-runtime-policy.ts
+      - src/runtime-policy.ts
 
 permissions:
   contents: read
