@@ -80,6 +80,15 @@ describe('Incus adapter', () => {
     expect(executor).toHaveBeenCalledWith(['project', 'create', 'area51-support']);
     expect(executor).toHaveBeenCalledWith(['project', 'set', 'area51-support', 'restricted=true']);
     expect(executor).toHaveBeenCalledWith(['project', 'set', 'area51-support', 'restricted.devices.disk=allow']);
+    expect(executor).toHaveBeenCalledWith(['profile', 'create', 'area51-quarantine', '--project', 'area51-support']);
+    expect(executor).toHaveBeenCalledWith([
+      'profile',
+      'set',
+      'area51-quarantine',
+      'user.area51.quarantined=true',
+      '--project',
+      'area51-support',
+    ]);
     expect(executor).toHaveBeenCalledWith([
       'project',
       'set',
@@ -619,6 +628,15 @@ describe('Incus adapter', () => {
       now: new Date('2026-08-15T12:00:00.000Z'),
     });
 
+    const commands = executor.mock.calls.map(([argv]) => argv as string[]);
+    expect(commands[0]).toEqual([
+      'config',
+      'set',
+      'area51-support-agent',
+      'user.area51.quarantine_reason=package-risk',
+      '--project',
+      'area51-support',
+    ]);
     expect(executor).toHaveBeenCalledWith(['freeze', 'area51-support-agent', '--project', 'area51-support']);
     expect(executor).toHaveBeenCalledWith([
       'snapshot',
@@ -627,6 +645,7 @@ describe('Incus adapter', () => {
       '--project',
       'area51-support',
     ]);
+    expect(executor).toHaveBeenCalledWith(['stop', 'area51-support-agent', '--force', '--project', 'area51-support']);
     expect(executor).toHaveBeenCalledWith([
       'profile',
       'remove',
@@ -644,6 +663,46 @@ describe('Incus adapter', () => {
       'area51-support',
     ]);
     expect(executor.mock.calls.flatMap(([argv]) => argv as string[]).join(' ')).not.toContain('$(');
+  });
+
+  it('stops a quarantined VM and removes its managed network device', () => {
+    const executor = vi.fn();
+    const plan = vmPlan();
+
+    quarantineIncusInstance(plan, { executor, reason: 'npm-compromise' });
+
+    expect(executor).toHaveBeenCalledWith([
+      'config',
+      'device',
+      'remove',
+      plan.instance,
+      'area51-vm-net',
+      '--project',
+      plan.project,
+    ]);
+    expect(executor).not.toHaveBeenCalledWith(
+      expect.arrayContaining(['profile', 'remove', plan.instance, 'area51-agent-net']),
+    );
+  });
+
+  it('stamps the preservation reason before a partial quarantine failure', () => {
+    const executor = vi.fn((argv: string[]) => {
+      if (argv[0] === 'freeze') throw new Error('freeze failed');
+    });
+    const plan = vmPlan();
+
+    expect(() => quarantineIncusInstance(plan, { executor, reason: 'npm-compromise' })).toThrow(
+      'Incus command failed: incus freeze',
+    );
+
+    expect(executor.mock.calls[0]?.[0]).toEqual([
+      'config',
+      'set',
+      plan.instance,
+      'user.area51.quarantine_reason=npm-compromise',
+      '--project',
+      plan.project,
+    ]);
   });
 
   it('fails before running commands when plan names are unsafe', () => {

@@ -92,6 +92,11 @@ describe('Incus runtime backend wiring (structural)', () => {
     expect(docker).toBeGreaterThan(persisted);
   });
 
+  it('preserves evidence when live quarantine enforcement itself fails', () => {
+    const src = fs.readFileSync(path.join(process.cwd(), 'src', 'container-runner.ts'), 'utf-8');
+    expect(src).toContain("if (runtimeDecision.action !== 'quarantine') deleteIncusRuntime(plan)");
+  });
+
   it('documents the runtime backend knobs in config', () => {
     const cfg = fs.readFileSync(path.join(process.cwd(), 'src', 'config.ts'), 'utf-8');
     expect(cfg).toContain('AREA51_RUNTIME_BACKEND');

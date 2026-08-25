@@ -432,7 +432,9 @@ async function spawnIncusAgent(args: {
   try {
     preflight = enforceIncusRuntimeDecision(runtimeDecision, plan);
   } catch (error) {
-    deleteIncusRuntime(plan);
+    // Preserve a partially quarantined runtime and its snapshots for operator
+    // inspection. Normal allow-path preflight failures remain safe to delete.
+    if (runtimeDecision.action !== 'quarantine') deleteIncusRuntime(plan);
     throw error;
   }
   if (preflight.decision.action === 'quarantine') {

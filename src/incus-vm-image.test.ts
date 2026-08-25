@@ -80,4 +80,14 @@ describe('Incus VM image builder', () => {
       containment.indexOf('applyIncusRuntimePlan(plan'),
     );
   });
+
+  it('proves compromised-package quarantine on the live VM', () => {
+    expect(containment).toContain('compromisedGateReport(groupDir)');
+    expect(containment).toContain("quarantineDecision.action !== 'quarantine'");
+    expect(containment).toContain("quarantined?.status?.toLowerCase() !== 'stopped'");
+    expect(containment).toContain("expanded_config?.['user.area51.quarantined'] !== 'true'");
+    expect(containment).toContain("expanded_devices?.['area51-vm-net']");
+    expect(containment).toContain("snapshot.name?.startsWith('area51-quarantine-')");
+    expect(containment).toContain('Agent execution remained possible after quarantine');
+  });
 });

@@ -27,6 +27,8 @@ describe('buildIncusRuntimePlan', () => {
     expect(plan.commands.quarantine).toEqual(
       expect.arrayContaining([
         expect.stringContaining('incus freeze area51-support-refund-agent-agent'),
+        expect.stringContaining('incus stop area51-support-refund-agent-agent --force'),
+        expect.stringContaining('incus profile remove area51-support-refund-agent-agent area51-agent-net'),
         expect.stringContaining('incus profile add area51-support-refund-agent-agent area51-quarantine'),
       ]),
     );
@@ -76,5 +78,9 @@ describe('buildIncusRuntimePlan', () => {
     });
 
     expect(plan.project).toBe('area51-support-vm');
+    expect(plan.commands.quarantine).toContain(
+      'incus config device remove area51-support-agent area51-vm-net --project area51-support-vm',
+    );
+    expect(plan.commands.quarantine.join('\n')).not.toContain('profile remove');
   });
 });

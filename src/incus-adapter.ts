@@ -136,6 +136,14 @@ export function applyIncusRuntimePlan(plan: IncusRuntimePlan, options: IncusAdap
     ]);
   }
 
+  const quarantineProfile = plan.quarantineProfile;
+  if (quarantineProfile) {
+    commands.push(
+      ['profile', 'create', quarantineProfile, '--project', plan.project],
+      ['profile', 'set', quarantineProfile, 'user.area51.quarantined=true', '--project', plan.project],
+    );
+  }
+
   for (const profile of plan.profiles.filter((profile) => profile !== 'default')) {
     commands.push(['profile', 'create', profile, '--project', plan.project]);
     if (profile.includes('net')) {
@@ -239,19 +247,24 @@ export function quarantineIncusInstance(
   validatePlan(plan);
 
   const reason = sanitizeConfigValue(options.reason ?? 'agent-gate-risk');
-  const quarantineProfile = plan.commands.quarantine
-    .map((command) => command.match(/profile add \S+ (\S+) --project/)?.[1])
-    .find(Boolean);
+  const quarantineProfile = plan.quarantineProfile;
   const normalProfiles = plan.profiles.filter((profile) => profile !== 'default');
   const snapshot = `area51-quarantine-${(options.now ?? new Date()).toISOString().replace(/[:.]/g, '-')}`;
 
   const commands: string[][] = [
+    ['config', 'set', plan.instance, `user.area51.quarantine_reason=${reason}`, '--project', plan.project],
     ['freeze', plan.instance, '--project', plan.project],
     ['snapshot', plan.instance, snapshot, '--project', plan.project],
-    ...normalProfiles.map((profile) => ['profile', 'remove', plan.instance, profile, '--project', plan.project]),
+    ['stop', plan.instance, '--force', '--project', plan.project],
   ];
-  if (quarantineProfile) commands.push(['profile', 'add', plan.instance, quarantineProfile, '--project', plan.project]);
-  commands.push(['config', 'set', plan.instance, `user.area51.quarantine_reason=${reason}`, '--project', plan.project]);
+  if (plan.vmNetwork) {
+    commands.push(['config', 'device', 'remove', plan.instance, 'area51-vm-net', '--project', plan.project]);
+  } else {
+    commands.push(
+      ...normalProfiles.map((profile) => ['profile', 'remove', plan.instance, profile, '--project', plan.project]),
+    );
+  }
+  commands.push(['profile', 'add', plan.instance, quarantineProfile, '--project', plan.project]);
 
   return runCommands(commands, options);
 }
@@ -425,6 +438,7 @@ function validatePlan(plan: IncusRuntimePlan): void {
   assertSafeName(plan.project, 'project');
   assertSafeName(plan.instance, 'instance');
   for (const profile of plan.profiles) assertSafeName(profile, 'profile');
+  assertSafeName(plan.quarantineProfile, 'quarantine profile');
   validateMounts(plan);
   validateVmBoundary(plan);
   if (plan.gatewayProxy) {

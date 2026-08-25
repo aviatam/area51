@@ -1,5 +1,5 @@
 /** Live Incus VM disk, network, host-isolation, and cleanup containment test. */
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import net from 'node:net';
 import os from 'node:os';
@@ -201,8 +201,54 @@ try {
     throw new Error(`Claude provider restart failed: ${providerRestart}`);
   }
 
+  const quarantineDecision = selectLiveRuntimePolicy(compromisedGateReport(groupDir), {
+    backend: 'incus',
+    incusInstanceKind: 'vm',
+    containerConfig: riskyConfig,
+  });
+  if (quarantineDecision.action !== 'quarantine' || quarantineDecision.runtime !== 'incus-vm') {
+    throw new Error(`Compromised package evidence did not select VM quarantine: ${JSON.stringify(quarantineDecision)}`);
+  }
+  const quarantine = enforceIncusRuntimeDecision(quarantineDecision, restartPlan);
+  if (!quarantine.quarantine?.commands.every((command) => command.ok)) {
+    throw new Error(`Live Incus quarantine commands failed: ${JSON.stringify(quarantine.quarantine)}`);
+  }
+  const quarantinedInstances = JSON.parse(
+    runIncus(['list', restartPlan.instance, '--project', restartPlan.project, '--format', 'json']),
+  ) as Array<{
+    status?: string;
+    config?: Record<string, string>;
+    expanded_config?: Record<string, string>;
+    expanded_devices?: Record<string, unknown>;
+  }>;
+  const quarantined = quarantinedInstances[0];
+  if (quarantinedInstances.length !== 1 || quarantined?.status?.toLowerCase() !== 'stopped') {
+    throw new Error(`Quarantined VM is not stopped: ${JSON.stringify(quarantinedInstances)}`);
+  }
+  if (quarantined.config?.['user.area51.quarantine_reason'] == null) {
+    throw new Error('Quarantined VM is missing its evidence reason');
+  }
+  if (quarantined.expanded_config?.['user.area51.quarantined'] !== 'true') {
+    throw new Error('Quarantined VM is missing its quarantine profile marker');
+  }
+  if (quarantined.expanded_devices?.['area51-vm-net'] != null) {
+    throw new Error('Quarantined VM retained its normal network device');
+  }
+  const snapshots = JSON.parse(
+    runIncus(['snapshot', 'list', restartPlan.instance, '--project', restartPlan.project, '--format', 'json']),
+  ) as Array<{ name?: string }>;
+  if (!snapshots.some((snapshot) => snapshot.name?.startsWith('area51-quarantine-'))) {
+    throw new Error(`Quarantined VM evidence snapshot is missing: ${JSON.stringify(snapshots)}`);
+  }
+  const blockedExecution = spawnSync(
+    'incus',
+    ['exec', restartPlan.instance, '--project', restartPlan.project, '--', 'true'],
+    { encoding: 'utf8', timeout: 30_000 },
+  );
+  if (blockedExecution.status === 0) throw new Error('Agent execution remained possible after quarantine');
+
   console.log(
-    'Live Runtime Policy selection, Incus VM containment, database round-trip, and Claude provider restart E2E passed.',
+    'Live Runtime Policy selection, quarantine enforcement, Incus VM containment, database round-trip, and Claude provider restart E2E passed.',
   );
 } catch (error) {
   primaryFailure = error;
@@ -257,6 +303,28 @@ function cleanGateReport(groupPath: string): AgentGateReport {
     quarantine: { enabled: true, files: [] },
     recommendations: [],
   };
+}
+
+function compromisedGateReport(groupPath: string): AgentGateReport {
+  const report = cleanGateReport(groupPath);
+  report.passed = false;
+  report.overall_fitness_index = 10;
+  report.counts.packages = 1;
+  report.counts.findings = 1;
+  report.counts.high_findings = 1;
+  report.findings = [
+    {
+      id: 'npm-compromised-package',
+      severity: 'high',
+      pillar: 'security',
+      title: 'Compromised package',
+      detail: 'Hosted KVM quarantine evidence',
+      evidence: ['third-party-tool'],
+      recommendation: 'quarantine',
+    },
+  ];
+  report.quarantine.files = [path.join(groupPath, '.area51', 'quarantine', 'findings.json')];
+  return report;
 }
 
 async function waitForRoundTrips(expected: number, runnerStderr: () => string): Promise<void> {

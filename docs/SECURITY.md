@@ -242,7 +242,11 @@ fails closed instead of guessing which storage to delete.
 
 Quarantine is the exception: an instance carrying the quarantine profile or a
 quarantine reason is never removed by automatic recovery. Its snapshot,
-instance, and volumes remain available for operator review.
+instance, and volumes remain available for operator review. Live enforcement
+freezes and snapshots first, then stops the instance before removing its normal
+network attachment and applying the quarantine marker. If enforcement fails
+partway through, Area51 preserves the partial evidence instead of invoking the
+normal deletion path.
 
 Writable session mounts use a narrow Incus ID map from the unprivileged host
 UID/GID to guest UID/GID 1000 rather than making the host directory
