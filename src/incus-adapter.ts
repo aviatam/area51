@@ -102,6 +102,7 @@ export function applyIncusRuntimePlan(plan: IncusRuntimePlan, options: IncusAdap
         : []),
     ],
     ['project', 'set', plan.project, 'restricted=true'],
+    ['project', 'set', plan.project, 'restricted.snapshots=allow'],
     ['project', 'set', plan.project, 'limits.instances=3'],
     ['project', 'set', plan.project, 'restricted.devices.disk=allow'],
     ['project', 'set', plan.project, `restricted.devices.disk.paths=${allowedDiskPaths(plan)}`],

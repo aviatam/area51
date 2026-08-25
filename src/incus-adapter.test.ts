@@ -79,6 +79,7 @@ describe('Incus adapter', () => {
 
     expect(executor).toHaveBeenCalledWith(['project', 'create', 'area51-support']);
     expect(executor).toHaveBeenCalledWith(['project', 'set', 'area51-support', 'restricted=true']);
+    expect(executor).toHaveBeenCalledWith(['project', 'set', 'area51-support', 'restricted.snapshots=allow']);
     expect(executor).toHaveBeenCalledWith(['project', 'set', 'area51-support', 'restricted.devices.disk=allow']);
     expect(executor).toHaveBeenCalledWith(['profile', 'create', 'area51-quarantine', '--project', 'area51-support']);
     expect(executor).toHaveBeenCalledWith([
