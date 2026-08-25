@@ -13,7 +13,7 @@ describe('Incus live quarantine policy', () => {
 
     expect(result.decision.action).toBe('quarantine');
     expect(executor).toHaveBeenCalledWith(['freeze', plan.instance, '--project', plan.project]);
-    expect(executor).toHaveBeenCalledWith(expect.arrayContaining(['snapshot', plan.instance]));
+    expect(executor).toHaveBeenCalledWith(expect.arrayContaining(['snapshot', 'create', plan.instance]));
     expect(result.quarantine?.commands.every((command) => command.ok)).toBe(true);
   });
 

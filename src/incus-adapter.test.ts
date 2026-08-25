@@ -640,6 +640,7 @@ describe('Incus adapter', () => {
     expect(executor).toHaveBeenCalledWith(['freeze', 'area51-support-agent', '--project', 'area51-support']);
     expect(executor).toHaveBeenCalledWith([
       'snapshot',
+      'create',
       'area51-support-agent',
       'area51-quarantine-2026-08-15T12-00-00-000Z',
       '--project',

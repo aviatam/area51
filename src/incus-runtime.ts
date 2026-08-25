@@ -117,7 +117,7 @@ export function buildIncusRuntimePlan(options: IncusRuntimePlanOptions): IncusRu
       quarantine: [
         `incus config set ${instance} user.area51.quarantine_reason=package-risk --project ${project}`,
         `incus freeze ${instance} --project ${project}`,
-        `incus snapshot ${instance} area51-quarantine-$(date -u +%Y%m%dT%H%M%SZ) --project ${project}`,
+        `incus snapshot create ${instance} area51-quarantine-$(date -u +%Y%m%dT%H%M%SZ) --project ${project}`,
         `incus stop ${instance} --force --project ${project}`,
         instanceKind === 'vm'
           ? `incus config device remove ${instance} area51-vm-net --project ${project}`

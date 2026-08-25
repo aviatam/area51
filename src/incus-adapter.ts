@@ -254,7 +254,7 @@ export function quarantineIncusInstance(
   const commands: string[][] = [
     ['config', 'set', plan.instance, `user.area51.quarantine_reason=${reason}`, '--project', plan.project],
     ['freeze', plan.instance, '--project', plan.project],
-    ['snapshot', plan.instance, snapshot, '--project', plan.project],
+    ['snapshot', 'create', plan.instance, snapshot, '--project', plan.project],
     ['stop', plan.instance, '--force', '--project', plan.project],
   ];
   if (plan.vmNetwork) {
