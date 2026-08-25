@@ -56,11 +56,20 @@ Ubuntu guest does not contain Bun, the agent-runner dependencies, or the pinned
 provider CLI. Every spawn verifies Bun and `/app/node_modules`; an incompatible
 guest is stopped and the session fails closed.
 
+Before either Docker or Incus is created, the host provisions the OneCLI route,
+runs Agent Gate once, and passes its report plus stored package/mount
+capabilities to live Runtime Policy. The decision is persisted outside agent
+mounts at `data/runtime-policy/<session-id>.json` with mode `0600`. Docker is
+allowed only when policy explicitly selects it; risky local work blocks when
+Incus is unavailable, and production policy can escalate a configured Incus
+container posture to a VM. The runtime plan must match the selected kind or
+startup fails closed.
+
 Incus containers do not receive a general-purpose NIC. OneCLI credentials,
 certificates, and proxy variables are fetched per agent and exposed through a
 guest-loopback proxy relay. If that configuration is unavailable, Area51 does
-not start the agent. VM execution remains blocked until its required NIC is
-protected by an audited deny-by-default ACL.
+not start the agent. VM execution attaches its required NIC only through the
+audited deny-by-default ACL.
 
 In that mode the host builds the normal Area51 session/group/runner/skill mount
 set, applies an Incus runtime plan, and starts the runner with `incus exec`.

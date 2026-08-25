@@ -126,7 +126,7 @@ export async function scanAgentGate(options: ScanAgentGateOptions): Promise<Agen
 
   const now = options.now ?? new Date();
   const env = options.env ?? process.env;
-  const requiredSecrets = options.requiredSecrets?.length ? options.requiredSecrets : DEFAULT_REQUIRED_SECRETS;
+  const requiredSecrets = options.requiredSecrets ?? DEFAULT_REQUIRED_SECRETS;
   const files = walkGroupFiles(groupDir);
   const agentFiles = files.filter(isAgentFile);
   const policyFiles = files.filter(isPolicyFile);

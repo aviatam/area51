@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { describe, expect, it } from 'vitest';
 
-import { hardenIncusMounts, hardeningArgs, resolveProviderName } from './container-runner.js';
+import { hardenIncusMounts, hardeningArgs, resolveIncusImage, resolveProviderName } from './container-runner.js';
 
 describe('resolveProviderName', () => {
   it('prefers session over container config', () => {
@@ -48,20 +48,48 @@ describe('buildContainerArgs ordering invariant (structural)', () => {
 });
 
 describe('Incus runtime backend wiring (structural)', () => {
-  it('branches live session wakeups to Incus when configured', () => {
+  it('uses the VM image when policy escalates the configured container posture', () => {
+    expect(
+      resolveIncusImage({
+        schema: 'area51.runtime_policy.v1',
+        action: 'allow',
+        runtime: 'incus-vm',
+        riskScore: 100,
+        requiresIncus: true,
+        quarantineRequired: false,
+        reasons: ['escalated'],
+        controls: [],
+      }),
+    ).toBe('local:area51-agent-v2-vm');
+  });
+
+  it('launches the exact Incus runtime selected by live policy', () => {
     const src = fs.readFileSync(path.join(process.cwd(), 'src', 'container-runner.ts'), 'utf-8');
-    expect(src).toContain("AREA51_RUNTIME_BACKEND === 'incus'");
+    expect(src).toContain('selectLiveRuntimePolicy(gateReport');
+    expect(src).toContain("runtimeDecision.runtime !== 'docker'");
     expect(src).toContain('spawnIncusAgent');
     expect(src).toContain('applyIncusRuntimePlan(plan)');
     expect(src).toContain('spawnIncusExec(plan');
   });
 
-  it('keeps Docker as the fallback/default path', () => {
+  it('launches Docker only after policy explicitly selects it', () => {
     const src = fs.readFileSync(path.join(process.cwd(), 'src', 'container-runner.ts'), 'utf-8');
-    const incusBranch = src.indexOf("AREA51_RUNTIME_BACKEND === 'incus'");
+    const incusBranch = src.indexOf("runtimeDecision.runtime !== 'docker'");
     const dockerSpawn = src.indexOf('spawn(CONTAINER_RUNTIME_BIN, args');
     expect(incusBranch).toBeGreaterThan(-1);
     expect(dockerSpawn).toBeGreaterThan(incusBranch);
+  });
+
+  it('runs Agent Gate and persists policy before either runtime can start', () => {
+    const src = fs.readFileSync(path.join(process.cwd(), 'src', 'container-runner.ts'), 'utf-8');
+    const gate = src.indexOf('await scanAgentGate');
+    const persisted = src.indexOf('const decisionPath = writeLiveRuntimePolicyDecision');
+    const incus = src.indexOf('await spawnIncusAgent');
+    const docker = src.indexOf('spawn(CONTAINER_RUNTIME_BIN, args');
+    expect(gate).toBeGreaterThan(-1);
+    expect(persisted).toBeGreaterThan(gate);
+    expect(incus).toBeGreaterThan(persisted);
+    expect(docker).toBeGreaterThan(persisted);
   });
 
   it('documents the runtime backend knobs in config', () => {

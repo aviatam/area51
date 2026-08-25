@@ -4,6 +4,8 @@ All notable changes to Area51 will be documented in this file.
 
 ## [Unreleased]
 
+- **Live Runtime Policy now controls every agent spawn.** Agent Gate runs before Docker or Incus resources are created, risky local workloads block instead of silently falling back to Docker, production workloads can escalate from Incus containers to VMs, quarantine stays in the selected isolation tier, and the host persists each decision outside agent mounts.
+
 ## [2.2.1] - 2026-08-16
 
 - **Area51 now ships a public multi-arch GHCR agent image.** The new `Publish Agent Image to GHCR` workflow builds `linux/amd64` and `linux/arm64` from `container/Dockerfile`, stamps the hardened image labels, verifies the pushed multi-arch index, and publishes `ghcr.io/aviatam/area51-agent` for installs that should not need ECR credentials.

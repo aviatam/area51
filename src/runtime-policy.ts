@@ -122,7 +122,7 @@ export function selectRuntimePolicy(
     return {
       schema: 'area51.runtime_policy.v1',
       action: incusAvailable ? 'quarantine' : 'block',
-      runtime: incusAvailable ? 'incus-container' : undefined,
+      runtime: incusAvailable ? (profile === 'maximum' ? 'incus-vm' : 'incus-container') : undefined,
       riskScore: 100,
       requiresIncus: true,
       quarantineRequired: true,
