@@ -67,7 +67,7 @@ describe('Incus VM image builder', () => {
     expect(containment).toContain("'vm-roundtrip-2'");
     expect(containment).toContain("['snapshot', 'delete', runtimePlan.instance, snapshot.name");
     expect(containment).toContain("['project', 'delete', plan.project, '--force']");
-    expect(containment).toContain('attempt <= 30');
+    expect(containment).toContain("input: 'yes\\n'");
   });
 
   it('lets live Runtime Policy select and verify the real Incus VM', () => {

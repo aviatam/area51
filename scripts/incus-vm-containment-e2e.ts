@@ -467,16 +467,14 @@ function cleanup(assertRemoved: boolean): void {
     }
   }
   const deleteProject = ['project', 'delete', plan.project, '--force'];
-  // Incus can report released VM/storage resources briefly after their delete operations return.
-  for (let attempt = 1; attempt <= 30; attempt += 1) {
-    try {
-      execFileSync('incus', deleteProject, { stdio: 'ignore', timeout: 60_000 });
-      break;
-    } catch (error) {
-      if (attempt === 30)
-        console.warn(`VM containment cleanup command failed: incus ${deleteProject.join(' ')}`, error);
-      else Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1000);
-    }
+  try {
+    execFileSync('incus', deleteProject, {
+      input: 'yes\n',
+      stdio: ['pipe', 'ignore', 'pipe'],
+      timeout: 60_000,
+    });
+  } catch (error) {
+    console.warn(`VM containment cleanup command failed: incus ${deleteProject.join(' ')}`, error);
   }
   try {
     execFileSync('incus', ['project', 'show', plan.project], { stdio: 'ignore', timeout: 30_000 });
