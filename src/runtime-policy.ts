@@ -75,10 +75,10 @@ export function selectRuntimePolicy(
   }
 
   if (trustLevel === 'third-party') {
-    riskScore += 18;
+    riskScore += 50;
     reasons.push('third-party agent or skill source');
   } else if (trustLevel === 'unknown') {
-    riskScore += 30;
+    riskScore += 70;
     reasons.push('unknown agent or skill source');
   }
 
