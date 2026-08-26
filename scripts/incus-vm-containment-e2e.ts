@@ -436,7 +436,7 @@ function cleanup(assertRemoved: boolean): void {
     ]),
     ['network', 'delete', network],
     ['network', 'acl', 'delete', acl],
-    ['project', 'delete', plan.project],
+    ['project', 'delete', plan.project, '--force'],
   ];
   for (const argv of commands) {
     try {
