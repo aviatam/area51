@@ -421,6 +421,27 @@ async function runGuest(runtimePlan: typeof plan, command: string, args: string[
 }
 
 function cleanup(assertRemoved: boolean): void {
+  for (const { plan: runtimePlan } of runtimeResources) {
+    try {
+      const snapshots = JSON.parse(
+        execFileSync(
+          'incus',
+          ['snapshot', 'list', runtimePlan.instance, '--project', runtimePlan.project, '--format', 'json'],
+          { encoding: 'utf8', timeout: 30_000 },
+        ),
+      ) as Array<{ name?: string }>;
+      for (const snapshot of snapshots) {
+        if (typeof snapshot.name !== 'string') continue;
+        execFileSync(
+          'incus',
+          ['snapshot', 'delete', runtimePlan.instance, snapshot.name, '--project', runtimePlan.project],
+          { stdio: 'ignore', timeout: 60_000 },
+        );
+      }
+    } catch (error) {
+      console.warn(`VM containment snapshot cleanup failed for ${runtimePlan.instance}`, error);
+    }
+  }
   const commands = [
     ...runtimeResources.flatMap(({ plan: runtimePlan, transport: runtimeTransport }) => [
       ['delete', runtimePlan.instance, '--project', runtimePlan.project, '--force'],

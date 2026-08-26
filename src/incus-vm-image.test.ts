@@ -65,6 +65,7 @@ describe('Incus VM image builder', () => {
     expect(containment).toContain('syncIncusVmOutbound(plan, sessionDir)');
     expect(containment).toContain('area51-vm-roundtrip-ok');
     expect(containment).toContain("'vm-roundtrip-2'");
+    expect(containment).toContain("['snapshot', 'delete', runtimePlan.instance, snapshot.name");
     expect(containment).toContain("['project', 'delete', plan.project, '--force']");
   });
 
