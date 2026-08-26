@@ -431,8 +431,14 @@ function defaultExecutor(argv: string[]): string {
   return execFileSync('incus', argv, {
     encoding: 'utf8',
     stdio: ['pipe', 'pipe', 'pipe'],
-    timeout: 30000,
+    timeout: incusCommandTimeoutMs(argv),
   });
+}
+
+export function incusCommandTimeoutMs(argv: string[]): number {
+  const isQuarantineSnapshot =
+    argv[0] === 'snapshot' && argv[1] === 'create' && argv[3]?.startsWith('area51-quarantine-');
+  return isQuarantineSnapshot ? 300_000 : 30_000;
 }
 
 function validatePlan(plan: IncusRuntimePlan): void {

@@ -9,6 +9,7 @@ import {
   deleteIncusRuntime,
   ensureIncusAvailable,
   ensureIncusRuntimeReady,
+  incusCommandTimeoutMs,
   quarantineIncusInstance,
   stopIncusInstance,
 } from './incus-adapter.js';
@@ -43,6 +44,12 @@ describe('Incus adapter', () => {
         ],
       },
     });
+
+  it('extends only the quarantine evidence snapshot timeout', () => {
+    expect(incusCommandTimeoutMs(['snapshot', 'create', 'agent', 'area51-quarantine-evidence'])).toBe(300_000);
+    expect(incusCommandTimeoutMs(['snapshot', 'create', 'agent', 'operator-snapshot'])).toBe(30_000);
+    expect(incusCommandTimeoutMs(['stop', 'agent', '--force'])).toBe(30_000);
+  });
 
   beforeEach(() => {
     Object.defineProperty(process, 'getuid', { configurable: true, value: () => 1001 });
