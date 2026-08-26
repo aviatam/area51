@@ -32,6 +32,7 @@ export interface IncusRuntimePlan {
   instanceKind: 'container' | 'vm';
   image: string;
   profiles: string[];
+  quarantineProfile: string;
   mounts: Array<{ source: string; path: string; readonly: boolean }>;
   restrictions: Record<string, string>;
   gatewayProxy?: { listen: string; connect: string };
@@ -85,6 +86,7 @@ export function buildIncusRuntimePlan(options: IncusRuntimePlanOptions): IncusRu
     instanceKind,
     image,
     profiles,
+    quarantineProfile,
     mounts,
     restrictions,
     gatewayProxy: options.gatewayProxy,
@@ -113,11 +115,14 @@ export function buildIncusRuntimePlan(options: IncusRuntimePlanOptions): IncusRu
         restrictions,
       }),
       quarantine: [
+        `incus config set ${instance} user.area51.quarantine_reason=package-risk --project ${project}`,
         `incus freeze ${instance} --project ${project}`,
-        `incus snapshot ${instance} area51-quarantine-$(date -u +%Y%m%dT%H%M%SZ) --project ${project}`,
-        `incus profile remove ${instance} ${networkProfile} --project ${project}`,
+        `incus snapshot create ${instance} area51-quarantine-$(date -u +%Y%m%dT%H%M%SZ) --project ${project}`,
+        `incus stop ${instance} --force --project ${project}`,
+        instanceKind === 'vm'
+          ? `incus config device remove ${instance} area51-vm-net --project ${project}`
+          : `incus profile remove ${instance} ${networkProfile} --project ${project}`,
         `incus profile add ${instance} ${quarantineProfile} --project ${project}`,
-        `incus config set ${instance} user.area51.quarantine_reason package-risk --project ${project}`,
       ],
     },
   };

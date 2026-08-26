@@ -65,7 +65,9 @@ describe('Incus VM image builder', () => {
     expect(containment).toContain('syncIncusVmOutbound(plan, sessionDir)');
     expect(containment).toContain('area51-vm-roundtrip-ok');
     expect(containment).toContain("'vm-roundtrip-2'");
-    expect(containment).toContain("['project', 'delete', plan.project]");
+    expect(containment).toContain("['snapshot', 'delete', runtimePlan.instance, snapshot.name");
+    expect(containment).toContain("['project', 'delete', plan.project, '--force']");
+    expect(containment).toContain("input: 'yes\\n'");
   });
 
   it('lets live Runtime Policy select and verify the real Incus VM', () => {
@@ -79,5 +81,15 @@ describe('Incus VM image builder', () => {
     expect(containment.indexOf('blockedLocalDecision.action')).toBeLessThan(
       containment.indexOf('applyIncusRuntimePlan(plan'),
     );
+  });
+
+  it('proves compromised-package quarantine on the live VM', () => {
+    expect(containment).toContain('compromisedGateReport(groupDir)');
+    expect(containment).toContain("quarantineDecision.action !== 'quarantine'");
+    expect(containment).toContain("quarantined?.status?.toLowerCase() !== 'stopped'");
+    expect(containment).toContain("expanded_config?.['user.area51.quarantined'] !== 'true'");
+    expect(containment).toContain("expanded_devices?.['area51-vm-net']");
+    expect(containment).toContain("snapshot.name?.startsWith('area51-quarantine-')");
+    expect(containment).toContain('Agent execution remained possible after quarantine');
   });
 });
