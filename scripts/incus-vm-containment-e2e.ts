@@ -467,6 +467,7 @@ function cleanup(assertRemoved: boolean): void {
     }
   }
   const deleteProject = ['project', 'delete', plan.project, '--force'];
+  // Incus can report released VM/storage resources briefly after their delete operations return.
   for (let attempt = 1; attempt <= 30; attempt += 1) {
     try {
       execFileSync('incus', deleteProject, { stdio: 'ignore', timeout: 60_000 });
