@@ -421,6 +421,7 @@ async function runGuest(runtimePlan: typeof plan, command: string, args: string[
 }
 
 function cleanup(assertRemoved: boolean): void {
+  // Security assertions run before this disposable-project teardown begins.
   for (const { plan: runtimePlan } of runtimeResources) {
     try {
       const snapshots = JSON.parse(
