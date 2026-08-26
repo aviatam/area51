@@ -436,6 +436,7 @@ function cleanup(assertRemoved: boolean): void {
     ]),
     ['network', 'delete', network],
     ['network', 'acl', 'delete', acl],
+    // This uniquely named project exists only for this CI run; production quarantine evidence is never deleted here.
     ['project', 'delete', plan.project, '--force'],
   ];
   for (const argv of commands) {
