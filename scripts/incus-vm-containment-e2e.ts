@@ -467,6 +467,7 @@ function cleanup(assertRemoved: boolean): void {
     }
   }
   const deleteProject = ['project', 'delete', plan.project, '--force'];
+  // Incus deliberately prompts even with --force; confirm without attaching an interactive terminal.
   try {
     execFileSync('incus', deleteProject, {
       input: 'yes\n',
