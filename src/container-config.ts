@@ -238,6 +238,8 @@ export interface AdditionalMountConfig {
 /** Shape of the materialized `container.json` file read by the container runner. */
 export interface ContainerConfig {
   mcpServers: Record<string, McpServerConfig>;
+  /** Host-only ownership map; deliberately omitted from materialized container.json. */
+  mcpServerProvenance?: Record<string, string>;
   packages: { apt: string[]; npm: string[] };
   imageTag?: string;
   additionalMounts: AdditionalMountConfig[];
@@ -313,8 +315,18 @@ export function sanitizeStoredMcpServers(raw: unknown, groupName: string): Recor
 
 /** Build a `ContainerConfig` from a DB row + agent group identity. */
 export function configFromDb(row: ContainerConfigRow, group: AgentGroup): ContainerConfig {
+  const storedMcpServers = JSON.parse(row.mcp_servers) as unknown;
+  const mcpServerProvenance =
+    typeof storedMcpServers === 'object' && storedMcpServers !== null && !Array.isArray(storedMcpServers)
+      ? Object.fromEntries(
+          Object.entries(storedMcpServers)
+            .map(([name, server]) => [name, mcpServerPluginOwner(server)] as const)
+            .filter((entry): entry is readonly [string, string] => entry[1] !== undefined),
+        )
+      : {};
   return {
-    mcpServers: sanitizeStoredMcpServers(JSON.parse(row.mcp_servers), group.name),
+    mcpServers: sanitizeStoredMcpServers(storedMcpServers, group.name),
+    mcpServerProvenance,
     packages: {
       apt: JSON.parse(row.packages_apt) as string[],
       npm: JSON.parse(row.packages_npm) as string[],
@@ -350,7 +362,8 @@ export function materializeContainerJson(agentGroupId: string): ContainerConfig 
   const p = path.join(GROUPS_DIR, group.folder, 'container.json');
   const dir = path.dirname(p);
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(p, JSON.stringify(config, null, 2) + '\n');
+  const { mcpServerProvenance: _hostOnlyProvenance, ...materializedConfig } = config;
+  fs.writeFileSync(p, JSON.stringify(materializedConfig, null, 2) + '\n');
 
   return config;
 }
