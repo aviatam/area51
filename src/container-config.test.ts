@@ -63,6 +63,15 @@ describe('resolveGroupTimezone', () => {
     updateContainerConfigScalars(GROUP.id, { timezone: 'Not/AZone' });
     expect(configFromDb(getContainerConfig(GROUP.id)!, GROUP).timezone).toBeUndefined();
   });
+
+  it('retains MCP plugin ownership only in the host-side config', () => {
+    const row = getContainerConfig(GROUP.id)!;
+    row.mcp_servers = JSON.stringify({ crm: { command: 'crm-mcp', plugin: 'sales' } });
+
+    const config = configFromDb(row, GROUP);
+    expect(config.mcpServers.crm).not.toHaveProperty('plugin');
+    expect(config.mcpServerProvenance).toEqual({ crm: 'sales' });
+  });
 });
 
 describe('parseMcpServerConfig', () => {
