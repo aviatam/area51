@@ -458,14 +458,23 @@ function cleanup(assertRemoved: boolean): void {
     ]),
     ['network', 'delete', network],
     ['network', 'acl', 'delete', acl],
-    // This uniquely named project exists only for this CI run; production quarantine evidence is never deleted here.
-    ['project', 'delete', plan.project, '--force'],
   ];
   for (const argv of commands) {
     try {
       execFileSync('incus', argv, { stdio: 'ignore', timeout: 60_000 });
     } catch (error) {
       console.warn(`VM containment cleanup command failed: incus ${argv.join(' ')}`, error);
+    }
+  }
+  const deleteProject = ['project', 'delete', plan.project, '--force'];
+  for (let attempt = 1; attempt <= 30; attempt += 1) {
+    try {
+      execFileSync('incus', deleteProject, { stdio: 'ignore', timeout: 60_000 });
+      break;
+    } catch (error) {
+      if (attempt === 30)
+        console.warn(`VM containment cleanup command failed: incus ${deleteProject.join(' ')}`, error);
+      else Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1000);
     }
   }
   try {
