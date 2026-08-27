@@ -17,6 +17,7 @@ vi.mock('../../config.js', async () => {
 import {
   closeDb,
   createAgentGroup,
+  createSession,
   ensureContainerConfig,
   getContainerConfig,
   initTestDb,
@@ -27,7 +28,17 @@ import { buildAgentGroupImage, killContainer, wakeContainer } from '../../contai
 import { applyAddMcpServer, applyInstallPackages } from './apply.js';
 
 const TEST_DIR = '/tmp/area51-test-self-mod-apply';
-const session = { id: 'session-1', agent_group_id: 'ag-1' } as Session;
+const session: Session = {
+  id: 'session-1',
+  agent_group_id: 'ag-1',
+  messaging_group_id: null,
+  thread_id: null,
+  agent_provider: null,
+  status: 'active',
+  container_status: 'running',
+  last_active: new Date().toISOString(),
+  created_at: new Date().toISOString(),
+};
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -42,6 +53,7 @@ beforeEach(() => {
     created_at: new Date().toISOString(),
   });
   ensureContainerConfig('ag-1');
+  createSession(session);
 });
 
 afterEach(() => {
