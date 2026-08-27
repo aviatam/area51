@@ -205,6 +205,7 @@ async function spawnContainer(session: Session): Promise<void> {
     backend: AREA51_RUNTIME_BACKEND,
     incusInstanceKind: AREA51_INCUS_INSTANCE_KIND,
     containerConfig,
+    provider: providerName,
   });
   const decisionPath = writeLiveRuntimePolicyDecision(DATA_DIR, session.id, runtimeDecision);
   log.info('Live Runtime Policy decision', {

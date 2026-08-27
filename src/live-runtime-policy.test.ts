@@ -46,6 +46,65 @@ describe('live runtime policy', () => {
     expect(decision.reasons).toContain('Incus is required by policy but is not available');
   });
 
+  it('blocks an unowned MCP server on Docker because its provenance is unknown', () => {
+    const decision = selectLiveRuntimePolicy(cleanReport(), {
+      backend: 'docker',
+      incusInstanceKind: 'container',
+      containerConfig: config({ mcpServers: { crm: { command: 'crm-mcp' } } }),
+    });
+
+    expect(decision).toMatchObject({ action: 'block', requiresIncus: true });
+    expect(decision.reasons).toContain('unknown agent or skill source');
+    expect(decision.reasons).toContain('high-risk capability requested: shell');
+  });
+
+  it('blocks a plugin-owned MCP server on Docker as third-party code', () => {
+    const decision = selectLiveRuntimePolicy(cleanReport(), {
+      backend: 'docker',
+      incusInstanceKind: 'container',
+      containerConfig: config({
+        mcpServers: { crm: { command: 'crm-mcp' } },
+        mcpServerProvenance: { crm: 'sales' },
+      }),
+    });
+
+    expect(decision).toMatchObject({ action: 'block', requiresIncus: true });
+    expect(decision.reasons).toContain('third-party agent or skill source');
+  });
+
+  it('escalates an unknown effective provider to an Incus VM', () => {
+    const decision = selectLiveRuntimePolicy(cleanReport(), {
+      backend: 'incus',
+      incusInstanceKind: 'container',
+      containerConfig: config(),
+      provider: 'unregistered-provider',
+    });
+
+    expect(decision).toMatchObject({ action: 'allow', runtime: 'incus-vm' });
+    expect(decision.reasons).toContain('unknown agent or skill source');
+  });
+
+  it('blocks an explicitly selected skill outside the built-in catalog on Docker', () => {
+    const decision = selectLiveRuntimePolicy(cleanReport(), {
+      backend: 'docker',
+      incusInstanceKind: 'container',
+      containerConfig: config({ skills: ['unreviewed-skill'] }),
+    });
+
+    expect(decision).toMatchObject({ action: 'block', requiresIncus: true });
+    expect(decision.reasons).toContain('unknown agent or skill source');
+  });
+
+  it('keeps an explicitly selected built-in skill on the clean default path', () => {
+    const decision = selectLiveRuntimePolicy(cleanReport(), {
+      backend: 'docker',
+      incusInstanceKind: 'container',
+      containerConfig: config({ skills: ['welcome'] }),
+    });
+
+    expect(decision).toMatchObject({ action: 'allow', runtime: 'docker', riskScore: 0 });
+  });
+
   it('uses an Incus container for the normal production posture', () => {
     const decision = selectLiveRuntimePolicy(cleanReport(), {
       backend: 'incus',

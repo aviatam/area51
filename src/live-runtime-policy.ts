@@ -4,17 +4,21 @@ import path from 'node:path';
 import type { AgentGateReport } from './agent-gate.js';
 import type { Area51RuntimeBackend } from './config.js';
 import type { ContainerConfig } from './container-config.js';
+import { listProviderContainerConfigNames } from './providers/provider-container-registry.js';
 import {
   selectRuntimePolicy,
   type RuntimeCapability,
   type RuntimePolicyDecision,
   type RuntimePolicyProfile,
+  type RuntimeTrustLevel,
 } from './runtime-policy.js';
 
 export interface LiveRuntimePolicyInput {
   backend: Area51RuntimeBackend;
   incusInstanceKind: 'container' | 'vm';
   containerConfig: ContainerConfig;
+  /** Effective provider after session and group overrides are resolved. */
+  provider?: string;
 }
 
 /** Select the runtime before any agent-controlled process is created. */
@@ -24,9 +28,9 @@ export function selectLiveRuntimePolicy(report: AgentGateReport, input: LiveRunt
 
   return selectRuntimePolicy(report, {
     profile,
-    trustLevel: 'approved',
+    trustLevel: liveTrustLevel(input.containerConfig, input.provider),
     dataSensitivity: 'business',
-    capabilities: liveCapabilities(input.containerConfig),
+    capabilities: liveCapabilities(input.containerConfig, input.provider),
     incusAvailable: input.backend === 'incus',
     // A risky local workload must block when Incus is unavailable instead of
     // silently inheriting the weaker Docker runtime.
@@ -55,10 +59,12 @@ export function writeLiveRuntimePolicyDecision(
   }
 }
 
-function liveCapabilities(config: ContainerConfig): RuntimeCapability[] {
+function liveCapabilities(config: ContainerConfig, effectiveProvider?: string): RuntimeCapability[] {
   const capabilities = new Set<RuntimeCapability>(['chat', 'files', 'network']);
   const extendedPackageSurface = config.packages.apt.length > 0 || config.packages.npm.length > 0;
   const broadMountSurface = config.additionalMounts.length > 0;
+  const mcpServers = Object.values(config.mcpServers);
+  const nonBuiltInProvider = (effectiveProvider ?? config.provider ?? 'claude').toLowerCase() !== 'claude';
   if (extendedPackageSurface) capabilities.add('package-install');
   if (broadMountSurface) capabilities.add('broad-mount');
   // Package and broad-mount extensions can combine third-party code/data with
@@ -67,5 +73,48 @@ function liveCapabilities(config: ContainerConfig): RuntimeCapability[] {
     capabilities.add('shell');
     capabilities.add('secret-access');
   }
+  // Stdio MCP servers and provider adapters execute code in the agent runtime.
+  // Every MCP server can receive agent data and use the OneCLI credential route.
+  if (mcpServers.length > 0) capabilities.add('secret-access');
+  if (mcpServers.some((server) => server.type !== 'http') || nonBuiltInProvider) capabilities.add('shell');
+  if (nonBuiltInProvider) capabilities.add('secret-access');
   return [...capabilities];
+}
+
+function liveTrustLevel(config: ContainerConfig, effectiveProvider?: string): RuntimeTrustLevel {
+  let trust: RuntimeTrustLevel = 'built-in';
+  const raise = (candidate: RuntimeTrustLevel): void => {
+    const rank: Record<RuntimeTrustLevel, number> = { 'built-in': 0, approved: 1, 'third-party': 2, unknown: 3 };
+    if (rank[candidate] > rank[trust]) trust = candidate;
+  };
+
+  const provider = (effectiveProvider ?? config.provider ?? 'claude').toLowerCase();
+  if (provider !== 'claude') {
+    raise(listProviderContainerConfigNames().includes(provider) ? 'third-party' : 'unknown');
+  }
+
+  for (const name of Object.keys(config.mcpServers)) {
+    raise(config.mcpServerProvenance?.[name] ? 'third-party' : 'unknown');
+  }
+  if (config.packages.apt.length > 0 || config.packages.npm.length > 0) raise('third-party');
+  if (config.additionalMounts.length > 0) raise('unknown');
+
+  if (config.skills !== 'all') {
+    const builtInSkills = builtInSkillNames();
+    if (config.skills.some((skill) => !builtInSkills.has(skill))) raise('unknown');
+  }
+
+  return trust;
+}
+
+function builtInSkillNames(): Set<string> {
+  const root = path.join(process.cwd(), 'container', 'skills');
+  try {
+    return new Set(fs.readdirSync(root).filter((name) => fs.statSync(path.join(root, name)).isDirectory()));
+    // eslint-disable-next-line no-catch-all/no-catch-all -- an unavailable catalog must fail closed as unknown provenance
+  } catch {
+    // An explicit skill cannot be treated as built-in when the installed
+    // built-in catalog itself is unavailable.
+    return new Set();
+  }
 }
