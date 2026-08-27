@@ -1,15 +1,16 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import type { AgentGateReport } from './agent-gate.js';
-import { enforceIncusPreflight, enforceIncusRuntimeDecision } from './incus-quarantine-policy.js';
-import { buildIncusRuntimePlan } from './incus-runtime.js';
+import { enforceIncusRuntimeDecision } from './incus-quarantine-policy.js';
+import { buildIncusRuntimePlan, type IncusRuntimePlan } from './incus-runtime.js';
+import { selectRuntimePolicy } from './runtime-policy.js';
 
 describe('Incus live quarantine policy', () => {
   it('freezes and snapshots a live instance when Agent Gate produced quarantine evidence', () => {
     const executor = vi.fn();
     const plan = buildIncusRuntimePlan({ agentGroupFolder: 'support', groupDir: '/srv/groups/support' });
 
-    const result = enforceIncusPreflight(report(true), plan, { executor });
+    const result = enforceIncusRuntimeDecision(decision(report(true), plan), plan, { executor });
 
     expect(result.decision.action).toBe('quarantine');
     expect(executor).toHaveBeenCalledWith(['freeze', plan.instance, '--project', plan.project]);
@@ -21,7 +22,7 @@ describe('Incus live quarantine policy', () => {
     const executor = vi.fn();
     const plan = buildIncusRuntimePlan({ agentGroupFolder: 'support', groupDir: '/srv/groups/support' });
 
-    const result = enforceIncusPreflight(report(false), plan, { executor });
+    const result = enforceIncusRuntimeDecision(decision(report(false), plan), plan, { executor });
 
     expect(result.decision.action).toBe('allow');
     expect(executor).not.toHaveBeenCalled();
@@ -65,6 +66,17 @@ describe('Incus live quarantine policy', () => {
     ).toThrow('refusing incus-vm');
   });
 });
+
+function decision(gateReport: AgentGateReport, plan: IncusRuntimePlan) {
+  return selectRuntimePolicy(gateReport, {
+    profile: plan.instanceKind === 'vm' ? 'maximum' : 'production',
+    incusAvailable: true,
+    allowDockerFallback: false,
+    trustLevel: 'approved',
+    dataSensitivity: 'customer',
+    capabilities: ['chat', 'network'],
+  });
+}
 
 function report(compromised: boolean): AgentGateReport {
   return {
