@@ -42,6 +42,9 @@ const session: Session = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.mocked(buildAgentGroupImage).mockResolvedValue(undefined);
+  vi.mocked(killContainer).mockImplementation(() => {});
+  vi.mocked(wakeContainer).mockResolvedValue(true);
   fs.rmSync(TEST_DIR, { recursive: true, force: true });
   fs.mkdirSync(TEST_DIR, { recursive: true });
   runMigrations(initTestDb());
