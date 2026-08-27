@@ -60,6 +60,12 @@ export async function applyInstallPackages(payload: Record<string, unknown>, ses
     ...((payload.npm as string[] | undefined) || []),
   ].join(', ');
   log.info('Package install approved', { agentGroupId: session.agent_group_id });
+  // The DB mutation changes the workload's capabilities. Stop the existing
+  // runtime before the potentially slow image rebuild so it cannot continue
+  // executing under the weaker decision that admitted its previous config.
+  // wakeContainer below always re-enters spawnContainer, which rescans Agent
+  // Gate and computes a fresh host-owned Runtime Policy decision.
+  killContainer(session.id, 'runtime policy reevaluation');
   try {
     await buildAgentGroupImage(session.agent_group_id);
     writeSessionMessage(session.agent_group_id, session.id, {
@@ -76,10 +82,8 @@ export async function applyInstallPackages(payload: Record<string, unknown>, ses
       }),
       onWake: 1,
     });
-    killContainer(session.id, 'rebuild applied', () => {
-      const s = getSession(session.id);
-      if (s) wakeContainer(s);
-    });
+    const s = getSession(session.id);
+    if (s) wakeContainer(s);
     log.info('Container rebuild completed (bundled with install)', { agentGroupId: session.agent_group_id });
   } catch (e) {
     notifyAgent(

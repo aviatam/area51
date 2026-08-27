@@ -23,12 +23,14 @@ import {
   runMigrations,
 } from '../../db/index.js';
 import { updateContainerConfigJson } from '../../db/container-configs.js';
-import { applyAddMcpServer } from './apply.js';
+import { buildAgentGroupImage, killContainer, wakeContainer } from '../../container-runner.js';
+import { applyAddMcpServer, applyInstallPackages } from './apply.js';
 
 const TEST_DIR = '/tmp/area51-test-self-mod-apply';
 const session = { id: 'session-1', agent_group_id: 'ag-1' } as Session;
 
 beforeEach(() => {
+  vi.clearAllMocks();
   fs.rmSync(TEST_DIR, { recursive: true, force: true });
   fs.mkdirSync(TEST_DIR, { recursive: true });
   runMigrations(initTestDb());
@@ -66,5 +68,36 @@ describe('applyAddMcpServer', () => {
     expect(JSON.parse(getContainerConfig('ag-1')!.mcp_servers)).toEqual({
       docs: { type: 'http', url: 'https://mcp.example.com/mcp', plugin: 'sdr' },
     });
+  });
+});
+
+describe('applyInstallPackages', () => {
+  it('stops the old runtime before rebuilding and wakes only after the rebuild', async () => {
+    const order: string[] = [];
+    vi.mocked(killContainer).mockImplementation(() => {
+      order.push('stop');
+    });
+    vi.mocked(buildAgentGroupImage).mockImplementation(async () => {
+      order.push('build');
+    });
+    vi.mocked(wakeContainer).mockImplementation(async () => {
+      order.push('wake');
+      return true;
+    });
+
+    await applyInstallPackages({ npm: ['third-party-tool'] }, session);
+
+    expect(order).toEqual(['stop', 'build', 'wake']);
+    expect(killContainer).toHaveBeenCalledWith(session.id, 'runtime policy reevaluation');
+    expect(JSON.parse(getContainerConfig('ag-1')!.packages_npm)).toEqual(['third-party-tool']);
+  });
+
+  it('keeps the runtime stopped when the rebuild fails', async () => {
+    vi.mocked(buildAgentGroupImage).mockRejectedValueOnce(new Error('build failed'));
+
+    await applyInstallPackages({ apt: ['git'] }, session);
+
+    expect(killContainer).toHaveBeenCalledWith(session.id, 'runtime policy reevaluation');
+    expect(wakeContainer).not.toHaveBeenCalled();
   });
 });
