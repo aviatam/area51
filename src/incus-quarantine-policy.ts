@@ -7,7 +7,7 @@ export interface IncusPreflightResult {
   quarantine?: IncusAdapterResult;
 }
 
-/** Apply a precomputed host-owned decision to the exact Incus runtime it selected. */
+/** Apply a precomputed host-owned decision to the exact Incus runtime it selected; never reclassify trust here. */
 export function enforceIncusRuntimeDecision(
   decision: RuntimePolicyDecision,
   plan: IncusRuntimePlan,
