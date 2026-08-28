@@ -227,7 +227,6 @@ export function applyIncusRuntimePlan(plan: IncusRuntimePlan, options: IncusAdap
     }
   }
   if (vmDisks) commands.push(...vmDisks.initializeCommands);
-
   return runCommands(commands, options);
 }
 
@@ -266,8 +265,23 @@ export function quarantineIncusInstance(
     );
   }
   commands.push(['profile', 'add', plan.instance, quarantineProfile, '--project', plan.project]);
-
-  return runCommands(commands, options);
+  const results: IncusCommandResult[] = [];
+  let firstFailure: Error | undefined;
+  for (const argv of commands) {
+    try {
+      results.push(...runCommands([argv], options).commands);
+      // eslint-disable-next-line no-catch-all/no-catch-all -- quarantine must continue later containment phases
+    } catch (error) {
+      results.push({ argv, ok: false, error });
+      firstFailure ??= error instanceof Error ? error : new Error(String(error));
+    }
+  }
+  if (firstFailure) {
+    throw new Error(`Incus quarantine enforcement incomplete for ${plan.project}/${plan.instance}`, {
+      cause: firstFailure,
+    });
+  }
+  return { commands: results };
 }
 
 export function spawnIncusExec(
