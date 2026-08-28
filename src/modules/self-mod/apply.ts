@@ -60,6 +60,12 @@ export async function applyInstallPackages(payload: Record<string, unknown>, ses
     ...((payload.npm as string[] | undefined) || []),
   ].join(', ');
   log.info('Package install approved', { agentGroupId: session.agent_group_id });
+  // The DB mutation changes the workload's capabilities. Stop the existing
+  // runtime before the potentially slow image rebuild so it cannot continue
+  // executing under the weaker decision that admitted its previous config.
+  // wakeContainer below always re-enters spawnContainer, which rescans Agent
+  // Gate and computes a fresh host-owned Runtime Policy decision.
+  killContainer(session.id, 'runtime policy reevaluation');
   try {
     await buildAgentGroupImage(session.agent_group_id);
     writeSessionMessage(session.agent_group_id, session.id, {
@@ -76,16 +82,28 @@ export async function applyInstallPackages(payload: Record<string, unknown>, ses
       }),
       onWake: 1,
     });
-    killContainer(session.id, 'rebuild applied', () => {
-      const s = getSession(session.id);
-      if (s) wakeContainer(s);
-    });
+    const s = getSession(session.id);
+    if (s) wakeContainer(s);
     log.info('Container rebuild completed (bundled with install)', { agentGroupId: session.agent_group_id });
   } catch (e) {
-    notifyAgent(
-      session,
-      `Packages added to config (${pkgs}) but rebuild failed: ${e instanceof Error ? e.message : String(e)}. Tell the user — an admin will need to retry the install_packages request or inspect the build logs.`,
-    );
+    // Keep the runtime stopped. notifyAgent() would wake it immediately and
+    // let the old weaker image run after its declared capabilities changed.
+    // Queue the failure for the next operator-initiated, policy-gated wake.
+    writeSessionMessage(session.agent_group_id, session.id, {
+      id: `appr-note-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      kind: 'chat',
+      timestamp: new Date().toISOString(),
+      platformId: session.agent_group_id,
+      channelType: 'agent',
+      threadId: null,
+      content: JSON.stringify({
+        text: `Packages added to config (${pkgs}) but rebuild failed: ${e instanceof Error ? e.message : String(e)}. Tell the user — an admin must repair the build before this runtime can resume.`,
+        sender: 'system',
+        senderId: 'system',
+      }),
+      // Deliberately queued without wakeContainer: recovery must re-enter policy.
+      onWake: 1,
+    });
     log.error('Bundled rebuild failed after install approval', { agentGroupId: session.agent_group_id, err: e });
   }
 }
