@@ -24,6 +24,7 @@ import {
   runMigrations,
 } from '../../db/index.js';
 import { updateContainerConfigJson } from '../../db/container-configs.js';
+import { writeSessionMessage } from '../../session-manager.js';
 import { buildAgentGroupImage, killContainer, wakeContainer } from '../../container-runner.js';
 import { applyAddMcpServer, applyInstallPackages } from './apply.js';
 
@@ -114,5 +115,10 @@ describe('applyInstallPackages', () => {
 
     expect(killContainer).toHaveBeenCalledWith(session.id, 'runtime policy reevaluation');
     expect(wakeContainer).not.toHaveBeenCalled();
+    expect(writeSessionMessage).toHaveBeenCalledWith(
+      session.agent_group_id,
+      session.id,
+      expect.objectContaining({ onWake: 1 }),
+    );
   });
 });
