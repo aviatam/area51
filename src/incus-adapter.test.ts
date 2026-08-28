@@ -543,6 +543,27 @@ describe('Incus adapter', () => {
     expect(executor.mock.calls.flat().flat().join(' ')).not.toContain('area51-peer-agent');
   });
 
+  it('preserves quarantined evidence across restart even when recovery metadata is corrupt', () => {
+    const executor = vi.fn((argv: string[]) => {
+      if (argv[0] !== 'list') return;
+      return JSON.stringify([
+        {
+          name: 'area51-evidence-agent',
+          project: 'area51-evidence-vm',
+          expanded_config: {
+            'user.area51.install': 'install-a',
+            'user.area51.quarantined': 'true',
+            'user.area51.vm_volumes': 'corrupt-evidence-metadata',
+          },
+        },
+      ]);
+    });
+
+    expect(() => cleanupIncusOrphans('install-a', { executor })).not.toThrow();
+    expect(executor).toHaveBeenCalledTimes(1);
+    expect(executor).toHaveBeenCalledWith(['list', '--all-projects', '--format=json']);
+  });
+
   it('fails closed on malformed managed-volume recovery metadata', () => {
     const executor = vi.fn((argv: string[]) => {
       if (argv[0] === 'list') {
@@ -701,7 +722,7 @@ describe('Incus adapter', () => {
     const plan = vmPlan();
 
     expect(() => quarantineIncusInstance(plan, { executor, reason: 'npm-compromise' })).toThrow(
-      'Incus command failed: incus freeze',
+      'Incus quarantine enforcement incomplete',
     );
 
     expect(executor.mock.calls[0]?.[0]).toEqual([
@@ -709,6 +730,53 @@ describe('Incus adapter', () => {
       'set',
       plan.instance,
       'user.area51.quarantine_reason=npm-compromise',
+      '--project',
+      plan.project,
+    ]);
+    expect(executor).toHaveBeenCalledWith(['stop', plan.instance, '--force', '--project', plan.project]);
+    expect(executor).toHaveBeenCalledWith([
+      'config',
+      'device',
+      'remove',
+      plan.instance,
+      'area51-vm-net',
+      '--project',
+      plan.project,
+    ]);
+  });
+
+  it.each([
+    ['preservation marker', (argv: string[]) => argv[0] === 'config' && argv[1] === 'set'],
+    ['freeze', (argv: string[]) => argv[0] === 'freeze'],
+    ['snapshot', (argv: string[]) => argv[0] === 'snapshot'],
+    ['stop', (argv: string[]) => argv[0] === 'stop'],
+    ['network detach', (argv: string[]) => argv[0] === 'config' && argv[1] === 'device'],
+    ['quarantine profile', (argv: string[]) => argv[0] === 'profile' && argv[1] === 'add'],
+  ])('continues later containment after %s failure', (_phase, shouldFail) => {
+    const executor = vi.fn((argv: string[]) => {
+      if (shouldFail(argv)) throw new Error('injected failure');
+    });
+    const plan = vmPlan();
+
+    expect(() => quarantineIncusInstance(plan, { executor, reason: 'failure-injection' })).toThrow(
+      'Incus quarantine enforcement incomplete',
+    );
+
+    expect(executor).toHaveBeenCalledWith(['stop', plan.instance, '--force', '--project', plan.project]);
+    expect(executor).toHaveBeenCalledWith([
+      'config',
+      'device',
+      'remove',
+      plan.instance,
+      'area51-vm-net',
+      '--project',
+      plan.project,
+    ]);
+    expect(executor).toHaveBeenCalledWith([
+      'profile',
+      'add',
+      plan.instance,
+      plan.quarantineProfile,
       '--project',
       plan.project,
     ]);
