@@ -101,6 +101,7 @@ export async function applyInstallPackages(payload: Record<string, unknown>, ses
         sender: 'system',
         senderId: 'system',
       }),
+      // Deliberately queued without wakeContainer: recovery must re-enter policy.
       onWake: 1,
     });
     log.error('Bundled rebuild failed after install approval', { agentGroupId: session.agent_group_id, err: e });
