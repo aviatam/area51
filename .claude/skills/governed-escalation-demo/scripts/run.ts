@@ -160,7 +160,9 @@ function writeJson(file: string, value: unknown): void {
 function cli(): void {
   const args = process.argv.slice(2);
   if (args.includes('--live')) {
-    const result = spawnSync('pnpm', ['exec', 'tsx', 'scripts/incus-vm-containment-e2e.ts'], { stdio: 'inherit' });
+    const result = spawnSync(process.execPath, ['--import', 'tsx', 'scripts/incus-vm-containment-e2e.ts'], {
+      stdio: 'inherit',
+    });
     process.exit(result.status ?? 1);
   }
   const index = args.indexOf('--output-dir');

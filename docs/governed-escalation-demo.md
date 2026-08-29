@@ -13,6 +13,21 @@ pnpm exec tsx .claude/skills/governed-escalation-demo/scripts/run.ts \
 
 The output is deliberately split into deterministic contract evidence and authoritative live evidence. The local command never labels a planned Incus command as executed.
 
+The deployment wrapper bootstraps dependencies and writes a final deployment report:
+
+```bash
+bash .claude/skills/governed-escalation-demo/deploy.sh --mode contract
+```
+
+For production, first preview the host requirements, then run the same wrapper. Authentication remains interactive by design; secrets are never accepted as bundle arguments or written into its reports.
+
+```bash
+bash .claude/skills/governed-escalation-demo/deploy.sh --mode production --plan
+bash .claude/skills/governed-escalation-demo/deploy.sh --mode production
+```
+
+Production mode requires Linux, Incus, and readable/writable KVM. It runs the official Area51 setup, builds both Incus container and VM images, then persists the host-owned Incus backend and image selection. Missing strong-isolation prerequisites block deployment instead of falling back to Docker.
+
 ```mermaid
 flowchart TD
     A["Clean Nostromo agent"] --> B["Agent Gate scan"]

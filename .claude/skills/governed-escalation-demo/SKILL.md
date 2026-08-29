@@ -7,6 +7,28 @@ description: Run the Area51 clean-to-poisoned escalation and quarantine proof, p
 
 Use this skill when someone asks why Area51 is useful, how its governance works, or wants to demonstrate a changing agent being moved to stronger isolation and quarantined.
 
+## One-command bundle
+
+Portable proof, including dependency bootstrap:
+
+```bash
+bash ${CLAUDE_SKILL_DIR}/deploy.sh --mode contract
+```
+
+Production installation with required provider/channel prompts, Incus image builds, and governance configuration:
+
+```bash
+bash ${CLAUDE_SKILL_DIR}/deploy.sh --mode production
+```
+
+Inspect production prerequisites without changing the host:
+
+```bash
+bash ${CLAUDE_SKILL_DIR}/deploy.sh --mode production --plan
+```
+
+Every mode writes `reports/deployment.json`. Production fails before setup when Incus or readable/writable KVM is unavailable; it never silently falls back to Docker.
+
 ## Safe deterministic proof
 
 From the Area51 repository root, run:
