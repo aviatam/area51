@@ -117,6 +117,11 @@ Run the working containment demo:
 area51 demo --output-dir .area51/demo
 ```
 
+To demonstrate a clean agent changing into a quarantined Incus VM workload, run the
+[`/governed-escalation-demo`](docs/governed-escalation-demo.md) utility skill. It
+produces machine-readable assertions locally and delegates authoritative live proof
+to the existing hosted-KVM E2E.
+
 The demo creates a support-refund agent, checks AI secret configuration, scores every pillar, detects a compromised package, writes quarantine evidence, and produces the Incus freeze/snapshot/network-isolation plan.
 
 ## Demo Output
