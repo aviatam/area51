@@ -9,6 +9,7 @@ on:
       - container/agent-runner/**
       - container/skills/**
       - scripts/incus-vm-containment-e2e.ts
+      - .claude/skills/governed-escalation-demo/**
       - src/incus-adapter.ts
       - src/incus-runtime.ts
       - src/incus-vm-disk.ts
@@ -102,7 +103,7 @@ jobs:
         env:
           AREA51_INCUS_VM_IMAGE_ALIAS: area51-agent-v2-vm-ci-${{ github.run_id }}
           AREA51_INCUS_STORAGE_POOL: default
-        run: pnpm exec tsx scripts/incus-vm-containment-e2e.ts
+        run: bash .claude/skills/governed-escalation-demo/deploy.sh --mode live
       - name: Cleanup
         if: always()
         env:
