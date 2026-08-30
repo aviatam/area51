@@ -105,6 +105,26 @@ The design goal is simple: the agent can ask and act inside its scoped runtime, 
 
 ## Quick Start
 
+### One-command governed Linux installation
+
+Supported first-party targets: Ubuntu 22.04/24.04 and Debian 12/13 on amd64 or arm64 with KVM and at least 4 GB RAM.
+
+Preview without changing the host:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/aviatam/area51/main/install-linux.sh | bash -s -- --plan
+```
+
+Install system prerequisites, Incus, Area51, both runtime images, governance, and the production service:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/aviatam/area51/main/install-linux.sh | bash
+```
+
+The command requires a regular user with `sudo` and retains interactive provider/channel authentication. It fails before installation when KVM or the supported host contract is unavailable.
+
+### Repository installation
+
 ```bash
 git clone https://github.com/aviatam/area51.git area51
 cd area51

@@ -40,6 +40,11 @@ jobs:
           bash .claude/skills/governed-escalation-demo/deploy.sh --mode contract --output-dir .area51/governed-ci
           node -e "const r=require('./.area51/governed-ci/reports/deployment.json'); if (!r.deployment_passed) process.exit(1)"
 
+      - name: Linux installer contract
+        run: |
+          bash -n install-linux.sh
+          pnpm exec vitest run scripts/linux-installer-contract.test.ts
+
       - name: Container tests
         working-directory: container/agent-runner
         run: bun run test
