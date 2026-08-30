@@ -31,25 +31,28 @@ describe('Linux one-command installer contract', () => {
     expect(installer).not.toContain('--mode contract');
   });
 
-  it('executes the supported-host plan without making installation changes', () => {
-    const fixture = fs.mkdtempSync(path.join(os.tmpdir(), 'area51-linux-plan-'));
-    const osRelease = path.join(fixture, 'os-release');
-    const kvm = path.join(fixture, 'kvm');
-    fs.writeFileSync(osRelease, 'ID=ubuntu\nVERSION_CODENAME=noble\n');
-    fs.writeFileSync(kvm, 'test-device');
-    const result = spawnSync('bash', ['install-linux.sh', '--plan'], {
-      cwd: process.cwd(),
-      encoding: 'utf8',
-      env: {
-        ...process.env,
-        AREA51_OS_RELEASE_FILE: osRelease,
-        AREA51_KVM_DEVICE: kvm,
-        AREA51_PLAN_ALLOW_ROOT: '1',
-      },
-    });
-    expect(result.status, result.stderr).toBe(0);
-    expect(result.stdout).toContain('supported distribution ubuntu/noble');
-    expect(result.stdout).toContain('PLAN install Area51');
-    expect(result.stdout).not.toContain('apt-get update');
-  });
+  it.skipIf(process.platform !== 'linux')(
+    'executes the supported-host plan without making installation changes',
+    () => {
+      const fixture = fs.mkdtempSync(path.join(os.tmpdir(), 'area51-linux-plan-'));
+      const osRelease = path.join(fixture, 'os-release');
+      const kvm = path.join(fixture, 'kvm');
+      fs.writeFileSync(osRelease, 'ID=ubuntu\nVERSION_CODENAME=noble\n');
+      fs.writeFileSync(kvm, 'test-device');
+      const result = spawnSync('bash', ['install-linux.sh', '--plan'], {
+        cwd: process.cwd(),
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          AREA51_OS_RELEASE_FILE: osRelease,
+          AREA51_KVM_DEVICE: kvm,
+          AREA51_PLAN_ALLOW_ROOT: '1',
+        },
+      });
+      expect(result.status, result.stderr).toBe(0);
+      expect(result.stdout).toContain('supported distribution ubuntu/noble');
+      expect(result.stdout).toContain('PLAN install Area51');
+      expect(result.stdout).not.toContain('apt-get update');
+    },
+  );
 });
