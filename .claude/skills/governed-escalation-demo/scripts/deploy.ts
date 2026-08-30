@@ -60,9 +60,13 @@ export async function deploy(args: string[]): Promise<number> {
   }
 
   if (process.getuid?.() === 0) throw new Error('Production deployment must run as a regular user, not root.');
-  let status = run('bash', ['container/incus/build.sh']);
+  let status = commandWorks('incus', ['image', 'info', 'area51-agent-v2'])
+    ? 0
+    : run('bash', ['container/incus/build.sh']);
   if (status !== 0) return status;
-  status = run('bash', ['container/incus/build-vm.sh']);
+  status = commandWorks('incus', ['image', 'info', 'area51-agent-v2-vm'])
+    ? 0
+    : run('bash', ['container/incus/build-vm.sh']);
   if (status !== 0) return status;
   const envPath = path.resolve('.env');
   const previousEnv = fs.existsSync(envPath) ? fs.readFileSync(envPath) : null;
