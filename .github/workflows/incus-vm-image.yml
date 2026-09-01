@@ -117,7 +117,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
-      AREA51_INSTALL_DIR: ${{ runner.temp }}/area51-install
+      AREA51_INSTALL_DIR: /tmp/area51-install
       AREA51_REEXEC_SG: '1'
       AREA51_SKIP: environment,container,onecli,auth,mounts,service,cli-agent,timezone,channel,verify,first-chat
     steps:
