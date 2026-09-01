@@ -118,6 +118,7 @@ jobs:
     timeout-minutes: 45
     env:
       AREA51_INSTALL_DIR: /tmp/area51-install
+      AREA51_REF: ${{ github.head_ref }}
       AREA51_REEXEC_SG: '1'
       AREA51_SKIP: environment,container,onecli,auth,mounts,service,cli-agent,timezone,channel,verify,first-chat
     steps:
@@ -128,9 +129,11 @@ jobs:
           test -e /dev/kvm
           test "$(awk '/^MemTotal:/ {printf "%d", $2 / 1024}' /proc/meminfo)" -ge 3700
 
-      - name: Run public one-command installer
+      - name: Run candidate one-command installer
+        env:
+          INSTALLER_REF: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
-          curl -fsSL https://raw.githubusercontent.com/aviatam/area51/main/install-linux.sh |
+          curl -fsSL "https://raw.githubusercontent.com/aviatam/area51/${INSTALLER_REF}/install-linux.sh" |
             bash -s -- --yes
 
       - name: Verify installed runtime and governance evidence
@@ -145,7 +148,9 @@ jobs:
           test -z "$(git -C "$AREA51_INSTALL_DIR" status --porcelain)"
 
       - name: Verify repeat installation
+        env:
+          INSTALLER_REF: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
-          curl -fsSL https://raw.githubusercontent.com/aviatam/area51/main/install-linux.sh |
+          curl -fsSL "https://raw.githubusercontent.com/aviatam/area51/${INSTALLER_REF}/install-linux.sh" |
             bash -s -- --yes
           node -e "const r=require(process.env.AREA51_INSTALL_DIR+'/.area51/governed-demo/reports/deployment.json'); if (!r.deployment_passed) process.exit(1)"

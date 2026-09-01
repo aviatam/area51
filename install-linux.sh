@@ -91,7 +91,7 @@ fi
 sudo -v
 export DEBIAN_FRONTEND=noninteractive
 sudo apt-get update
-sudo apt-get install -y --no-install-recommends ca-certificates curl git gnupg acl build-essential "$QEMU_PACKAGE" qemu-utils
+sudo apt-get install -y --no-install-recommends ca-certificates curl git gnupg acl build-essential iproute2 iptables "$QEMU_PACKAGE" qemu-utils
 
 KEY_TMP="$(mktemp)"
 trap 'rm -f "$KEY_TMP"' EXIT
@@ -119,6 +119,21 @@ sudo setfacl -m "u:$(id -un):rw" "$KVM_DEVICE"
 getent group incus-admin >/dev/null 2>&1 && sudo usermod -aG incus-admin "$(id -un)"
 getent group kvm >/dev/null 2>&1 && sudo usermod -aG kvm "$(id -un)"
 if [ -z "$(incus storage list --format csv -c n 2>/dev/null)" ]; then incus admin init --minimal; fi
+
+INCUS_NETWORK="$(incus profile device get default eth0 network 2>/dev/null || true)"
+if [ -n "$INCUS_NETWORK" ]; then
+  INCUS_SUBNET="$(incus network get "$INCUS_NETWORK" ipv4.address)"
+  UPLINK="$(ip -4 route show default | awk '{print $5; exit}')"
+  [ -n "$INCUS_SUBNET" ] && [ "$INCUS_SUBNET" != none ] || { echo 'Incus bridge has no IPv4 subnet.' >&2; exit 1; }
+  [ -n "$UPLINK" ] || { echo 'Cannot determine the default network uplink.' >&2; exit 1; }
+  sudo sysctl -w net.ipv4.ip_forward=1 >/dev/null
+  sudo iptables -C FORWARD -i "$INCUS_NETWORK" -o "$UPLINK" -j ACCEPT 2>/dev/null || \
+    sudo iptables -I FORWARD 1 -i "$INCUS_NETWORK" -o "$UPLINK" -j ACCEPT
+  sudo iptables -C FORWARD -i "$UPLINK" -o "$INCUS_NETWORK" -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT 2>/dev/null || \
+    sudo iptables -I FORWARD 1 -i "$UPLINK" -o "$INCUS_NETWORK" -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+  sudo iptables -t nat -C POSTROUTING -s "$INCUS_SUBNET" -o "$UPLINK" -j MASQUERADE 2>/dev/null || \
+    sudo iptables -t nat -I POSTROUTING 1 -s "$INCUS_SUBNET" -o "$UPLINK" -j MASQUERADE
+fi
 incus version
 
 if [ -e "$INSTALL_DIR" ]; then
