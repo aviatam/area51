@@ -1,0 +1,50 @@
+name: Linux Installer E2E
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - .github/workflows/linux-installer-e2e.yml
+      - install-linux.sh
+      - .claude/skills/governed-escalation-demo/**
+
+permissions:
+  contents: read
+
+jobs:
+  clean-host-install:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      AREA51_INSTALL_DIR: ${{ runner.temp }}/area51-install
+      AREA51_REEXEC_SG: '1'
+      AREA51_SKIP: environment,container,onecli,auth,mounts,service,cli-agent,timezone,channel,verify,first-chat
+    steps:
+      - name: Verify disposable KVM host
+        run: |
+          test "$(id -u)" -ne 0
+          grep -E -m1 '(vmx|svm)' /proc/cpuinfo
+          test -e /dev/kvm
+          test "$(awk '/^MemTotal:/ {printf "%d", $2 / 1024}' /proc/meminfo)" -ge 3700
+
+      - name: Run public one-command installer
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/aviatam/area51/main/install-linux.sh |
+            bash -s -- --yes
+
+      - name: Verify installed runtime and governance evidence
+        run: |
+          incus version
+          incus image info area51-agent-v2
+          incus image info area51-agent-v2-vm
+          test -f "$AREA51_INSTALL_DIR/.area51/governed-demo/reports/deployment.json"
+          node -e "const r=require(process.env.AREA51_INSTALL_DIR+'/.area51/governed-demo/reports/deployment.json'); if (r.mode !== 'production' || !r.preflight_passed || !r.deployment_passed || !r.governance_applied) process.exit(1)"
+          grep -qx 'AREA51_RUNTIME_BACKEND=incus' "$AREA51_INSTALL_DIR/.env"
+          grep -qx 'AREA51_INCUS_IMAGE=local:area51-agent-v2' "$AREA51_INSTALL_DIR/.env"
+          test -z "$(git -C "$AREA51_INSTALL_DIR" status --porcelain)"
+
+      - name: Verify repeat installation
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/aviatam/area51/main/install-linux.sh |
+            bash -s -- --yes
+          node -e "const r=require(process.env.AREA51_INSTALL_DIR+'/.area51/governed-demo/reports/deployment.json'); if (!r.deployment_passed) process.exit(1)"
