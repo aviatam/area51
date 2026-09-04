@@ -27,6 +27,8 @@ describe('Linux one-command installer contract', () => {
   it('initializes Incus idempotently and delegates to fail-closed production deployment', () => {
     expect(installer).toContain('incus admin init --minimal');
     expect(installer).toContain('status --porcelain');
+    expect(installer).toContain('iptables -C FORWARD');
+    expect(installer).toContain('iptables -t nat -C POSTROUTING');
     expect(installer).toContain('deploy.sh --mode production');
     expect(installer).not.toContain('--mode contract');
   });

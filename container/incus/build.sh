@@ -45,6 +45,7 @@ incus exec "$BUILDER" -- bash -lc "
   set -euo pipefail
   cd /app
   bun install --frozen-lockfile
+  export PNPM_HOME=/usr/local/bin
   chmod +x /tmp/install-cli-tools.sh
   /tmp/install-cli-tools.sh /tmp/cli-tools.json
   find / -xdev -perm -4000 -type f -exec chmod u-s {} + || true

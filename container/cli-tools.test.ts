@@ -16,6 +16,7 @@ const manifest = JSON.parse(readFileSync(join(here, 'cli-tools.json'), 'utf8')) 
 }>;
 const dockerfile = readFileSync(join(here, 'Dockerfile'), 'utf8');
 const installer = readFileSync(join(here, 'install-cli-tools.sh'), 'utf8');
+const incusBuild = readFileSync(join(here, 'incus', 'build.sh'), 'utf8');
 
 describe('cli-tools manifest', () => {
   it('is a non-empty array of { name, version }', () => {
@@ -68,5 +69,9 @@ describe('cli-tools manifest', () => {
   it('installs via pnpm and writes only-built opt-ins (preserves the supply-chain path)', () => {
     expect(installer).toMatch(/pnpm install -g/);
     expect(installer).toMatch(/only-built-dependencies\[\]=/);
+  });
+
+  it('sets pnpm global bin directory for the Incus image build', () => {
+    expect(incusBuild).toMatch(/export PNPM_HOME=\/usr\/local\/bin/);
   });
 });
