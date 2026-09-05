@@ -105,6 +105,28 @@ The design goal is simple: the agent can ask and act inside its scoped runtime, 
 
 ## Quick Start
 
+### Platform and identity support
+
+| Host                                  | Installation path               | Runtime and service                            | Containment tier                                                      |
+| ------------------------------------- | ------------------------------- | ---------------------------------------------- | --------------------------------------------------------------------- |
+| Ubuntu 22.04/24.04, Debian 12/13      | `install-linux.sh`              | Incus and Docker; systemd user service         | Production: Incus containers and KVM VMs, including quarantine        |
+| macOS, Apple silicon or Intel         | `install-macos.sh`              | Docker Desktop; launchd service                | Local Docker compatibility; no Incus/KVM escalation                   |
+| Windows 10 build 19041+ or Windows 11 | `install-windows.ps1` into WSL2 | Docker inside WSL2; Linux systemd user service | Local Docker compatibility; no native-Windows or Incus/KVM escalation |
+
+| Identity case                       | Support                                | Setup boundary                                                                            |
+| ----------------------------------- | -------------------------------------- | ----------------------------------------------------------------------------------------- |
+| Provider and channel authentication | Interactive on every installer path    | Existing Area51 setup flow                                                                |
+| Registry enrollment code            | Supported without an identity provider | Registry operator issues the code                                                         |
+| Microsoft Entra ID registry SSO     | OIDC or SAML through WorkOS AuthKit    | Run `/configure-enterprise-sso`; requires WorkOS, broker, and Entra tenant administration |
+| Okta registry SSO                   | OIDC or SAML through WorkOS AuthKit    | Run `/configure-enterprise-sso`; requires WorkOS, broker, and Okta tenant administration  |
+| Microsoft Teams channel             | Supported separately from registry SSO | Run `/add-teams`; requires a Teams/Entra app registration                                 |
+
+Enterprise SSO works on Linux, macOS, and Windows/WSL2 because authentication
+uses the same browser-based WorkOS device flow on every host. An Area51 checkout
+cannot enable SSO on somebody else's hosted registry: its operator must publish
+the WorkOS client configuration through the broker's `/v1/auth-config`
+endpoint.
+
 ### One-command governed Linux installation
 
 Supported first-party targets: Ubuntu 22.04/24.04 and Debian 12/13 on amd64 or arm64 with KVM and at least 4 GB RAM.
