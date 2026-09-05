@@ -120,20 +120,50 @@ getent group incus-admin >/dev/null 2>&1 && sudo usermod -aG incus-admin "$(id -
 getent group kvm >/dev/null 2>&1 && sudo usermod -aG kvm "$(id -un)"
 if [ -z "$(incus storage list --format csv -c n 2>/dev/null)" ]; then incus admin init --minimal; fi
 
-INCUS_NETWORK="$(incus profile device get default eth0 network 2>/dev/null || true)"
-if [ -n "$INCUS_NETWORK" ]; then
-  INCUS_SUBNET="$(incus network get "$INCUS_NETWORK" ipv4.address)"
+sudo install -d -m 0755 /usr/local/libexec
+sudo tee /usr/local/libexec/area51-incus-egress >/dev/null <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+for _ in $(seq 1 30); do
+  INCUS_NETWORK="$(incus profile device get default eth0 network 2>/dev/null || true)"
   UPLINK="$(ip -4 route show default | awk '{print $5; exit}')"
-  [ -n "$INCUS_SUBNET" ] && [ "$INCUS_SUBNET" != none ] || { echo 'Incus bridge has no IPv4 subnet.' >&2; exit 1; }
-  [ -n "$UPLINK" ] || { echo 'Cannot determine the default network uplink.' >&2; exit 1; }
-  sudo sysctl -w net.ipv4.ip_forward=1 >/dev/null
-  sudo iptables -C FORWARD -i "$INCUS_NETWORK" -o "$UPLINK" -j ACCEPT 2>/dev/null || \
-    sudo iptables -I FORWARD 1 -i "$INCUS_NETWORK" -o "$UPLINK" -j ACCEPT
-  sudo iptables -C FORWARD -i "$UPLINK" -o "$INCUS_NETWORK" -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT 2>/dev/null || \
-    sudo iptables -I FORWARD 1 -i "$UPLINK" -o "$INCUS_NETWORK" -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
-  sudo iptables -t nat -C POSTROUTING -s "$INCUS_SUBNET" -o "$UPLINK" -j MASQUERADE 2>/dev/null || \
-    sudo iptables -t nat -I POSTROUTING 1 -s "$INCUS_SUBNET" -o "$UPLINK" -j MASQUERADE
-fi
+  if [ -n "$INCUS_NETWORK" ] && [ -n "$UPLINK" ]; then break; fi
+  sleep 1
+done
+
+[ -n "${INCUS_NETWORK:-}" ] || { echo 'Cannot determine the default Incus bridge.' >&2; exit 1; }
+[ -n "${UPLINK:-}" ] || { echo 'Cannot determine the default network uplink.' >&2; exit 1; }
+INCUS_SUBNET="$(incus network get "$INCUS_NETWORK" ipv4.address)"
+[ -n "$INCUS_SUBNET" ] && [ "$INCUS_SUBNET" != none ] || { echo 'Incus bridge has no IPv4 subnet.' >&2; exit 1; }
+
+sysctl -w net.ipv4.ip_forward=1 >/dev/null
+iptables -C FORWARD -i "$INCUS_NETWORK" -o "$UPLINK" -j ACCEPT 2>/dev/null || \
+  iptables -I FORWARD 1 -i "$INCUS_NETWORK" -o "$UPLINK" -j ACCEPT
+iptables -C FORWARD -i "$UPLINK" -o "$INCUS_NETWORK" -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT 2>/dev/null || \
+  iptables -I FORWARD 1 -i "$UPLINK" -o "$INCUS_NETWORK" -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+iptables -t nat -C POSTROUTING -s "$INCUS_SUBNET" -o "$UPLINK" -j MASQUERADE 2>/dev/null || \
+  iptables -t nat -I POSTROUTING 1 -s "$INCUS_SUBNET" -o "$UPLINK" -j MASQUERADE
+EOF
+sudo chmod 0755 /usr/local/libexec/area51-incus-egress
+
+sudo tee /etc/systemd/system/area51-incus-egress.service >/dev/null <<'EOF'
+[Unit]
+Description=Area51 Incus bridge egress
+Wants=network-online.target
+After=network-online.target incus.service
+Requires=incus.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/libexec/area51-incus-egress
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+EOF
+sudo systemctl daemon-reload
+sudo systemctl enable --now area51-incus-egress.service
 incus version
 
 if [ -e "$INSTALL_DIR" ]; then

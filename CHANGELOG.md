@@ -4,6 +4,8 @@ All notable changes to Area51 will be documented in this file.
 
 ## [Unreleased]
 
+- **Linux installer networking now survives host restarts.** The installer owns an idempotent systemd oneshot that waits for the Incus bridge and default uplink, restores IPv4 forwarding plus scoped forwarding/NAT rules at boot, and is exercised by the hosted-KVM installer gate.
+
 - **Live Incus quarantine now preserves and isolates evidence.** Area51 creates the quarantine profile before runtime startup, freezes and snapshots suspected instances, stops them before detaching normal networking, preserves partially quarantined evidence on enforcement errors, and verifies the complete VM quarantine path on hosted KVM before merge.
 
 - **Hosted KVM CI now proves live Runtime Policy enforcement.** The VM smoke test starts from a configured Incus-container posture, verifies risky package and mount capabilities select a real Incus VM, checks the private host-owned decision record, enforces the exact plan match, and proves the same workload blocks before runtime creation when only Docker is available.
