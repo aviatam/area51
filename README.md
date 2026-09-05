@@ -123,6 +123,24 @@ curl -fsSL https://raw.githubusercontent.com/aviatam/area51/main/install-linux.s
 
 The command requires a regular user with `sudo` and retains interactive provider/channel authentication. It fails before installation when KVM or the supported host contract is unavailable.
 
+### One-command macOS installation
+
+Preview without changing the Mac:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/aviatam/area51/main/install-macos.sh | bash -s -- --plan
+```
+
+Install Homebrew and Apple Command Line Tools when needed, then install Area51,
+Docker Desktop, and its `launchd` service:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/aviatam/area51/main/install-macos.sh | bash
+```
+
+The macOS path uses Docker and retains interactive provider/channel
+authentication. Incus VM escalation remains a Linux-only production tier.
+
 ### Repository installation
 
 ```bash
