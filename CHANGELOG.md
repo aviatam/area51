@@ -4,6 +4,8 @@ All notable changes to Area51 will be documented in this file.
 
 ## [Unreleased]
 
+- **macOS now has a one-command installer.** A fail-closed host preflight installs Homebrew and Apple Command Line Tools when needed, clones Area51, and delegates Docker, authentication, and `launchd` setup to the existing interactive setup flow while stating that Incus VM isolation remains Linux-only.
+
 - **Linux installer networking now survives host restarts.** The installer owns an idempotent systemd oneshot that waits for the Incus bridge and default uplink, restores IPv4 forwarding plus scoped forwarding/NAT rules at boot, and is exercised by the hosted-KVM installer gate.
 
 - **Live Incus quarantine now preserves and isolates evidence.** Area51 creates the quarantine profile before runtime startup, freezes and snapshots suspected instances, stops them before detaching normal networking, preserves partially quarantined evidence on enforcement errors, and verifies the complete VM quarantine path on hosted KVM before merge.
