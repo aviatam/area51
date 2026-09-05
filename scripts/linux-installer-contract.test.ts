@@ -29,6 +29,9 @@ describe('Linux one-command installer contract', () => {
     expect(installer).toContain('status --porcelain');
     expect(installer).toContain('iptables -C FORWARD');
     expect(installer).toContain('iptables -t nat -C POSTROUTING');
+    expect(installer).toContain('/usr/local/libexec/area51-incus-egress');
+    expect(installer).toContain('systemctl enable --now area51-incus-egress.service');
+    expect(installer).toContain('After=network-online.target incus.service');
     expect(installer).toContain('deploy.sh --mode production');
     expect(installer).not.toContain('--mode contract');
   });

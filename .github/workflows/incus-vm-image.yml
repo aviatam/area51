@@ -147,6 +147,22 @@ jobs:
           grep -qx 'AREA51_INCUS_IMAGE=local:area51-agent-v2' "$AREA51_INSTALL_DIR/.env"
           test -z "$(git -C "$AREA51_INSTALL_DIR" status --porcelain)"
 
+      - name: Verify Incus egress recovery after service restart
+        run: |
+          network="$(incus profile device get default eth0 network)"
+          subnet="$(incus network get "$network" ipv4.address)"
+          uplink="$(ip -4 route show default | awk '{print $5; exit}')"
+          sudo iptables -D FORWARD -i "$network" -o "$uplink" -j ACCEPT
+          sudo iptables -D FORWARD -i "$uplink" -o "$network" -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+          sudo iptables -t nat -D POSTROUTING -s "$subnet" -o "$uplink" -j MASQUERADE
+          sudo sysctl -w net.ipv4.ip_forward=0
+          sudo systemctl restart area51-incus-egress.service
+          test "$(sysctl -n net.ipv4.ip_forward)" = 1
+          sudo iptables -C FORWARD -i "$network" -o "$uplink" -j ACCEPT
+          sudo iptables -C FORWARD -i "$uplink" -o "$network" -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+          sudo iptables -t nat -C POSTROUTING -s "$subnet" -o "$uplink" -j MASQUERADE
+          systemctl is-enabled --quiet area51-incus-egress.service
+
       - name: Verify repeat installation
         env:
           INSTALLER_REF: ${{ github.event.pull_request.head.sha || github.sha }}
