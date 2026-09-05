@@ -141,6 +141,25 @@ curl -fsSL https://raw.githubusercontent.com/aviatam/area51/main/install-macos.s
 The macOS path uses Docker and retains interactive provider/channel
 authentication. Incus VM escalation remains a Linux-only production tier.
 
+### One-command Windows installation through WSL2
+
+From an Administrator PowerShell window, preview without changing the machine:
+
+```powershell
+& ([scriptblock]::Create((irm 'https://raw.githubusercontent.com/aviatam/area51/main/install-windows.ps1'))) -Plan
+```
+
+Install WSL2, Ubuntu, Docker, Area51, and its Linux service:
+
+```powershell
+& ([scriptblock]::Create((irm 'https://raw.githubusercontent.com/aviatam/area51/main/install-windows.ps1')))
+```
+
+If Windows has not initialized WSL before, the command stops for the required
+Windows restart and first Linux-user creation. Run the same command again to
+resume. Windows uses Docker inside WSL2; Incus VM escalation remains a
+Linux-host production tier.
+
 ### Repository installation
 
 ```bash
