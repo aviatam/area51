@@ -6,18 +6,16 @@
  * before initDb, so it has to create the dir itself).
  */
 import fs from 'fs';
-import os from 'os';
 import path from 'path';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 // vi.mock factories are hoisted above imports, so they can't close over local
 // consts. vi.hoisted is hoisted alongside the mock and runs before any
-// `import` — so it can only use globals (no path/os modules). Use require()
-// inside the callback to compute the test dir.
+// `import` — so it can only use globals. Forward slashes are accepted on
+// Windows, which keeps this path portable without require()-style imports.
 const { TEST_DIR } = vi.hoisted(() => {
-  const nodePath = require('path') as typeof import('path');
-  const nodeOs = require('os') as typeof import('os');
-  return { TEST_DIR: nodePath.join(nodeOs.tmpdir(), 'area51-cb-test') };
+  const tempRoot = process.env.RUNNER_TEMP ?? process.env.TEMP ?? process.env.TMPDIR ?? '/tmp';
+  return { TEST_DIR: `${tempRoot}/area51-cb-test` };
 });
 const CB_PATH = path.join(TEST_DIR, 'circuit-breaker.json');
 
@@ -53,6 +51,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.useRealTimers();
+  vi.restoreAllMocks();
   if (fs.existsSync(TEST_DIR)) fs.rmSync(TEST_DIR, { recursive: true });
 });
 
@@ -67,6 +66,15 @@ describe('resetCircuitBreaker', () => {
   it('is a no-op when the file does not exist', () => {
     expect(fs.existsSync(CB_PATH)).toBe(false);
     expect(() => resetCircuitBreaker()).not.toThrow();
+  });
+
+  it('rethrows unexpected filesystem errors', () => {
+    const error = Object.assign(new Error('permission denied'), { code: 'EACCES' });
+    vi.spyOn(fs, 'unlinkSync').mockImplementationOnce(() => {
+      throw error;
+    });
+
+    expect(() => resetCircuitBreaker()).toThrow(error);
   });
 });
 

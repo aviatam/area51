@@ -25,6 +25,9 @@ jobs:
       - name: Format check
         run: pnpm run format:check
 
+      - name: Lint host
+        run: pnpm run lint
+
       - name: Typecheck host
         run: pnpm exec tsc --noEmit
 
