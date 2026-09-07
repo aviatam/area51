@@ -10,6 +10,8 @@ on:
       - container/agent-runner/**
       - container/skills/**
       - scripts/incus-vm-containment-e2e.ts
+      - scripts/release-acceptance-report.ts
+      - scripts/release-acceptance-report.test.ts
       - .claude/skills/governed-escalation-demo/**
       - src/incus-adapter.ts
       - src/incus-runtime.ts
@@ -105,6 +107,19 @@ jobs:
           AREA51_INCUS_VM_IMAGE_ALIAS: area51-agent-v2-vm-ci-${{ github.run_id }}
           AREA51_INCUS_STORAGE_POOL: default
         run: bash .claude/skills/governed-escalation-demo/deploy.sh --mode live
+      - name: Write VM hostile-containment acceptance evidence
+        run: |
+          pnpm exec tsx scripts/release-acceptance-report.ts \
+            --suite incus-vm-containment \
+            --output .area51/release-acceptance/vm-containment.json \
+            --commit "${{ github.event.pull_request.head.sha || github.sha }}" \
+            --run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+      - name: Upload VM acceptance evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-acceptance-vm-${{ github.run_id }}
+          path: .area51/release-acceptance/vm-containment.json
+          if-no-files-found: error
       - name: Cleanup
         if: always()
         env:
@@ -118,7 +133,8 @@ jobs:
     timeout-minutes: 45
     env:
       AREA51_INSTALL_DIR: /tmp/area51-install
-      AREA51_REF: ${{ github.head_ref }}
+      AREA51_REF: ${{ github.head_ref || github.ref_name }}
+      AREA51_CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
       AREA51_REEXEC_SG: '1'
       AREA51_SKIP: environment,container,onecli,auth,mounts,service,cli-agent,timezone,channel,verify,first-chat
     steps:
@@ -130,10 +146,8 @@ jobs:
           test "$(awk '/^MemTotal:/ {printf "%d", $2 / 1024}' /proc/meminfo)" -ge 3700
 
       - name: Run candidate one-command installer
-        env:
-          INSTALLER_REF: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
-          curl -fsSL "https://raw.githubusercontent.com/aviatam/area51/${INSTALLER_REF}/install-linux.sh" |
+          curl -fsSL "https://raw.githubusercontent.com/aviatam/area51/${AREA51_CANDIDATE_SHA}/install-linux.sh" |
             bash -s -- --yes
 
       - name: Verify installed runtime and governance evidence
@@ -145,6 +159,7 @@ jobs:
           node -e "const r=require(process.env.AREA51_INSTALL_DIR+'/.area51/governed-demo/reports/deployment.json'); if (r.mode !== 'production' || !r.preflight_passed || !r.deployment_passed || !r.governance_applied) process.exit(1)"
           grep -qx 'AREA51_RUNTIME_BACKEND=incus' "$AREA51_INSTALL_DIR/.env"
           grep -qx 'AREA51_INCUS_IMAGE=local:area51-agent-v2' "$AREA51_INSTALL_DIR/.env"
+          test "$(git -C "$AREA51_INSTALL_DIR" rev-parse HEAD)" = "$AREA51_CANDIDATE_SHA"
           test -z "$(git -C "$AREA51_INSTALL_DIR" status --porcelain)"
 
       - name: Verify Incus egress recovery after service restart
@@ -164,9 +179,59 @@ jobs:
           systemctl is-enabled --quiet area51-incus-egress.service
 
       - name: Verify repeat installation
-        env:
-          INSTALLER_REF: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
-          curl -fsSL "https://raw.githubusercontent.com/aviatam/area51/${INSTALLER_REF}/install-linux.sh" |
+          curl -fsSL "https://raw.githubusercontent.com/aviatam/area51/${AREA51_CANDIDATE_SHA}/install-linux.sh" |
             bash -s -- --yes
           node -e "const r=require(process.env.AREA51_INSTALL_DIR+'/.area51/governed-demo/reports/deployment.json'); if (!r.deployment_passed) process.exit(1)"
+          test "$(git -C "$AREA51_INSTALL_DIR" rev-parse HEAD)" = "$AREA51_CANDIDATE_SHA"
+
+      - name: Write Linux installer acceptance evidence
+        run: |
+          cd "$AREA51_INSTALL_DIR"
+          pnpm exec tsx scripts/release-acceptance-report.ts \
+            --suite linux-installer \
+            --output .area51/release-acceptance/linux-installer.json \
+            --commit "$AREA51_CANDIDATE_SHA" \
+            --run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            --installer-url "https://raw.githubusercontent.com/aviatam/area51/${AREA51_CANDIDATE_SHA}/install-linux.sh"
+      - name: Upload Linux installer acceptance evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-acceptance-installer-${{ github.run_id }}
+          path: ${{ env.AREA51_INSTALL_DIR }}/.area51/release-acceptance/linux-installer.json
+          if-no-files-found: error
+
+  acceptance-report:
+    name: Publish release acceptance report
+    needs: [vm-image, linux-installer]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download verified suite evidence
+        uses: actions/download-artifact@v4
+        with:
+          pattern: release-acceptance-*-${{ github.run_id }}
+          path: acceptance-suites
+      - name: Combine and require all acceptance cases
+        run: |
+          jq -s \
+            --arg generated_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --arg commit "${{ github.event.pull_request.head.sha || github.sha }}" \
+            '{
+              schema: "area51.release_acceptance.summary.v1",
+              generated_at: $generated_at,
+              commit_sha: $commit,
+              passed: (length == 2 and all(.passed == true)),
+              suites: .
+            }' acceptance-suites/*/*.json > release-acceptance.json
+          jq -e '.passed == true and ([.suites[].cases[]] | length == 15)' release-acceptance.json
+          {
+            echo '```json'
+            cat release-acceptance.json
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload combined release acceptance report
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-acceptance-${{ github.run_id }}
+          path: release-acceptance.json
+          if-no-files-found: error
