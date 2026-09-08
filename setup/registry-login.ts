@@ -145,7 +145,7 @@ export interface AccountCredential {
  * Deliberately not a field on `AccountCredential`: that shape is written to
  * disk, and a marketing preference has no business in a credential file.
  */
-interface EnrollResult {
+export interface EnrollResult {
   credential: AccountCredential;
   emailUpdates: boolean | null;
 }
@@ -424,7 +424,7 @@ function resolveApiBase(override?: string): string {
   return raw.replace(/\/+$/, '');
 }
 
-interface ClientRecord {
+export interface ClientRecord {
   os: string;
   arch: string;
   area51_version: string;
@@ -483,11 +483,19 @@ type EnrollBody =
  * and keeps the request self-describing in a log.
  */
 function enrollWire(body: EnrollBody): Record<string, unknown> {
-  const common = { ...body, install_id: body.client.host_id };
-  return body.method === 'idp' ? { ...common, workos_token: body.access_token } : common;
+  if (body.method === 'idp') {
+    return {
+      method: body.method,
+      provider: body.provider,
+      client: body.client,
+      install_id: body.client.host_id,
+      workos_token: body.access_token,
+    };
+  }
+  return { ...body, install_id: body.client.host_id };
 }
 
-async function enroll(api: string, body: EnrollBody): Promise<EnrollResult> {
+export async function enroll(api: string, body: EnrollBody): Promise<EnrollResult> {
   let res: HttpResult;
   try {
     res = await http(`${api}/v1/enroll`, json(enrollWire(body)), HTTP_TIMEOUT_MS);
@@ -596,7 +604,7 @@ function enrollFailure(api: string, method: 'code' | 'idp', res: HttpResult): Lo
 // ---------------------------------------------------------------------------
 // Device flow
 
-interface IdpConfig {
+export interface IdpConfig {
   clientId: string;
   deviceEndpoint: string;
   tokenEndpoint: string;
@@ -619,12 +627,12 @@ interface IdpConfig {
  * and answers 404 from the marketing site, so "unreachable" is not a safe proxy
  * for "misconfigured" either.
  */
-type BrokerProbe =
+export type BrokerProbe =
   | { kind: 'idp'; config: IdpConfig }
   | { kind: 'no-idp' }
   | { kind: 'not-a-broker'; detail: string };
 
-async function probeBroker(api: string): Promise<BrokerProbe> {
+export async function probeBroker(api: string): Promise<BrokerProbe> {
   const fromEnv = str(process.env[ENV.clientId]);
   if (fromEnv) {
     return {
@@ -672,7 +680,7 @@ function misconfiguredClient(): LoginError {
   );
 }
 
-interface DeviceAuthorization {
+export interface DeviceAuthorization {
   deviceCode: string;
   userCode: string;
   verificationUri: string;
@@ -681,7 +689,7 @@ interface DeviceAuthorization {
   intervalS: number;
 }
 
-async function requestDeviceAuthorization(cfg: IdpConfig): Promise<DeviceAuthorization> {
+export async function requestDeviceAuthorization(cfg: IdpConfig): Promise<DeviceAuthorization> {
   let res: HttpResult;
   try {
     res = await http(cfg.deviceEndpoint, form({ client_id: cfg.clientId }), HTTP_TIMEOUT_MS);
@@ -772,7 +780,7 @@ function openInBrowser(url: string): void {
   }
 }
 
-async function pollForIdpToken(cfg: IdpConfig, device: DeviceAuthorization): Promise<string> {
+export async function pollForIdpToken(cfg: IdpConfig, device: DeviceAuthorization): Promise<string> {
   let intervalMs = device.intervalS * 1000;
   const deadline = Date.now() + Math.min(device.expiresInS * 1000, MAX_DEVICE_WAIT_MS);
   let transportFailures = 0;

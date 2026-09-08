@@ -139,6 +139,17 @@ because it bypasses central discovery and must be repeated on every machine.
 
 ## Verify end to end
 
+Before using live tenant accounts, run the provider-neutral Area51 contract test:
+
+```bash
+pnpm exec vitest run setup/registry-login.enterprise-sso.test.ts
+```
+
+It simulates the WorkOS boundary for both provider labels and verifies assigned-user
+enrollment, identity-provider denial before broker enrollment, and broker denial without
+credential issuance. This is not evidence that a live Entra or Okta tenant is configured;
+the assigned and unassigned live-account checks below remain required.
+
 First verify discovery without exposing credentials:
 
 ```bash
