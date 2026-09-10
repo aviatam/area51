@@ -109,7 +109,8 @@ jobs:
           set -euo pipefail
           instance="area51-vm-image-smoke-${{ github.run_id }}"
           before_boot_id="$(incus exec "$instance" -- cat /proc/sys/kernel/random/boot_id)"
-          incus exec "$instance" -- sh -c 'printf "%s\n" area51-same-vm-reboot > /var/lib/area51-reboot-marker'
+          incus exec "$instance" -- sh -c 'printf "%s\n" area51-same-vm-reboot > /etc/area51/reboot-marker'
+          incus exec "$instance" -- grep -qx area51-same-vm-reboot /etc/area51/reboot-marker
           incus restart "$instance" --force
           ready=false
           for _ in $(seq 1 90); do
@@ -124,7 +125,7 @@ jobs:
           test -n "$before_boot_id"
           test -n "$after_boot_id"
           test "$before_boot_id" != "$after_boot_id"
-          incus exec "$instance" -- grep -qx area51-same-vm-reboot /var/lib/area51-reboot-marker
+          incus exec "$instance" -- grep -qx area51-same-vm-reboot /etc/area51/reboot-marker
           incus exec "$instance" -- test -x /usr/local/bin/bun
           incus exec "$instance" -- test -d /app/node_modules
           incus exec "$instance" -- test -f /app/src/index.ts
