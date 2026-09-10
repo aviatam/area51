@@ -22,13 +22,14 @@ export interface HostState {
   vmImageReady: boolean;
   governanceEvidenceValid: boolean;
   checkoutClean: boolean;
+  commitUnchanged: boolean;
 }
 
 export interface RebootReport {
   schema: typeof SCHEMA;
   generated_at: string;
   passed: boolean;
-  physical_host_reboot: boolean;
+  kernel_boot_changed: boolean;
   cases: Array<{ id: string; passed: boolean }>;
 }
 
@@ -63,7 +64,7 @@ export function readBaseline(root: string): Baseline {
 
 export function buildReport(state: HostState, now = new Date()): RebootReport {
   const cases = [
-    { id: 'boot-id-changed', passed: state.currentBootId !== state.baselineBootId },
+    { id: 'boot-id-changed', passed: /^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/.test(state.currentBootId) && state.currentBootId !== state.baselineBootId },
     { id: 'incus-service-active', passed: state.incusActive },
     { id: 'egress-service-active', passed: state.egressActive },
     { id: 'area51-service-active', passed: state.area51Active },
@@ -71,12 +72,13 @@ export function buildReport(state: HostState, now = new Date()): RebootReport {
     { id: 'incus-vm-image-ready', passed: state.vmImageReady },
     { id: 'governance-evidence-valid', passed: state.governanceEvidenceValid },
     { id: 'checkout-clean', passed: state.checkoutClean },
+    { id: 'commit-unchanged', passed: state.commitUnchanged },
   ];
   return {
     schema: SCHEMA,
     generated_at: now.toISOString(),
     passed: cases.every((testCase) => testCase.passed),
-    physical_host_reboot: cases[0]!.passed,
+    kernel_boot_changed: cases[0]!.passed,
     cases,
   };
 }
@@ -90,7 +92,7 @@ export function writeReport(root: string, report: RebootReport, output?: string)
 }
 
 function succeeds(command: string, args: string[]): boolean {
-  return spawnSync(command, args, { stdio: 'ignore' }).status === 0;
+  return spawnSync(command, args, { stdio: 'ignore', timeout: 30_000 }).status === 0;
 }
 
 function governanceValid(root: string): boolean {
@@ -106,6 +108,7 @@ function governanceValid(root: string): boolean {
 
 function area51ServiceActive(root: string): boolean {
   const command = [
+    'export PROJECT_ROOT="$1" AREA51_PROJECT_ROOT="$1"',
     'source "$1/setup/lib/install-slug.sh"',
     'unit="$(systemd_unit)"',
     'systemctl --user is-active --quiet "${unit}.service" || systemctl --user is-active --quiet "$unit"',
@@ -117,6 +120,7 @@ export function collectHostState(root: string, baseline: Baseline): HostState {
   if (process.platform !== 'linux') throw new Error('Linux is required for physical reboot verification');
   const currentBootId = fs.readFileSync('/proc/sys/kernel/random/boot_id', 'utf8').trim();
   return {
+    commitUnchanged: execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8', timeout: 30_000 }).trim() === baseline.commit_sha,
     baselineBootId: baseline.boot_id,
     currentBootId,
     incusActive: succeeds('systemctl', ['is-active', '--quiet', 'incus.service']),

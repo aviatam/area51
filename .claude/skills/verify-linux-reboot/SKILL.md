@@ -35,12 +35,17 @@ pnpm exec tsx .claude/skills/verify-linux-reboot/scripts/verify.ts verify
 The command exits nonzero unless all checks pass: a changed Linux boot ID, active
 Incus and Area51 egress services, an active slug-scoped Area51 user service, both
 governed Incus images, successful governance deployment evidence, and a clean Git
-checkout. It writes owner-readable JSON evidence to
+checkout at the same commit as the baseline. It writes owner-readable JSON evidence to
 `.area51/reboot-verification/report.json`.
 
-This proves host recovery, not live Entra/Okta authorization or a real provider
-round trip. Test those separately with the assigned and denied accounts described by
-`/configure-enterprise-sso`.
+This is a recovery checklist, not production certification. A changed kernel boot
+ID does not distinguish a VM reboot from a physical machine reboot or establish
+power-cycle evidence. Services being active and image aliases existing do not prove
+an agent task succeeds or containment is enforced after reboot. Governance evidence
+is a historical local report, not a fresh policy evaluation. Run live containment
+and provider tasks after reboot, and test Entra/Okta with real assigned and denied
+accounts using `/configure-enterprise-sso`. The report is local, unsigned evidence
+and assumes a trusted operator and checkout.
 
 ## Test the verifier
 

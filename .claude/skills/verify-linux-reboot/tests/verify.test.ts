@@ -43,6 +43,7 @@ function healthyState(overrides: Partial<HostState> = {}): HostState {
     vmImageReady: true,
     governanceEvidenceValid: true,
     checkoutClean: true,
+    commitUnchanged: true,
     ...overrides,
   };
 }
@@ -50,15 +51,15 @@ function healthyState(overrides: Partial<HostState> = {}): HostState {
 describe('Linux physical reboot evidence', () => {
   it('passes only when the boot changed and every production check is healthy', () => {
     const report = buildReport(healthyState(), new Date('2026-09-09T00:01:00.000Z'));
-    expect(report).toMatchObject({ schema: SCHEMA, passed: true, physical_host_reboot: true });
-    expect(report.cases).toHaveLength(8);
+    expect(report).toMatchObject({ schema: SCHEMA, passed: true, kernel_boot_changed: true });
+    expect(report.cases).toHaveLength(9);
     expect(report.cases.every((testCase) => testCase.passed)).toBe(true);
   });
 
   it('does not mistake a service restart for a physical reboot', () => {
     const report = buildReport(healthyState({ currentBootId: baseline.boot_id }));
     expect(report.passed).toBe(false);
-    expect(report.physical_host_reboot).toBe(false);
+    expect(report.kernel_boot_changed).toBe(false);
     expect(report.cases.find((testCase) => testCase.id === 'boot-id-changed')?.passed).toBe(false);
   });
 
@@ -70,6 +71,7 @@ describe('Linux physical reboot evidence', () => {
     'vmImageReady',
     'governanceEvidenceValid',
     'checkoutClean',
+    'commitUnchanged',
   ] as const)('fails when %s is unhealthy', (field) => {
     expect(buildReport(healthyState({ [field]: false })).passed).toBe(false);
   });
@@ -86,6 +88,10 @@ describe('Linux physical reboot evidence', () => {
       expect(fs.statSync(baselinePath).mode & 0o777).toBe(0o600);
       expect(fs.statSync(reportPath).mode & 0o777).toBe(0o600);
     }
+  });
+
+  it('fails on an invalid current boot ID', () => {
+    expect(buildReport(healthyState({ currentBootId: '' })).passed).toBe(false);
   });
 
   it('rejects malformed baseline evidence', () => {
