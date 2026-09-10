@@ -43,6 +43,9 @@ jobs:
           bash .claude/skills/governed-escalation-demo/deploy.sh --mode contract --output-dir .area51/governed-ci
           node -e "const r=require('./.area51/governed-ci/reports/deployment.json'); if (!r.deployment_passed) process.exit(1)"
 
+      - name: Linux reboot verifier tests
+        run: pnpm exec vitest --config vitest.skills.config.ts run .claude/skills/verify-linux-reboot/tests/verify.test.ts
+
       - name: Linux installer contract
         run: |
           bash -n install-linux.sh
