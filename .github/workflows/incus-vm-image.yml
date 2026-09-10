@@ -111,7 +111,8 @@ jobs:
           before_boot_id="$(incus exec "$instance" -- cat /proc/sys/kernel/random/boot_id)"
           incus exec "$instance" -- sh -c 'printf "%s\n" area51-same-vm-reboot > /etc/area51/reboot-marker'
           incus exec "$instance" -- grep -qx area51-same-vm-reboot /etc/area51/reboot-marker
-          incus restart "$instance" --force
+          incus exec "$instance" -- sync
+          incus restart "$instance"
           ready=false
           for _ in $(seq 1 90); do
             if incus exec "$instance" -- true >/dev/null 2>&1; then
