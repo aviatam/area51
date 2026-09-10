@@ -102,6 +102,61 @@ jobs:
           incus exec "$instance" -- test -d /app/node_modules
           incus exec "$instance" -- test -f /app/src/index.ts
           incus exec "$instance" -- grep -qx vm /etc/area51/image-kind
+      - name: Reboot same VM and verify persistent runtime
+        env:
+          AREA51_INCUS_VM_IMAGE_ALIAS: area51-agent-v2-vm-ci-${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          instance="area51-vm-image-smoke-${{ github.run_id }}"
+          before_boot_id="$(incus exec "$instance" -- cat /proc/sys/kernel/random/boot_id)"
+          incus exec "$instance" -- sh -c 'printf "%s\n" area51-same-vm-reboot > /etc/area51/reboot-marker'
+          incus exec "$instance" -- grep -qx area51-same-vm-reboot /etc/area51/reboot-marker
+          incus exec "$instance" -- sh -c 'sync; nohup sh -c "sleep 1; systemctl reboot" >/dev/null 2>&1 &'
+          after_boot_id=''
+          for _ in $(seq 1 90); do
+            candidate_boot_id="$(incus exec "$instance" -- cat /proc/sys/kernel/random/boot_id 2>/dev/null || true)"
+            if [[ -n "$candidate_boot_id" && "$candidate_boot_id" != "$before_boot_id" ]]; then
+              after_boot_id="$candidate_boot_id"
+              break
+            fi
+            sleep 2
+          done
+          test -n "$before_boot_id"
+          test -n "$after_boot_id"
+          test "$before_boot_id" != "$after_boot_id"
+          incus exec "$instance" -- grep -qx area51-same-vm-reboot /etc/area51/reboot-marker
+          incus exec "$instance" -- test -x /usr/local/bin/bun
+          incus exec "$instance" -- test -d /app/node_modules
+          incus exec "$instance" -- test -f /app/src/index.ts
+          incus exec "$instance" -- grep -qx vm /etc/area51/image-kind
+          mkdir -p .area51/release-acceptance
+          jq -n \
+            --arg instance "$instance" \
+            --arg before_boot_id "$before_boot_id" \
+            --arg after_boot_id "$after_boot_id" \
+            '{
+              schema: "area51.incus_vm_reboot_measurement.v1",
+              instance: $instance,
+              before_boot_id: $before_boot_id,
+              after_boot_id: $after_boot_id,
+              same_instance: true,
+              disk_marker_persisted: true,
+              runtime_ready: true
+            }' > .area51/release-acceptance/vm-reboot-measurement.json
+      - name: Write same-VM reboot acceptance evidence
+        run: |
+          pnpm exec tsx scripts/release-acceptance-report.ts \
+            --suite incus-vm-reboot \
+            --output .area51/release-acceptance/vm-reboot.json \
+            --commit "${{ github.event.pull_request.head.sha || github.sha }}" \
+            --run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            --measurement .area51/release-acceptance/vm-reboot-measurement.json
+      - name: Upload same-VM reboot evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-acceptance-reboot-${{ github.run_id }}
+          path: .area51/release-acceptance/vm-reboot.json
+          if-no-files-found: error
       - name: Run VM containment E2E
         env:
           AREA51_INCUS_VM_IMAGE_ALIAS: area51-agent-v2-vm-ci-${{ github.run_id }}
@@ -220,10 +275,10 @@ jobs:
               schema: "area51.release_acceptance.summary.v1",
               generated_at: $generated_at,
               commit_sha: $commit,
-              passed: (length == 2 and all(.passed == true)),
+              passed: (length == 3 and all(.passed == true)),
               suites: .
             }' acceptance-suites/*/*.json > release-acceptance.json
-          jq -e '.passed == true and ([.suites[].cases[]] | length == 15)' release-acceptance.json
+          jq -e '.passed == true and ([.suites[].cases[]] | length == 18)' release-acceptance.json
           {
             echo '```json'
             cat release-acceptance.json

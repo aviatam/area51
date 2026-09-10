@@ -58,8 +58,9 @@ The repository's **Incus VM Image Smoke** workflow is the authoritative proof. O
 - guest execution is rejected after containment.
 
 After both the live VM test and the public-link Linux installer test pass, the workflow publishes a
-`release-acceptance-<run-id>` artifact. Its JSON report combines 15 machine-verifiable installation,
-restart, isolation, egress, escalation, and quarantine cases. The report also names what that run did
+`release-acceptance-<run-id>` artifact. Its JSON report combines 18 machine-verifiable installation,
+same-VM reboot, persistence, isolation, egress, escalation, and quarantine cases. The report also
+names what that run did
 not cover: live Entra/Okta authorization, real provider credentials, and a physical-host reboot. Those
 boundaries prevent a green infrastructure run from being presented as identity-provider proof.
 
