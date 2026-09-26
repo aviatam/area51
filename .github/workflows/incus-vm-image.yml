@@ -278,7 +278,9 @@ jobs:
               passed: (length == 3 and all(.passed == true)),
               suites: .
             }' acceptance-suites/*/*.json > release-acceptance.json
-          jq -e '.passed == true and ([.suites[].cases[]] | length == 18)' release-acceptance.json
+          pnpm run verify:release-evidence -- \
+            --file release-acceptance.json \
+            --commit "${{ github.event.pull_request.head.sha || github.sha }}"
           {
             echo '```json'
             cat release-acceptance.json
