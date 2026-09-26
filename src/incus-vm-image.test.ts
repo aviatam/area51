@@ -68,6 +68,10 @@ describe('Incus VM image builder', () => {
     expect(containment).toContain("['snapshot', 'delete', runtimePlan.instance, snapshot.name");
     expect(containment).toContain("['project', 'delete', plan.project, '--force']");
     expect(containment).toContain("input: 'yes\\n'");
+    expect(workflow).toContain('incus delete "$instance" --force');
+    expect(workflow.indexOf('Release verified smoke VM resources')).toBeLessThan(
+      workflow.indexOf('Run VM containment E2E'),
+    );
   });
 
   it('lets live Runtime Policy select and verify the real Incus VM', () => {
