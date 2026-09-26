@@ -379,6 +379,9 @@ function runCommands(
           } catch (restartError) {
             if (isAlreadyRunningError(restartError)) {
               results.push({ argv: restart, ok: true, output: 'already running' });
+            } else if (isTransientVmStartError(restartError) && attempt < maxAttempts) {
+              sleepSync(Math.max(0, options.vmAgentRetryDelayMs ?? 2000));
+              continue;
             } else {
               results.push({ argv: restart, ok: false, error: restartError });
               throw new Error(`Incus VM recovery failed: incus ${restart.join(' ')}`, { cause: restartError });
@@ -461,6 +464,10 @@ function isVmAgentUnavailable(argv: string[], error: unknown): boolean {
 function isStoppedInstanceError(argv: string[], error: unknown): boolean {
   if (argv[0] !== 'exec' && !(argv[0] === 'file' && argv[1] === 'push')) return false;
   return /Instance is not running/i.test(errorText(error));
+}
+
+function isTransientVmStartError(error: unknown): boolean {
+  return /Failed to start device[^\n]*device or resource busy/i.test(errorText(error));
 }
 
 function sleepSync(milliseconds: number): void {
