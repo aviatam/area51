@@ -426,16 +426,20 @@ describe('Incus adapter', () => {
     try {
       const source = path.join(root, 'onecli-ca.pem');
       fs.writeFileSync(source, 'certificate');
-      let unavailable = true;
+      let running = false;
+      let starts = 0;
       const executor = vi.fn((argv: string[]) => {
-        if (argv[0] === 'file' && argv[1] === 'push' && unavailable) {
-          unavailable = false;
+        if (argv[0] === 'start' && ++starts > 1 && starts < 4) {
+          throw new Error('Failed to start device "area51-disk-3": device or resource busy');
+        }
+        if (argv[0] === 'start' && starts === 4) running = true;
+        if (argv[0] === 'file' && argv[1] === 'push' && !running) {
           throw new Error('Failed getting instance SFTP connection: Instance is not running');
         }
       });
       const plan = { ...vmPlan(), vmFiles: [{ source, path: '/run/area51/onecli-ca.pem', readonly: true as const }] };
 
-      applyIncusRuntimePlan(plan, { executor, vmAgentRetryAttempts: 2, vmAgentRetryDelayMs: 0 });
+      applyIncusRuntimePlan(plan, { executor, vmAgentRetryAttempts: 4, vmAgentRetryDelayMs: 0 });
 
       expect(executor).toHaveBeenCalledWith([
         'file',
@@ -453,8 +457,8 @@ describe('Incus adapter', () => {
         '--project',
         plan.project,
       ]);
-      expect(executor.mock.calls.filter(([argv]) => argv[0] === 'file' && argv[1] === 'push')).toHaveLength(2);
-      expect(executor.mock.calls.filter(([argv]) => argv[0] === 'start')).toHaveLength(2);
+      expect(executor.mock.calls.filter(([argv]) => argv[0] === 'file' && argv[1] === 'push')).toHaveLength(4);
+      expect(executor.mock.calls.filter(([argv]) => argv[0] === 'start')).toHaveLength(4);
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
     }
