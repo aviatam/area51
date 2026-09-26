@@ -12,6 +12,10 @@ on:
       - scripts/incus-vm-containment-e2e.ts
       - scripts/release-acceptance-report.ts
       - scripts/release-acceptance-report.test.ts
+      - scripts/verify-release-acceptance.ts
+      - scripts/verify-release-acceptance.test.ts
+      - package.json
+      - pnpm-lock.yaml
       - .claude/skills/governed-escalation-demo/**
       - src/incus-adapter.ts
       - src/incus-runtime.ts
@@ -261,6 +265,13 @@ jobs:
     needs: [vm-image, linux-installer]
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
       - name: Download verified suite evidence
         uses: actions/download-artifact@v4
         with:
