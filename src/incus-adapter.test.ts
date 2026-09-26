@@ -464,6 +464,30 @@ describe('Incus adapter', () => {
     }
   });
 
+  it('retries a transient VM vsock loss without restarting the running VM', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'area51-vm-vsock-'));
+    try {
+      const source = path.join(root, 'bootstrap.txt');
+      fs.writeFileSync(source, 'bootstrap');
+      let unavailable = 2;
+      const executor = vi.fn((argv: string[]) => {
+        if (argv[0] === 'file' && argv[1] === 'push' && unavailable-- > 0) {
+          throw new Error(
+            'Failed getting instance SFTP connection: dial vsock vm(769742429):8443: connect: no such device',
+          );
+        }
+      });
+      const plan = { ...vmPlan(), vmFiles: [{ source, path: '/run/area51/bootstrap.txt', readonly: true as const }] };
+
+      applyIncusRuntimePlan(plan, { executor, vmAgentRetryAttempts: 3, vmAgentRetryDelayMs: 0 });
+
+      expect(executor.mock.calls.filter(([argv]) => argv[0] === 'file' && argv[1] === 'push')).toHaveLength(3);
+      expect(executor.mock.calls.filter(([argv]) => argv[0] === 'start')).toHaveLength(1);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it('fails closed when the VM agent never becomes ready', () => {
     const executor = vi.fn((argv: string[]) => {
       if (argv[0] === 'exec') throw new Error("VM agent isn't currently running");
