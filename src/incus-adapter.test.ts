@@ -421,7 +421,7 @@ describe('Incus adapter', () => {
     expect(executor.mock.calls.filter(([argv]) => (argv as string[])[0] === 'exec')).toHaveLength(4);
   });
 
-  it('pushes immutable VM bootstrap files after boot as root-owned read-only files', () => {
+  it('restarts a stopped provisioning VM before pushing immutable bootstrap files', () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'area51-vm-bootstrap-'));
     try {
       const source = path.join(root, 'onecli-ca.pem');
@@ -454,6 +454,7 @@ describe('Incus adapter', () => {
         plan.project,
       ]);
       expect(executor.mock.calls.filter(([argv]) => argv[0] === 'file' && argv[1] === 'push')).toHaveLength(2);
+      expect(executor.mock.calls.filter(([argv]) => argv[0] === 'start')).toHaveLength(2);
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
     }
