@@ -371,8 +371,10 @@ function runCommands(
         results.push({ argv, ok: true, output: typeof output === 'string' ? output : undefined });
         break;
       } catch (error) {
-        if (provisioningVm && isStoppedInstanceError(argv, error) && !restartedStoppedVm && attempt < maxAttempts) {
-          const restart = ['start', provisioningVm.instance, '--project', provisioningVm.project];
+        if (provisioningVm && isVmProcessUnavailable(argv, error) && !restartedStoppedVm && attempt < maxAttempts) {
+          const restart = isVmVsockUnavailable(error)
+            ? ['restart', provisioningVm.instance, '--force', '--project', provisioningVm.project]
+            : ['start', provisioningVm.instance, '--project', provisioningVm.project];
           try {
             const output = executor(restart);
             results.push({ argv: restart, ok: true, output: typeof output === 'string' ? output : undefined });
@@ -463,9 +465,13 @@ function isVmAgentUnavailable(argv: string[], error: unknown): boolean {
   );
 }
 
-function isStoppedInstanceError(argv: string[], error: unknown): boolean {
+function isVmProcessUnavailable(argv: string[], error: unknown): boolean {
   if (argv[0] !== 'exec' && !(argv[0] === 'file' && argv[1] === 'push')) return false;
-  return /Instance is not running/i.test(errorText(error));
+  return /Instance is not running/i.test(errorText(error)) || isVmVsockUnavailable(error);
+}
+
+function isVmVsockUnavailable(error: unknown): boolean {
+  return /Failed getting instance SFTP connection: dial vsock[^\n]*no such device/i.test(errorText(error));
 }
 
 function isTransientVmStartError(error: unknown): boolean {
