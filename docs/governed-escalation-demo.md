@@ -64,6 +64,17 @@ names what that run did
 not cover: live Entra/Okta authorization, real provider credentials, and a physical-host reboot. Those
 boundaries prevent a green infrastructure run from being presented as identity-provider proof.
 
+After downloading that artifact, verify its exact suite, case, commit, workflow-run, installer,
+reboot-measurement, and known-gap contract locally:
+
+```bash
+pnpm run verify:release-evidence -- \
+  --file release-acceptance.json \
+  --commit <tested-40-character-commit-sha>
+```
+
+Successful verification prints `Release evidence: VERIFIED (3 suites, 18 cases)`.
+
 Use `--live` only in that prepared environment:
 
 ```bash
