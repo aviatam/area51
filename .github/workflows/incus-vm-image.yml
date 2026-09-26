@@ -161,6 +161,11 @@ jobs:
           name: release-acceptance-reboot-${{ github.run_id }}
           path: .area51/release-acceptance/vm-reboot.json
           if-no-files-found: error
+      - name: Release verified smoke VM resources
+        run: |
+          instance="area51-vm-image-smoke-${{ github.run_id }}"
+          incus delete "$instance" --force
+          ! incus info "$instance" >/dev/null 2>&1
       - name: Run VM containment E2E
         env:
           AREA51_INCUS_VM_IMAGE_ALIAS: area51-agent-v2-vm-ci-${{ github.run_id }}
