@@ -464,7 +464,7 @@ describe('Incus adapter', () => {
     }
   });
 
-  it('retries a transient VM vsock loss without restarting the running VM', () => {
+  it('force-restarts a provisioning VM after its vsock process disappears', () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'area51-vm-vsock-'));
     try {
       const source = path.join(root, 'bootstrap.txt');
@@ -483,6 +483,7 @@ describe('Incus adapter', () => {
 
       expect(executor.mock.calls.filter(([argv]) => argv[0] === 'file' && argv[1] === 'push')).toHaveLength(3);
       expect(executor.mock.calls.filter(([argv]) => argv[0] === 'start')).toHaveLength(1);
+      expect(executor).toHaveBeenCalledWith(['restart', plan.instance, '--force', '--project', plan.project]);
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
     }
