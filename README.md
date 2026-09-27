@@ -27,20 +27,20 @@ The first demo path combines:
 - **Exposure reports** that connect an agent, repo, or code-change workspace to one assessment surface
 - **Fail-closed reports** for demos and CI
 
-## Why We Know It Works
+## Reproduce the Release Proof
 
-Area51 is not treated as "working" because it starts once on one laptop. The current `main` branch is gated by a cross-OS workflow that installs from the lockfile, blocks known high-severity dependency advisories, typechecks the host, and runs behavior tests.
+The [cross-OS workflow](https://github.com/aviatam/area51/actions/workflows/test-matrix.yml) gates host behavior on Ubuntu and macOS and a blocking portable suite on Windows. The Windows lane does not run the Unix-dependent tests.
 
-Current verified baseline is the latest `main` run linked by the badge above. The workflow verifies:
+The separate [hosted-KVM acceptance run](https://github.com/aviatam/area51/actions/runs/36263347303) tested commit `43c57d6bbea149df220cdb67120af8fe003ed0e3`. Download its `release-acceptance-36263347303` artifact and extract `release-acceptance.json`. From a checkout of that tested commit, verify the report:
 
-- Ubuntu: full host behavior test suite passes
-- macOS: full host behavior test suite passes
-- Windows: blocking portable host behavior suite passes
-- Local Windows-equivalent portable suite: 175 tests passed
-- Local `pnpm audit`: passes with no known vulnerabilities
-- Legacy-brand scan: clean outside ignored dependency/build/git directories
+```bash
+pnpm install --frozen-lockfile
+pnpm run verify:release-evidence -- \
+  --file release-acceptance.json \
+  --commit 43c57d6bbea149df220cdb67120af8fe003ed0e3
+```
 
-The Windows lane is intentionally honest: it is blocking, but it runs the portable host suite rather than the full POSIX-heavy corpus. The full corpus still contains tests that require Unix symlink privileges, executable-bit semantics, and Bash. Those are tracked as portability work, not hidden behind `continue-on-error`.
+The report covers 18 cases across a public commit-pinned Linux install, same-VM reboot and disk persistence, runtime selection, network isolation, and quarantine. The workflow requires both the installer and live Incus/KVM jobs to pass before publishing it. The verifier checks report structure, case IDs, tested commit, workflow-run identity, reboot measurements, and stated gaps; it does not independently attest the host or the truth of each recorded observation. The report explicitly excludes live Entra/Okta authorization, real provider credentials, and physical-host reboot. See the [governed escalation demo](docs/governed-escalation-demo.md) for the local fixture and live exercise.
 
 ## Architecture
 
