@@ -46,6 +46,10 @@ jobs:
       - name: Public agent security lab
         run: |
           bash lab/agent-security/run.sh .area51/agent-security-ci
+          cp .area51/agent-security-ci/reports/02-poisoned-policy.json /tmp/area51-poisoned-policy.json
+          node -e "const fs=require('fs'); const p='.area51/agent-security-ci/reports/02-poisoned-policy.json'; const r=JSON.parse(fs.readFileSync(p)); r.runtime='docker'; fs.writeFileSync(p,JSON.stringify(r))"
+          ! node lab/agent-security/verify.mjs .area51/agent-security-ci
+          cp /tmp/area51-poisoned-policy.json .area51/agent-security-ci/reports/02-poisoned-policy.json
           node -e "const fs=require('fs'); const p='.area51/agent-security-ci/reports/assertions.json'; const r=JSON.parse(fs.readFileSync(p)); r.assertions[0].passed=false; fs.writeFileSync(p,JSON.stringify(r))"
           ! node lab/agent-security/verify.mjs .area51/agent-security-ci
 

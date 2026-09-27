@@ -40,6 +40,30 @@ export function verifyLab(root) {
       JSON.parse(fs.readFileSync(file, 'utf8'));
     }
   }
+  const readReport = (name) => JSON.parse(fs.readFileSync(path.join(root, 'reports', name), 'utf8'));
+  const cleanGate = readReport('01-clean-gate.json');
+  const cleanPolicy = readReport('01-clean-policy.json');
+  const poisonedGate = readReport('02-poisoned-gate.json');
+  const poisonedPolicy = readReport('02-poisoned-policy.json');
+  const plan = readReport('03-incus-vm-quarantine-plan.json');
+  const fixture = JSON.parse(fs.readFileSync(path.join(root, 'groups/nostromo-support-agent/container.json'), 'utf8'));
+  const commands = plan.commands?.quarantine;
+  if (
+    cleanGate.findings?.some((finding) => finding.id === 'npm-event-stream-3.3.6') ||
+    cleanPolicy.action !== 'allow' ||
+    !poisonedGate.findings?.some((finding) => finding.id === 'npm-event-stream-3.3.6') ||
+    poisonedPolicy.action !== 'quarantine' ||
+    poisonedPolicy.runtime !== 'incus-vm' ||
+    !fixture.mcpServers?.predators ||
+    !fixture.packages?.npm?.includes('event-stream@3.3.6') ||
+    plan.instanceKind !== 'vm' ||
+    !Array.isArray(commands) ||
+    !['incus freeze ', 'incus snapshot create ', 'incus stop ', 'device remove'].every((part) =>
+      commands.some((command) => command.includes(part)),
+    )
+  ) {
+    throw new Error('Scenario evidence contradicts the lab claims');
+  }
   return {
     schema: manifest.schema,
     mode: 'deterministic-contract',
