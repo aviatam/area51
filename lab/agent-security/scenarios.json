@@ -1,0 +1,25 @@
+{
+  "schema": "area51.agent_security_lab.v1",
+  "scenarios": [
+    {
+      "id": "clean-agent",
+      "evidence": ["reports/01-clean-gate.json", "reports/01-clean-policy.json"],
+      "assertions": ["clean-scan-has-no-compromised-package"]
+    },
+    {
+      "id": "package-and-mcp-mutation",
+      "evidence": ["reports/02-poisoned-gate.json", "reports/02-poisoned-policy.json"],
+      "assertions": [
+        "mutation-is-observed-by-fresh-scan",
+        "provider-is-not-allowed-after-mutation",
+        "maximum-posture-selects-vm",
+        "quarantine-evidence-is-written"
+      ]
+    },
+    {
+      "id": "vm-quarantine-plan",
+      "evidence": ["reports/03-incus-vm-quarantine-plan.json", "reports/assertions.json"],
+      "assertions": ["freeze-is-planned", "snapshot-is-planned", "network-removal-is-planned", "stop-is-planned"]
+    }
+  ]
+}

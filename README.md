@@ -201,6 +201,9 @@ To demonstrate a clean agent changing into a quarantined Incus VM workload, run 
 produces machine-readable assertions locally and delegates authoritative live proof
 to the existing hosted-KVM E2E.
 
+For a synthetic, repeatable walkthrough with three named scenarios and inspectable evidence,
+start with the [public agent security lab](lab/agent-security/README.md).
+
 The demo creates a support-refund agent, checks AI secret configuration, scores every pillar, detects a compromised package, writes quarantine evidence, and produces the Incus freeze/snapshot/network-isolation plan.
 
 ## Demo Output
