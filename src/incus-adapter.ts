@@ -227,7 +227,7 @@ export function applyIncusRuntimePlan(plan: IncusRuntimePlan, options: IncusAdap
     }
   }
   if (vmDisks) commands.push(...vmDisks.initializeCommands);
-  return runCommands(commands, options);
+  return runCommands(commands, options, plan.instanceKind === 'vm' ? plan : undefined);
 }
 
 function writableMountHostIdentity(plan: IncusRuntimePlan): { uid: number; gid: number } | undefined {
@@ -355,17 +355,44 @@ export function cleanupIncusOrphans(installSlug: string, options: IncusAdapterOp
   return runCommands(commands, { ...options, executor });
 }
 
-function runCommands(commands: string[][], options: IncusAdapterOptions): IncusAdapterResult {
+function runCommands(
+  commands: string[][],
+  options: IncusAdapterOptions,
+  provisioningVm?: IncusRuntimePlan,
+): IncusAdapterResult {
   const executor = options.executor ?? defaultExecutor;
   const results: IncusCommandResult[] = [];
   for (const argv of commands) {
     const maxAttempts = Math.max(1, options.vmAgentRetryAttempts ?? 60);
+    let restartedStoppedVm = false;
     for (let attempt = 1; ; attempt += 1) {
       try {
         const output = executor(argv);
         results.push({ argv, ok: true, output: typeof output === 'string' ? output : undefined });
         break;
       } catch (error) {
+        if (provisioningVm && isVmProcessUnavailable(argv, error) && !restartedStoppedVm && attempt < maxAttempts) {
+          const restart = isVmVsockUnavailable(error)
+            ? ['restart', provisioningVm.instance, '--force', '--project', provisioningVm.project]
+            : ['start', provisioningVm.instance, '--project', provisioningVm.project];
+          try {
+            const output = executor(restart);
+            results.push({ argv: restart, ok: true, output: typeof output === 'string' ? output : undefined });
+          } catch (restartError) {
+            if (isAlreadyRunningError(restartError)) {
+              results.push({ argv: restart, ok: true, output: 'already running' });
+            } else if (isTransientVmStartError(restartError) && attempt < maxAttempts) {
+              sleepSync(Math.max(0, options.vmAgentRetryDelayMs ?? 2000));
+              continue;
+            } else {
+              results.push({ argv: restart, ok: false, error: restartError });
+              throw new Error(`Incus VM recovery failed: incus ${restart.join(' ')}`, { cause: restartError });
+            }
+          }
+          restartedStoppedVm = true;
+          sleepSync(Math.max(0, options.vmAgentRetryDelayMs ?? 2000));
+          continue;
+        }
         if (isVmAgentUnavailable(argv, error) && attempt < maxAttempts) {
           sleepSync(Math.max(0, options.vmAgentRetryDelayMs ?? 2000));
           continue;
@@ -433,7 +460,22 @@ function isAlreadyAbsent(argv: string[], error: unknown): boolean {
 
 function isVmAgentUnavailable(argv: string[], error: unknown): boolean {
   if (argv[0] !== 'exec' && !(argv[0] === 'file' && argv[1] === 'push')) return false;
-  return /VM agent isn't currently running|Instance is not running/i.test(errorText(error));
+  return /VM agent isn't currently running|Instance is not running|Failed getting instance SFTP connection: dial vsock[^\n]*no such device/i.test(
+    errorText(error),
+  );
+}
+
+function isVmProcessUnavailable(argv: string[], error: unknown): boolean {
+  if (argv[0] !== 'exec' && !(argv[0] === 'file' && argv[1] === 'push')) return false;
+  return /Instance is not running/i.test(errorText(error)) || isVmVsockUnavailable(error);
+}
+
+function isVmVsockUnavailable(error: unknown): boolean {
+  return /Failed getting instance SFTP connection: dial vsock[^\n]*no such device/i.test(errorText(error));
+}
+
+function isTransientVmStartError(error: unknown): boolean {
+  return /Failed to start device[^\n]*device or resource busy/i.test(errorText(error));
 }
 
 function sleepSync(milliseconds: number): void {

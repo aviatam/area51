@@ -12,6 +12,10 @@ on:
       - scripts/incus-vm-containment-e2e.ts
       - scripts/release-acceptance-report.ts
       - scripts/release-acceptance-report.test.ts
+      - scripts/verify-release-acceptance.ts
+      - scripts/verify-release-acceptance.test.ts
+      - package.json
+      - pnpm-lock.yaml
       - .claude/skills/governed-escalation-demo/**
       - src/incus-adapter.ts
       - src/incus-runtime.ts
@@ -157,6 +161,11 @@ jobs:
           name: release-acceptance-reboot-${{ github.run_id }}
           path: .area51/release-acceptance/vm-reboot.json
           if-no-files-found: error
+      - name: Release verified smoke VM resources
+        run: |
+          instance="area51-vm-image-smoke-${{ github.run_id }}"
+          incus delete "$instance" --force
+          ! incus info "$instance" >/dev/null 2>&1
       - name: Run VM containment E2E
         env:
           AREA51_INCUS_VM_IMAGE_ALIAS: area51-agent-v2-vm-ci-${{ github.run_id }}
@@ -261,6 +270,13 @@ jobs:
     needs: [vm-image, linux-installer]
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
       - name: Download verified suite evidence
         uses: actions/download-artifact@v4
         with:
@@ -278,7 +294,9 @@ jobs:
               passed: (length == 3 and all(.passed == true)),
               suites: .
             }' acceptance-suites/*/*.json > release-acceptance.json
-          jq -e '.passed == true and ([.suites[].cases[]] | length == 18)' release-acceptance.json
+          pnpm run verify:release-evidence -- \
+            --file release-acceptance.json \
+            --commit "${{ github.event.pull_request.head.sha || github.sha }}"
           {
             echo '```json'
             cat release-acceptance.json

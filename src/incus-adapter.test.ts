@@ -421,21 +421,25 @@ describe('Incus adapter', () => {
     expect(executor.mock.calls.filter(([argv]) => (argv as string[])[0] === 'exec')).toHaveLength(4);
   });
 
-  it('pushes immutable VM bootstrap files after boot as root-owned read-only files', () => {
+  it('restarts a stopped provisioning VM before pushing immutable bootstrap files', () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'area51-vm-bootstrap-'));
     try {
       const source = path.join(root, 'onecli-ca.pem');
       fs.writeFileSync(source, 'certificate');
-      let unavailable = true;
+      let running = false;
+      let starts = 0;
       const executor = vi.fn((argv: string[]) => {
-        if (argv[0] === 'file' && argv[1] === 'push' && unavailable) {
-          unavailable = false;
+        if (argv[0] === 'start' && ++starts > 1 && starts < 4) {
+          throw new Error('Failed to start device "area51-disk-3": device or resource busy');
+        }
+        if (argv[0] === 'start' && starts === 4) running = true;
+        if (argv[0] === 'file' && argv[1] === 'push' && !running) {
           throw new Error('Failed getting instance SFTP connection: Instance is not running');
         }
       });
       const plan = { ...vmPlan(), vmFiles: [{ source, path: '/run/area51/onecli-ca.pem', readonly: true as const }] };
 
-      applyIncusRuntimePlan(plan, { executor, vmAgentRetryAttempts: 2, vmAgentRetryDelayMs: 0 });
+      applyIncusRuntimePlan(plan, { executor, vmAgentRetryAttempts: 4, vmAgentRetryDelayMs: 0 });
 
       expect(executor).toHaveBeenCalledWith([
         'file',
@@ -453,7 +457,33 @@ describe('Incus adapter', () => {
         '--project',
         plan.project,
       ]);
-      expect(executor.mock.calls.filter(([argv]) => argv[0] === 'file' && argv[1] === 'push')).toHaveLength(2);
+      expect(executor.mock.calls.filter(([argv]) => argv[0] === 'file' && argv[1] === 'push')).toHaveLength(4);
+      expect(executor.mock.calls.filter(([argv]) => argv[0] === 'start')).toHaveLength(4);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('force-restarts a provisioning VM after its vsock process disappears', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'area51-vm-vsock-'));
+    try {
+      const source = path.join(root, 'bootstrap.txt');
+      fs.writeFileSync(source, 'bootstrap');
+      let unavailable = 2;
+      const executor = vi.fn((argv: string[]) => {
+        if (argv[0] === 'file' && argv[1] === 'push' && unavailable-- > 0) {
+          throw new Error(
+            'Failed getting instance SFTP connection: dial vsock vm(769742429):8443: connect: no such device',
+          );
+        }
+      });
+      const plan = { ...vmPlan(), vmFiles: [{ source, path: '/run/area51/bootstrap.txt', readonly: true as const }] };
+
+      applyIncusRuntimePlan(plan, { executor, vmAgentRetryAttempts: 3, vmAgentRetryDelayMs: 0 });
+
+      expect(executor.mock.calls.filter(([argv]) => argv[0] === 'file' && argv[1] === 'push')).toHaveLength(3);
+      expect(executor.mock.calls.filter(([argv]) => argv[0] === 'start')).toHaveLength(1);
+      expect(executor).toHaveBeenCalledWith(['restart', plan.instance, '--force', '--project', plan.project]);
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
     }

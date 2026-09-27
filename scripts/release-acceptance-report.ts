@@ -32,7 +32,7 @@ export type ReleaseAcceptanceReport = {
   not_covered: string[];
 };
 
-const CASES: Record<AcceptanceSuite, Array<Omit<AcceptanceCase, 'passed'>>> = {
+export const RELEASE_ACCEPTANCE_CASES: Record<AcceptanceSuite, Array<Omit<AcceptanceCase, 'passed'>>> = {
   'incus-vm-containment': [
     { id: 'weaker-runtime-fallback-blocked', evidence: 'Risky Docker posture was rejected by Runtime Policy.' },
     { id: 'risky-workload-escalated-to-vm', evidence: 'Production policy selected a real Incus VM.' },
@@ -111,7 +111,7 @@ export function buildReleaseAcceptanceReport(input: {
     workflow_run_url: input.workflowRunUrl,
     installer_url: installerUrl,
     passed: true,
-    cases: CASES[input.suite].map((testCase) => ({ ...testCase, passed: true })),
+    cases: RELEASE_ACCEPTANCE_CASES[input.suite].map((testCase) => ({ ...testCase, passed: true })),
     vm_reboot_measurement: vmRebootMeasurement,
     not_covered: ['live-entra-okta-authorization', 'real-provider-credentials', 'physical-host-reboot'],
   };
@@ -134,7 +134,7 @@ function cli(): void {
   const output = option(args, '--output');
   const commitSha = option(args, '--commit');
   const workflowRunUrl = option(args, '--run-url');
-  if (!suite || !(suite in CASES)) throw new Error('valid --suite is required');
+  if (!suite || !(suite in RELEASE_ACCEPTANCE_CASES)) throw new Error('valid --suite is required');
   if (!output || !commitSha || !workflowRunUrl) throw new Error('--output, --commit, and --run-url are required');
 
   const measurementPath = option(args, '--measurement');
