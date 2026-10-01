@@ -15,6 +15,7 @@ import { buildIncusVmRuntimeTransport } from '../src/incus-vm-runtime.js';
 import { syncIncusVmProviderState } from '../src/incus-vm-provider-state.js';
 import { syncIncusVmInbound, syncIncusVmOutbound } from '../src/incus-vm-session-bridge.js';
 import { selectLiveRuntimePolicy, writeLiveRuntimePolicyDecision } from '../src/live-runtime-policy.js';
+import { createVmProbeServer } from './vm-probe-server.js';
 
 const suffix = (process.env.GITHUB_RUN_ID ?? String(Date.now())).replace(/[^0-9]/g, '').slice(-12);
 const image = process.env.AREA51_INCUS_VM_IMAGE_ALIAS;
@@ -152,6 +153,8 @@ const runtimeResources = [{ plan, transport }];
 let relay: net.Server | undefined;
 let deniedEndpoint: net.Server | undefined;
 let deniedConnections = 0;
+let fixtureFailure: Error | undefined;
+const recordFixtureFailure = (error: Error) => (fixtureFailure ??= error);
 let primaryFailure: unknown;
 try {
   process.env.AREA51_INCUS_STORAGE_POOL = pool;
@@ -160,14 +163,17 @@ try {
     executor(argv) {
       const output = runIncus(argv);
       if (argv[0] === 'network' && argv[1] === 'create') {
-        relay = net.createServer((socket) => {
-          socket.end('HTTP/1.1 200 OK\r\nContent-Length: 16\r\nConnection: close\r\n\r\narea51-relay-ok\n');
-        });
+        relay = createVmProbeServer(
+          'HTTP/1.1 200 OK\r\nContent-Length: 16\r\nConnection: close\r\n\r\narea51-relay-ok\n',
+          () => {},
+          recordFixtureFailure,
+        );
         relay.listen(relayPort, relayAddress);
-        deniedEndpoint = net.createServer((socket) => {
-          deniedConnections += 1;
-          socket.end('HTTP/1.1 200 OK\r\nContent-Length: 7\r\nConnection: close\r\n\r\ncanary\n');
-        });
+        deniedEndpoint = createVmProbeServer(
+          'HTTP/1.1 200 OK\r\nContent-Length: 7\r\nConnection: close\r\n\r\ncanary\n',
+          () => deniedConnections++,
+          recordFixtureFailure,
+        );
         deniedEndpoint.listen(deniedPort, relayAddress);
       }
       return output;
@@ -185,6 +191,7 @@ try {
     probe.once('error', reject);
   });
   deniedConnections = 0;
+  if (fixtureFailure) throw fixtureFailure;
 
   const liveInstances = JSON.parse(
     runIncus(['list', plan.instance, '--project', plan.project, '--format', 'json']),
@@ -194,6 +201,7 @@ try {
   }
 
   const result = await guestScript();
+  if (fixtureFailure) throw fixtureFailure;
   if (!result.includes('area51-vm-containment-ok')) throw new Error(`Guest did not report success: ${result}`);
   if (deniedConnections !== 0) throw new Error('Guest reached the non-allowlisted host TCP endpoint');
   for (const canaryFile of [hostCredentialFile, siblingWorkspaceFile]) {
@@ -278,6 +286,7 @@ try {
   );
   if (blockedExecution.status === 0) throw new Error('Agent execution remained possible after quarantine');
 
+  if (fixtureFailure) throw fixtureFailure;
   console.log(
     'Live Runtime Policy selection, quarantine enforcement, Incus VM containment, database round-trip, and Claude provider restart E2E passed.',
   );
