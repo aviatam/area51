@@ -23,7 +23,15 @@ if (!image) throw new Error('AREA51_INCUS_VM_IMAGE_ALIAS is required');
 
 const relayAddress = '10.251.0.1';
 const relayPort = 10255;
+const deniedPort = relayPort + 1;
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'area51-vm-e2e-'));
+const hostCredentialFile = path.join(root, 'host-only-provider.env');
+const siblingWorkspaceFile = path.join(root, 'other-agent', 'private.txt');
+const syntheticCanary = `synthetic-host-only-${suffix}`;
+fs.mkdirSync(path.dirname(siblingWorkspaceFile));
+fs.writeFileSync(hostCredentialFile, syntheticCanary, { mode: 0o600 });
+fs.writeFileSync(siblingWorkspaceFile, syntheticCanary, { mode: 0o600 });
+process.env.AREA51_HOST_ONLY_CANARY = syntheticCanary;
 const sessionDir = path.join(root, 'session');
 const groupDir = path.join(root, 'group');
 const providerDir = path.join(root, '.claude-shared');
@@ -142,6 +150,8 @@ const plan = makePlan(suffix, transport);
 const runtimeResources = [{ plan, transport }];
 
 let relay: net.Server | undefined;
+let deniedEndpoint: net.Server | undefined;
+let deniedConnections = 0;
 let primaryFailure: unknown;
 try {
   process.env.AREA51_INCUS_STORAGE_POOL = pool;
@@ -154,10 +164,27 @@ try {
           socket.end('HTTP/1.1 200 OK\r\nContent-Length: 17\r\nConnection: close\r\n\r\narea51-relay-ok\n');
         });
         relay.listen(relayPort, relayAddress);
+        deniedEndpoint = net.createServer((socket) => {
+          deniedConnections += 1;
+          socket.end('HTTP/1.1 200 OK\r\nContent-Length: 7\r\nConnection: close\r\n\r\ncanary\n');
+        });
+        deniedEndpoint.listen(deniedPort, relayAddress);
       }
       return output;
     },
   });
+
+  await new Promise<void>((resolve, reject) => {
+    const probe = net.connect(deniedPort, relayAddress);
+    probe.setTimeout(3000, () => probe.destroy(new Error('Host denied-endpoint control timed out')));
+    probe.once('data', (data) => {
+      probe.destroy();
+      if (!data.toString().includes('canary')) reject(new Error('Host denied-endpoint control failed'));
+      else resolve();
+    });
+    probe.once('error', reject);
+  });
+  deniedConnections = 0;
 
   const liveInstances = JSON.parse(
     runIncus(['list', plan.instance, '--project', plan.project, '--format', 'json']),
@@ -168,6 +195,10 @@ try {
 
   const result = await guestScript();
   if (!result.includes('area51-vm-containment-ok')) throw new Error(`Guest did not report success: ${result}`);
+  if (deniedConnections !== 0) throw new Error('Guest reached the non-allowlisted host TCP endpoint');
+  for (const canaryFile of [hostCredentialFile, siblingWorkspaceFile]) {
+    if (fs.readFileSync(canaryFile, 'utf8') !== syntheticCanary) throw new Error('Host canary was altered');
+  }
   const runner = spawnIncusExec(plan, 'bun', ['run', '/run/area51/roundtrip.ts'], {}, { user: '1000', group: '1000' });
   let runnerStderr = '';
   runner.stderr?.on('data', (chunk) => (runnerStderr += chunk.toString()));
@@ -255,6 +286,8 @@ try {
   throw error;
 } finally {
   relay?.close();
+  deniedEndpoint?.close();
+  delete process.env.AREA51_HOST_ONLY_CANARY;
   cleanup(primaryFailure === undefined);
   fs.rmSync(root, { recursive: true, force: true });
 }
@@ -389,6 +422,22 @@ if echo forbidden > /workspace/agent/forbidden 2>/tmp/readonly.err; then fail "a
 for forbidden in /run/incus/unix.socket /var/lib/incus/unix.socket /run/docker.sock /var/run/docker.sock /host-secret.txt; do
   test ! -e "$forbidden" || fail "host control path visible: $forbidden"
 done
+if printenv AREA51_HOST_ONLY_CANARY >/tmp/host-env-attempt; then fail "host-only credential environment leaked"; fi
+if cat '${hostCredentialFile}' >/tmp/host-credential-attempt 2>/tmp/host-credential.err; then
+  fail "unmounted host credential file was readable"
+fi
+if cat '${siblingWorkspaceFile}' >/tmp/sibling-read-attempt 2>/tmp/sibling-read.err; then
+  fail "unmounted sibling workspace was readable"
+fi
+ln -s '${siblingWorkspaceFile}' /tmp/sibling-escape
+if cat /tmp/sibling-escape >/tmp/sibling-symlink-attempt 2>/tmp/sibling-symlink.err; then
+  fail "guest-created symlink escaped to host sibling workspace"
+fi
+for control in /var/lib/incus/unix.socket /var/run/docker.sock; do
+  if curl -fsS --unix-socket "$control" --connect-timeout 1 --max-time 2 http://localhost/ >/tmp/control-attempt 2>&1; then
+    fail "guest used a host control API"
+  fi
+done
 if echo forbidden > /container-root-marker 2>/tmp/root.err; then fail "non-root user can write guest root"; fi
 
 relay=false
@@ -397,6 +446,16 @@ for _ in $(seq 1 30); do
   sleep 1
 done
 test "$relay" = true || fail "allowlisted relay is unreachable"
+if curl -fsS --connect-timeout 2 --max-time 3 http://${relayAddress}:${deniedPort}/ >/tmp/denied-host-egress 2>&1; then
+  fail "non-allowlisted host endpoint was reachable"
+fi
+tcp_connect() {
+  bun -e "import {connect} from 'node:net'; const s=connect({host:'${relayAddress}',port:$1}); const t=setTimeout(()=>{s.destroy();process.exit(1)},3000); s.once('connect',()=>{clearTimeout(t);s.destroy();process.exit(0)}); s.once('error',()=>{clearTimeout(t);process.exit(1)});"
+}
+tcp_connect ${relayPort} || fail "raw TCP relay positive control failed"
+if tcp_connect ${deniedPort}; then
+  fail "raw TCP bypassed the relay allowlist"
+fi
 if curl -fsS --connect-timeout 2 --max-time 3 http://1.1.1.1/ >/tmp/open-egress 2>&1; then
   fail "non-relay internet egress succeeded"
 fi

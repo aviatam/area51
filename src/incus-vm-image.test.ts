@@ -96,4 +96,16 @@ describe('Incus VM image builder', () => {
     expect(containment).toContain("snapshot.name?.startsWith('area51-quarantine-')");
     expect(containment).toContain('Agent execution remained possible after quarantine');
   });
+
+  it('requires hostile access attempts with positive controls before publishing evidence', () => {
+    expect(containment).toContain('hostCredentialFile');
+    expect(containment).toContain('siblingWorkspaceFile');
+    expect(containment).toContain('printenv AREA51_HOST_ONLY_CANARY');
+    expect(containment).toContain('curl -fsS --unix-socket');
+    expect(containment).toContain('guest-created symlink escaped');
+    expect(containment).toContain('Host denied-endpoint control failed');
+    expect(containment).toContain('raw TCP relay positive control failed');
+    expect(containment).toContain('deniedConnections !== 0');
+    expect(workflow).toContain('branches: [main]');
+  });
 });

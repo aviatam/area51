@@ -47,9 +47,9 @@ function suites(summary: Record<string, unknown>): Array<Record<string, unknown>
 }
 
 describe('release acceptance evidence verifier', () => {
-  it('accepts the exact three-suite, eighteen-case proof', () => {
+  it('accepts the exact three-suite, twenty-two-case proof', () => {
     const verified = verifyReleaseAcceptanceSummary(validSummary(), commit);
-    expect(verified.suites.flatMap((suite) => suite.cases)).toHaveLength(18);
+    expect(verified.suites.flatMap((suite) => suite.cases)).toHaveLength(22);
   });
 
   it.each([

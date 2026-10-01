@@ -2,6 +2,13 @@ name: Incus VM Image Smoke
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - scripts/incus-vm-containment-e2e.ts
+      - scripts/release-acceptance-report.ts
+      - scripts/verify-release-acceptance.ts
+      - .github/workflows/incus-vm-image.yml
   pull_request:
     paths:
       - .github/workflows/incus-vm-image.yml
