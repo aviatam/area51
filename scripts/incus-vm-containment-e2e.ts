@@ -161,7 +161,7 @@ try {
       const output = runIncus(argv);
       if (argv[0] === 'network' && argv[1] === 'create') {
         relay = net.createServer((socket) => {
-          socket.end('HTTP/1.1 200 OK\r\nContent-Length: 17\r\nConnection: close\r\n\r\narea51-relay-ok\n');
+          socket.end('HTTP/1.1 200 OK\r\nContent-Length: 16\r\nConnection: close\r\n\r\narea51-relay-ok\n');
         });
         relay.listen(relayPort, relayAddress);
         deniedEndpoint = net.createServer((socket) => {
@@ -401,7 +401,7 @@ function runIncus(argv: string[]): string {
 
 async function guestScript(): Promise<string> {
   const script = String.raw`
-set -eu
+set -euo pipefail
 fail() { echo "VM containment failure: $*" >&2; exit 42; }
 
 ready=false
