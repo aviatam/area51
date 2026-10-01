@@ -283,6 +283,7 @@ try {
   );
 } catch (error) {
   primaryFailure = error;
+  captureFailureDiagnostics();
   throw error;
 } finally {
   relay?.close();
@@ -290,6 +291,44 @@ try {
   delete process.env.AREA51_HOST_ONLY_CANARY;
   cleanup(primaryFailure === undefined);
   fs.rmSync(root, { recursive: true, force: true });
+}
+
+function captureFailureDiagnostics(): void {
+  // Collect before cleanup removes the failed VM. Never replace the primary error.
+  try {
+    const probes: Array<{ command: string; args: string[] }> = [
+      ...runtimeResources.map(({ plan: resource }) => ({
+        command: 'incus',
+        args: ['info', resource.instance, '--show-log', '--project', resource.project],
+      })),
+      { command: 'incus', args: ['version'] },
+      { command: 'free', args: ['-m'] },
+      { command: 'df', args: ['-h', '/var/lib/incus'] },
+      { command: 'sudo', args: ['-n', 'dmesg', '--ctime', '--level=err,warn'] },
+      { command: 'sudo', args: ['-n', 'journalctl', '-u', 'incus', '--since=-10min', '--no-pager', '-n', '200'] },
+    ];
+    const results = probes.map(({ command, args }) => {
+      const result = spawnSync(command, args, { encoding: 'utf8', timeout: 5000, maxBuffer: 1024 * 1024 });
+      return {
+        command,
+        args,
+        status: result.status,
+        signal: result.signal,
+        error: result.error?.message,
+        stdout: result.stdout?.slice(-64_000),
+        stderr: result.stderr?.slice(-64_000),
+      };
+    });
+    const directory = path.resolve('.area51/diagnostics');
+    fs.mkdirSync(directory, { recursive: true });
+    fs.writeFileSync(
+      path.join(directory, 'vm-containment-failure.json'),
+      JSON.stringify({ captured_at: new Date().toISOString(), results }, null, 2) + '\n',
+    );
+    console.error(`VM failure diagnostics saved to ${directory}`);
+  } catch (error) {
+    console.error('Could not capture VM failure diagnostics:', error);
+  }
 }
 
 function insertTestMessage(db: ReturnType<typeof openInboundDb>, id: string, content: string): void {

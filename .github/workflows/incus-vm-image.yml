@@ -178,6 +178,13 @@ jobs:
           AREA51_INCUS_VM_IMAGE_ALIAS: area51-agent-v2-vm-ci-${{ github.run_id }}
           AREA51_INCUS_STORAGE_POOL: default
         run: bash .claude/skills/governed-escalation-demo/deploy.sh --mode live
+      - name: Upload VM failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vm-failure-diagnostics-${{ github.run_id }}
+          path: .area51/diagnostics/vm-containment-failure.json
+          if-no-files-found: warn
       - name: Write VM hostile-containment acceptance evidence
         run: |
           pnpm exec tsx scripts/release-acceptance-report.ts \
