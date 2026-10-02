@@ -34,7 +34,7 @@ describe('release acceptance report', () => {
       vm_reboot_measurement: null,
       not_covered: ['live-entra-okta-authorization', 'real-provider-credentials', 'physical-host-reboot'],
     });
-    expect(report.cases).toHaveLength(9);
+    expect(report.cases).toHaveLength(13);
     expect(report.cases.every((testCase) => testCase.passed)).toBe(true);
   });
 

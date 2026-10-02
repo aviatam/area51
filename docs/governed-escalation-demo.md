@@ -58,7 +58,7 @@ The repository's **Incus VM Image Smoke** workflow is the authoritative proof. O
 - guest execution is rejected after containment.
 
 After both the live VM test and the public-link Linux installer test pass, the workflow publishes a
-`release-acceptance-<run-id>` artifact. Its JSON report combines 18 machine-verifiable installation,
+`release-acceptance-<run-id>` artifact. Its JSON report combines 22 machine-verifiable installation,
 same-VM reboot, persistence, isolation, egress, escalation, and quarantine cases. The report also
 names what that run did
 not cover: live Entra/Okta authorization, real provider credentials, and a physical-host reboot. Those
@@ -73,7 +73,17 @@ pnpm run verify:release-evidence -- \
   --commit <tested-40-character-commit-sha>
 ```
 
-Successful verification prints `Release evidence: VERIFIED (3 suites, 18 cases)`.
+Successful verification prints `Release evidence: VERIFIED (3 suites, 22 cases)`.
+Use the verifier from the report's tested commit; historical runs have a smaller case contract.
+
+The four additional hostile-boundary cases attempt to read a synthetic unmounted host credential
+file and host-only environment variable, read a synthetic unmounted sibling workspace directly and
+through a guest-created symlink, call host Incus/Docker APIs, and reach a non-allowlisted host TCP
+endpoint with HTTP and raw sockets. Host and relay positive controls prevent an unavailable endpoint
+from being mistaken for network enforcement. These probes do not prove isolation between two active
+agents, protection of credentials intentionally mounted inside a guest, or general MCP/tool authorization.
+The acceptance workflow also runs on relevant `main` pushes, so post-merge evidence identifies the
+actual merged commit rather than only its PR head.
 
 Use `--live` only in that prepared environment:
 

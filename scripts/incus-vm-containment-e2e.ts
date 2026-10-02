@@ -15,6 +15,7 @@ import { buildIncusVmRuntimeTransport } from '../src/incus-vm-runtime.js';
 import { syncIncusVmProviderState } from '../src/incus-vm-provider-state.js';
 import { syncIncusVmInbound, syncIncusVmOutbound } from '../src/incus-vm-session-bridge.js';
 import { selectLiveRuntimePolicy, writeLiveRuntimePolicyDecision } from '../src/live-runtime-policy.js';
+import { createVmProbeServer } from './vm-probe-server.js';
 
 const suffix = (process.env.GITHUB_RUN_ID ?? String(Date.now())).replace(/[^0-9]/g, '').slice(-12);
 const image = process.env.AREA51_INCUS_VM_IMAGE_ALIAS;
@@ -23,7 +24,15 @@ if (!image) throw new Error('AREA51_INCUS_VM_IMAGE_ALIAS is required');
 
 const relayAddress = '10.251.0.1';
 const relayPort = 10255;
+const deniedPort = relayPort + 1;
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'area51-vm-e2e-'));
+const hostCredentialFile = path.join(root, 'host-only-provider.env');
+const siblingWorkspaceFile = path.join(root, 'other-agent', 'private.txt');
+const syntheticCanary = `synthetic-host-only-${suffix}`;
+fs.mkdirSync(path.dirname(siblingWorkspaceFile));
+fs.writeFileSync(hostCredentialFile, syntheticCanary, { mode: 0o600 });
+fs.writeFileSync(siblingWorkspaceFile, syntheticCanary, { mode: 0o600 });
+process.env.AREA51_HOST_ONLY_CANARY = syntheticCanary;
 const sessionDir = path.join(root, 'session');
 const groupDir = path.join(root, 'group');
 const providerDir = path.join(root, '.claude-shared');
@@ -142,6 +151,10 @@ const plan = makePlan(suffix, transport);
 const runtimeResources = [{ plan, transport }];
 
 let relay: net.Server | undefined;
+let deniedEndpoint: net.Server | undefined;
+let deniedConnections = 0;
+let fixtureFailure: Error | undefined;
+const recordFixtureFailure = (error: Error) => (fixtureFailure ??= error);
 let primaryFailure: unknown;
 try {
   process.env.AREA51_INCUS_STORAGE_POOL = pool;
@@ -150,14 +163,35 @@ try {
     executor(argv) {
       const output = runIncus(argv);
       if (argv[0] === 'network' && argv[1] === 'create') {
-        relay = net.createServer((socket) => {
-          socket.end('HTTP/1.1 200 OK\r\nContent-Length: 17\r\nConnection: close\r\n\r\narea51-relay-ok\n');
-        });
+        relay = createVmProbeServer(
+          'HTTP/1.1 200 OK\r\nContent-Length: 16\r\nConnection: close\r\n\r\narea51-relay-ok\n',
+          () => {},
+          recordFixtureFailure,
+        );
         relay.listen(relayPort, relayAddress);
+        deniedEndpoint = createVmProbeServer(
+          'HTTP/1.1 200 OK\r\nContent-Length: 7\r\nConnection: close\r\n\r\ncanary\n',
+          () => deniedConnections++,
+          recordFixtureFailure,
+        );
+        deniedEndpoint.listen(deniedPort, relayAddress);
       }
       return output;
     },
   });
+
+  await new Promise<void>((resolve, reject) => {
+    const probe = net.connect(deniedPort, relayAddress);
+    probe.setTimeout(3000, () => probe.destroy(new Error('Host denied-endpoint control timed out')));
+    probe.once('data', (data) => {
+      probe.destroy();
+      if (!data.toString().includes('canary')) reject(new Error('Host denied-endpoint control failed'));
+      else resolve();
+    });
+    probe.once('error', reject);
+  });
+  deniedConnections = 0;
+  if (fixtureFailure) throw fixtureFailure;
 
   const liveInstances = JSON.parse(
     runIncus(['list', plan.instance, '--project', plan.project, '--format', 'json']),
@@ -167,7 +201,12 @@ try {
   }
 
   const result = await guestScript();
+  if (fixtureFailure) throw fixtureFailure;
   if (!result.includes('area51-vm-containment-ok')) throw new Error(`Guest did not report success: ${result}`);
+  if (deniedConnections !== 0) throw new Error('Guest reached the non-allowlisted host TCP endpoint');
+  for (const canaryFile of [hostCredentialFile, siblingWorkspaceFile]) {
+    if (fs.readFileSync(canaryFile, 'utf8') !== syntheticCanary) throw new Error('Host canary was altered');
+  }
   const runner = spawnIncusExec(plan, 'bun', ['run', '/run/area51/roundtrip.ts'], {}, { user: '1000', group: '1000' });
   let runnerStderr = '';
   runner.stderr?.on('data', (chunk) => (runnerStderr += chunk.toString()));
@@ -247,16 +286,58 @@ try {
   );
   if (blockedExecution.status === 0) throw new Error('Agent execution remained possible after quarantine');
 
+  if (fixtureFailure) throw fixtureFailure;
   console.log(
     'Live Runtime Policy selection, quarantine enforcement, Incus VM containment, database round-trip, and Claude provider restart E2E passed.',
   );
 } catch (error) {
   primaryFailure = error;
+  captureFailureDiagnostics();
   throw error;
 } finally {
   relay?.close();
+  deniedEndpoint?.close();
+  delete process.env.AREA51_HOST_ONLY_CANARY;
   cleanup(primaryFailure === undefined);
   fs.rmSync(root, { recursive: true, force: true });
+}
+
+function captureFailureDiagnostics(): void {
+  // Collect before cleanup removes the failed VM. Never replace the primary error.
+  try {
+    const probes: Array<{ command: string; args: string[] }> = [
+      ...runtimeResources.map(({ plan: resource }) => ({
+        command: 'incus',
+        args: ['info', resource.instance, '--show-log', '--project', resource.project],
+      })),
+      { command: 'incus', args: ['version'] },
+      { command: 'free', args: ['-m'] },
+      { command: 'df', args: ['-h', '/var/lib/incus'] },
+      { command: 'sudo', args: ['-n', 'dmesg', '--ctime', '--level=err,warn'] },
+      { command: 'sudo', args: ['-n', 'journalctl', '-u', 'incus', '--since=-10min', '--no-pager', '-n', '200'] },
+    ];
+    const results = probes.map(({ command, args }) => {
+      const result = spawnSync(command, args, { encoding: 'utf8', timeout: 5000, maxBuffer: 1024 * 1024 });
+      return {
+        command,
+        args,
+        status: result.status,
+        signal: result.signal,
+        error: result.error?.message,
+        stdout: result.stdout?.slice(-64_000),
+        stderr: result.stderr?.slice(-64_000),
+      };
+    });
+    const directory = path.resolve('.area51/diagnostics');
+    fs.mkdirSync(directory, { recursive: true });
+    fs.writeFileSync(
+      path.join(directory, 'vm-containment-failure.json'),
+      JSON.stringify({ captured_at: new Date().toISOString(), results }, null, 2) + '\n',
+    );
+    console.error(`VM failure diagnostics saved to ${directory}`);
+  } catch (error) {
+    console.error('Could not capture VM failure diagnostics:', error);
+  }
 }
 
 function insertTestMessage(db: ReturnType<typeof openInboundDb>, id: string, content: string): void {
@@ -368,7 +449,7 @@ function runIncus(argv: string[]): string {
 
 async function guestScript(): Promise<string> {
   const script = String.raw`
-set -eu
+set -euo pipefail
 fail() { echo "VM containment failure: $*" >&2; exit 42; }
 
 ready=false
@@ -389,6 +470,22 @@ if echo forbidden > /workspace/agent/forbidden 2>/tmp/readonly.err; then fail "a
 for forbidden in /run/incus/unix.socket /var/lib/incus/unix.socket /run/docker.sock /var/run/docker.sock /host-secret.txt; do
   test ! -e "$forbidden" || fail "host control path visible: $forbidden"
 done
+if printenv AREA51_HOST_ONLY_CANARY >/tmp/host-env-attempt; then fail "host-only credential environment leaked"; fi
+if cat '${hostCredentialFile}' >/tmp/host-credential-attempt 2>/tmp/host-credential.err; then
+  fail "unmounted host credential file was readable"
+fi
+if cat '${siblingWorkspaceFile}' >/tmp/sibling-read-attempt 2>/tmp/sibling-read.err; then
+  fail "unmounted sibling workspace was readable"
+fi
+ln -s '${siblingWorkspaceFile}' /tmp/sibling-escape
+if cat /tmp/sibling-escape >/tmp/sibling-symlink-attempt 2>/tmp/sibling-symlink.err; then
+  fail "guest-created symlink escaped to host sibling workspace"
+fi
+for control in /var/lib/incus/unix.socket /var/run/docker.sock; do
+  if curl -fsS --unix-socket "$control" --connect-timeout 1 --max-time 2 http://localhost/ >/tmp/control-attempt 2>&1; then
+    fail "guest used a host control API"
+  fi
+done
 if echo forbidden > /container-root-marker 2>/tmp/root.err; then fail "non-root user can write guest root"; fi
 
 relay=false
@@ -397,6 +494,16 @@ for _ in $(seq 1 30); do
   sleep 1
 done
 test "$relay" = true || fail "allowlisted relay is unreachable"
+if curl -fsS --connect-timeout 2 --max-time 3 http://${relayAddress}:${deniedPort}/ >/tmp/denied-host-egress 2>&1; then
+  fail "non-allowlisted host endpoint was reachable"
+fi
+tcp_connect() {
+  bun -e "import {connect} from 'node:net'; const s=connect({host:'${relayAddress}',port:$1}); const t=setTimeout(()=>{s.destroy();process.exit(1)},3000); s.once('connect',()=>{clearTimeout(t);s.destroy();process.exit(0)}); s.once('error',()=>{clearTimeout(t);process.exit(1)});"
+}
+tcp_connect ${relayPort} || fail "raw TCP relay positive control failed"
+if tcp_connect ${deniedPort}; then
+  fail "raw TCP bypassed the relay allowlist"
+fi
 if curl -fsS --connect-timeout 2 --max-time 3 http://1.1.1.1/ >/tmp/open-egress 2>&1; then
   fail "non-relay internet egress succeeded"
 fi

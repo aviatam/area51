@@ -2,6 +2,14 @@ name: Incus VM Image Smoke
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - scripts/incus-vm-containment-e2e.ts
+      - scripts/vm-probe-server.ts
+      - scripts/release-acceptance-report.ts
+      - scripts/verify-release-acceptance.ts
+      - .github/workflows/incus-vm-image.yml
   pull_request:
     paths:
       - .github/workflows/incus-vm-image.yml
@@ -10,6 +18,8 @@ on:
       - container/agent-runner/**
       - container/skills/**
       - scripts/incus-vm-containment-e2e.ts
+      - scripts/vm-probe-server.ts
+      - scripts/vm-probe-server.test.ts
       - scripts/release-acceptance-report.ts
       - scripts/release-acceptance-report.test.ts
       - scripts/verify-release-acceptance.ts
@@ -171,6 +181,13 @@ jobs:
           AREA51_INCUS_VM_IMAGE_ALIAS: area51-agent-v2-vm-ci-${{ github.run_id }}
           AREA51_INCUS_STORAGE_POOL: default
         run: bash .claude/skills/governed-escalation-demo/deploy.sh --mode live
+      - name: Upload VM failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vm-failure-diagnostics-${{ github.run_id }}
+          path: .area51/diagnostics/vm-containment-failure.json
+          if-no-files-found: warn
       - name: Write VM hostile-containment acceptance evidence
         run: |
           pnpm exec tsx scripts/release-acceptance-report.ts \

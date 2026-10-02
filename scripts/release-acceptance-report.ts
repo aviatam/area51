@@ -37,6 +37,23 @@ export const RELEASE_ACCEPTANCE_CASES: Record<AcceptanceSuite, Array<Omit<Accept
     { id: 'weaker-runtime-fallback-blocked', evidence: 'Risky Docker posture was rejected by Runtime Policy.' },
     { id: 'risky-workload-escalated-to-vm', evidence: 'Production policy selected a real Incus VM.' },
     { id: 'host-control-sockets-hidden', evidence: 'Incus and Docker control sockets were absent in the guest.' },
+    {
+      id: 'host-credential-canaries-unreadable',
+      evidence: 'Guest reads of an unmounted synthetic host credential file and host-only environment variable failed.',
+    },
+    {
+      id: 'unmounted-sibling-workspace-blocked',
+      evidence: 'Direct and guest-created symlink reads of an unmounted synthetic sibling workspace failed.',
+    },
+    {
+      id: 'host-control-api-attempts-blocked',
+      evidence: 'Guest attempts to call Incus and Docker host control APIs through Unix sockets failed.',
+    },
+    {
+      id: 'non-allowlisted-host-tcp-blocked',
+      evidence:
+        'HTTP and raw TCP attempts to a host-verified listening endpoint failed while relay positive controls passed.',
+    },
     { id: 'guest-root-read-only', evidence: 'The non-root agent could not write the VM root filesystem.' },
     { id: 'non-relay-egress-blocked', evidence: 'The relay remained reachable while direct internet egress failed.' },
     { id: 'provider-roundtrip-and-restart', evidence: 'Messaging and provider state survived runtime restart.' },
