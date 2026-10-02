@@ -141,14 +141,18 @@ This prevents cross-group information disclosure.
 
 ### 4. Credential Isolation (OneCLI Agent Vault)
 
-Real API credentials **never enter containers**. Area51 uses [OneCLI's Agent Vault](https://github.com/onecli/onecli) to proxy outbound requests and inject credentials at the gateway level.
+For credentials managed through [OneCLI's Agent Vault](https://github.com/onecli/onecli),
+the intended boundary is gateway-side injection: the agent receives proxy access,
+while OneCLI holds and injects the real API credential. This does not cover credentials
+an operator or provider deliberately exposes through environment variables or mounted
+provider state, and the public acceptance run does not use real provider credentials.
 
 **How it works:**
 
 1. Credentials are registered once with `onecli secrets create`, stored and managed by OneCLI
 2. When Area51 spawns a container, it calls `applyContainerConfig()` to route outbound HTTPS through the OneCLI gateway
 3. The gateway matches requests by host and path, injects the real credential, and forwards
-4. Agents cannot discover real credentials — not in environment, stdin, files, or `/proc`
+4. Vault-held credentials are not supplied to the agent through environment, stdin or mounted files; proxy access still permits the requests allowed by the gateway policy
 
 **Per-agent policies:**
 Each Area51 group gets its own OneCLI agent identity. This allows different credential policies per group (e.g. your sales agent vs. support agent). OneCLI supports rate limits, and time-bound access and approval flows are on the roadmap.
@@ -157,9 +161,9 @@ Each Area51 group gets its own OneCLI agent identity. This allows different cred
 
 - The project root and `.env` — never mounted; the container only receives the paths in the mount table above.
 - The mount allowlist — external (`~/.config/area51/…`), never mounted.
-- Real credentials — injected per request by the OneCLI gateway, never written into any mount.
+- Vault-held credentials — injected per request by the OneCLI gateway rather than written into an agent mount; this does not describe separately supplied provider credentials.
 
-### 5. Egress Lockdown (Forced Proxy)
+### 5. Docker Egress Lockdown (Forced Proxy)
 
 The `HTTPS_PROXY` env var only redirects _proxy-aware_ clients — a tool that
 ignores it (or a raw socket) could reach the internet directly and bypass
