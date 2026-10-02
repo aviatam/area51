@@ -19,7 +19,8 @@ import { createVmProbeServer } from './vm-probe-server.js';
 
 const trial = process.env.AREA51_E2E_TRIAL ?? '1';
 if (!/^[1-3]$/.test(trial)) throw new Error('AREA51_E2E_TRIAL must be 1, 2, or 3');
-const suffix = `${(process.env.GITHUB_RUN_ID ?? String(Date.now())).replace(/[^0-9]/g, '').slice(-12)}-${trial}`;
+// Reserve one trial digit within the bridge's 15-character limit (including "vme").
+const suffix = `${(process.env.GITHUB_RUN_ID ?? String(Date.now())).replace(/[^0-9]/g, '').slice(-10)}${trial}`;
 const image = process.env.AREA51_INCUS_VM_IMAGE_ALIAS;
 const pool = process.env.AREA51_INCUS_STORAGE_POOL ?? 'default';
 if (!image) throw new Error('AREA51_INCUS_VM_IMAGE_ALIAS is required');
