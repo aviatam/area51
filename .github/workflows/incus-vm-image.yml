@@ -180,13 +180,21 @@ jobs:
         env:
           AREA51_INCUS_VM_IMAGE_ALIAS: area51-agent-v2-vm-ci-${{ github.run_id }}
           AREA51_INCUS_STORAGE_POOL: default
-        run: bash .claude/skills/governed-escalation-demo/deploy.sh --mode live
-      - name: Upload VM failure diagnostics
-        if: failure()
+        run: |
+          set -euo pipefail
+          mkdir -p .area51/diagnostics
+          for trial in 1 2 3; do
+            echo "Starting fresh VM containment trial $trial/3"
+            AREA51_E2E_TRIAL="$trial" bash .claude/skills/governed-escalation-demo/deploy.sh --mode live 2>&1 | tee ".area51/diagnostics/trial-$trial.log"
+            echo "Passed fresh VM containment trial $trial/3"
+          done
+      - name: Upload VM provisioning diagnostics
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: vm-failure-diagnostics-${{ github.run_id }}
-          path: .area51/diagnostics/vm-containment-failure.json
+          name: vm-provisioning-diagnostics-${{ github.run_id }}
+          path: .area51/diagnostics/
+          include-hidden-files: true
           if-no-files-found: warn
       - name: Write VM hostile-containment acceptance evidence
         run: |

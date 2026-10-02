@@ -17,7 +17,9 @@ import { syncIncusVmInbound, syncIncusVmOutbound } from '../src/incus-vm-session
 import { selectLiveRuntimePolicy, writeLiveRuntimePolicyDecision } from '../src/live-runtime-policy.js';
 import { createVmProbeServer } from './vm-probe-server.js';
 
-const suffix = (process.env.GITHUB_RUN_ID ?? String(Date.now())).replace(/[^0-9]/g, '').slice(-12);
+const trial = process.env.AREA51_E2E_TRIAL ?? '1';
+if (!/^[1-3]$/.test(trial)) throw new Error('AREA51_E2E_TRIAL must be 1, 2, or 3');
+const suffix = `${(process.env.GITHUB_RUN_ID ?? String(Date.now())).replace(/[^0-9]/g, '').slice(-12)}-${trial}`;
 const image = process.env.AREA51_INCUS_VM_IMAGE_ALIAS;
 const pool = process.env.AREA51_INCUS_STORAGE_POOL ?? 'default';
 if (!image) throw new Error('AREA51_INCUS_VM_IMAGE_ALIAS is required');
@@ -149,6 +151,8 @@ function makePlan(instanceSuffix: string, runtimeTransport: typeof transport) {
 }
 const plan = makePlan(suffix, transport);
 const runtimeResources = [{ plan, transport }];
+const diagnosedInstances = new Set<string>();
+const provisioningEvents: Array<Record<string, unknown>> = [];
 
 let relay: net.Server | undefined;
 let deniedEndpoint: net.Server | undefined;
@@ -295,6 +299,7 @@ try {
   captureFailureDiagnostics();
   throw error;
 } finally {
+  console.log('VM provisioning events:', JSON.stringify({ trial, events: provisioningEvents }));
   relay?.close();
   deniedEndpoint?.close();
   delete process.env.AREA51_HOST_ONLY_CANARY;
@@ -302,13 +307,17 @@ try {
   fs.rmSync(root, { recursive: true, force: true });
 }
 
-function captureFailureDiagnostics(): void {
+function captureFailureDiagnostics(stage = 'terminal-failure'): void {
   // Collect before cleanup removes the failed VM. Never replace the primary error.
   try {
     const probes: Array<{ command: string; args: string[] }> = [
       ...runtimeResources.map(({ plan: resource }) => ({
         command: 'incus',
         args: ['info', resource.instance, '--show-log', '--project', resource.project],
+      })),
+      ...runtimeResources.map(({ plan: resource }) => ({
+        command: 'incus',
+        args: ['console', resource.instance, '--show-log', '--project', resource.project],
       })),
       { command: 'incus', args: ['version'] },
       { command: 'free', args: ['-m'] },
@@ -331,8 +340,9 @@ function captureFailureDiagnostics(): void {
     const directory = path.resolve('.area51/diagnostics');
     fs.mkdirSync(directory, { recursive: true });
     fs.writeFileSync(
-      path.join(directory, 'vm-containment-failure.json'),
-      JSON.stringify({ captured_at: new Date().toISOString(), results }, null, 2) + '\n',
+      path.join(directory, `vm-trial-${trial}-${stage}.json`),
+      JSON.stringify({ captured_at: new Date().toISOString(), trial, stage, provisioningEvents, results }, null, 2) +
+        '\n',
     );
     console.error(`VM failure diagnostics saved to ${directory}`);
   } catch (error) {
@@ -440,11 +450,38 @@ async function waitForRoundTrips(expected: number, runnerStderr: () => string): 
 }
 
 function runIncus(argv: string[]): string {
-  return execFileSync('incus', argv, {
-    encoding: 'utf8',
-    stdio: ['ignore', 'pipe', 'pipe'],
-    timeout: 300_000,
-  });
+  const started = Date.now();
+  try {
+    const output = execFileSync('incus', argv, {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+      timeout: 300_000,
+    });
+    if (['start', 'restart'].includes(argv[0]) || (argv[0] === 'file' && argv[1] === 'push')) {
+      provisioningEvents.push({ operation: argv.slice(0, 2), ok: true, elapsed_ms: Date.now() - started });
+    }
+    return output;
+  } catch (error) {
+    const stderr = (error as { stderr?: string }).stderr ?? '';
+    if (/vsock|VM agent isn't currently running|Instance is not running/i.test(stderr)) {
+      const resource = runtimeResources.find(({ plan: candidate }) =>
+        argv.some((arg) => arg === candidate.instance || arg.startsWith(`${candidate.instance}/`)),
+      );
+      provisioningEvents.push({
+        operation: argv.slice(0, 2),
+        instance: resource?.plan.instance,
+        ok: false,
+        elapsed_ms: Date.now() - started,
+        stderr,
+      });
+      if (resource && !diagnosedInstances.has(resource.plan.instance)) {
+        diagnosedInstances.add(resource.plan.instance);
+        // The adapter may restart next: preserve the original VM/console state first.
+        captureFailureDiagnostics(`before-recovery-${diagnosedInstances.size}`);
+      }
+    }
+    throw error;
+  }
 }
 
 async function guestScript(): Promise<string> {
