@@ -364,15 +364,18 @@ function runCommands(
   const results: IncusCommandResult[] = [];
   for (const argv of commands) {
     const maxAttempts = Math.max(1, options.vmAgentRetryAttempts ?? 60);
-    let restartedStoppedVm = false;
+    let startedStoppedVm = false;
+    let restartedVsockVm = false;
     for (let attempt = 1; ; attempt += 1) {
       try {
         const output = executor(argv);
         results.push({ argv, ok: true, output: typeof output === 'string' ? output : undefined });
         break;
       } catch (error) {
-        if (provisioningVm && isVmProcessUnavailable(argv, error) && !restartedStoppedVm && attempt < maxAttempts) {
-          const restart = isVmVsockUnavailable(error)
+        const vsockUnavailable = isVmVsockUnavailable(error);
+        const recoveryAvailable = vsockUnavailable ? !restartedVsockVm : !startedStoppedVm;
+        if (provisioningVm && isVmProcessUnavailable(argv, error) && recoveryAvailable && attempt < maxAttempts) {
+          const restart = vsockUnavailable
             ? ['restart', provisioningVm.instance, '--force', '--project', provisioningVm.project]
             : ['start', provisioningVm.instance, '--project', provisioningVm.project];
           try {
@@ -389,7 +392,8 @@ function runCommands(
               throw new Error(`Incus VM recovery failed: incus ${restart.join(' ')}`, { cause: restartError });
             }
           }
-          restartedStoppedVm = true;
+          if (vsockUnavailable) restartedVsockVm = true;
+          else startedStoppedVm = true;
           sleepSync(Math.max(0, options.vmAgentRetryDelayMs ?? 2000));
           continue;
         }
