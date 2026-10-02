@@ -31,16 +31,18 @@ The first demo path combines:
 
 The [cross-OS workflow](https://github.com/aviatam/area51/actions/workflows/test-matrix.yml) gates host behavior on Ubuntu and macOS and a blocking portable suite on Windows. The Windows lane does not run the Unix-dependent tests.
 
-The separate [hosted-KVM acceptance run](https://github.com/aviatam/area51/actions/runs/36263347303) tested commit `43c57d6bbea149df220cdb67120af8fe003ed0e3`. Download its `release-acceptance-36263347303` artifact and extract `release-acceptance.json`. From a checkout of that tested commit, verify the report:
+The separate [hosted-KVM acceptance run](https://github.com/aviatam/area51/actions/runs/36988605642) tested merged-main commit `d9e5e817257dd7b2935a0ecdb846ab581ba5db00`. Download its `release-acceptance-36988605642` artifact and extract `release-acceptance.json`. From a checkout of that tested commit, verify the report:
 
 ```bash
 pnpm install --frozen-lockfile
 pnpm run verify:release-evidence -- \
   --file release-acceptance.json \
-  --commit 43c57d6bbea149df220cdb67120af8fe003ed0e3
+  --commit d9e5e817257dd7b2935a0ecdb846ab581ba5db00
 ```
 
-The report covers 18 cases across a public commit-pinned Linux install, same-VM reboot and disk persistence, runtime selection, network isolation, and quarantine. The workflow requires both the installer and live Incus/KVM jobs to pass before publishing it. The verifier checks report structure, case IDs, tested commit, workflow-run identity, reboot measurements, and stated gaps; it does not independently attest the host or the truth of each recorded observation. The report explicitly excludes live Entra/Okta authorization, real provider credentials, and physical-host reboot. See the [governed escalation demo](docs/governed-escalation-demo.md) for the local fixture and live exercise.
+The report covers 22 cases across a public commit-pinned Linux install, same-VM reboot and disk persistence, runtime selection, network isolation, and quarantine. Additional hostile probes attempt unmounted synthetic host-credential and sibling-workspace reads, host control API access, and HTTP/raw TCP access to a host-verified non-allowlisted endpoint. The workflow requires both the installer and live Incus/KVM jobs to pass before publishing it. Successful verification prints `Release evidence: VERIFIED (3 suites, 22 cases)`.
+
+The verifier checks report structure, case IDs, tested commit, workflow-run identity, reboot measurements, and stated gaps; it does not independently attest the host or the truth of each recorded observation. Synthetic canaries do not prove protection of real credentials, isolation between two active agents, or general MCP/tool authorization. Live Entra/Okta authorization and physical-host reboot remain untested. Earlier candidate runs encountered unresolved vsock provisioning failures; passing acceptance is evidence for this tested run, not a production reliability guarantee. See the [governed escalation demo](docs/governed-escalation-demo.md) for the local fixture and live exercise.
 
 ## Architecture
 

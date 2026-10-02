@@ -29,14 +29,21 @@ describe('Windows/WSL2 one-command installer contract', () => {
     expect(wslInstaller).not.toContain('deploy.sh --mode production');
   });
 
-  it.skipIf(process.platform !== 'win32')('executes the Windows plan without making changes', () => {
-    const result = spawnSync(
-      'powershell.exe',
-      ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', 'install-windows.ps1', '-Plan'],
-      { cwd: process.cwd(), encoding: 'utf8' },
-    );
-    expect(result.status, result.stderr).toBe(0);
-    expect(result.stdout).toContain('PASS supported Windows build');
-    expect(result.stdout).toContain('PLAN install Area51 in WSL2');
-  });
+  it.skipIf(process.platform !== 'win32')(
+    'executes the Windows plan without making changes',
+    () => {
+      // PowerShell startup exceeded Vitest's default 5s budget on hosted Windows.
+      // Bound the child itself, with a little extra time for assertions/reporting.
+      const result = spawnSync(
+        'powershell.exe',
+        ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', 'install-windows.ps1', '-Plan'],
+        { cwd: process.cwd(), encoding: 'utf8', timeout: 30_000 },
+      );
+      expect(result.error, result.stderr).toBeUndefined();
+      expect(result.status, result.stderr).toBe(0);
+      expect(result.stdout).toContain('PASS supported Windows build');
+      expect(result.stdout).toContain('PLAN install Area51 in WSL2');
+    },
+    35_000,
+  );
 });
