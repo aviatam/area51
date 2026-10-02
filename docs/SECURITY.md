@@ -1,9 +1,35 @@
 # Area51 Security Model
 
-> The canonical, continuously-verified version of this model lives at
-> [docs.area51.dev/concepts/security](https://docs.area51.dev/concepts/security).
-> This in-repo copy can drift; if the two disagree, verify against
-> `src/container-runner.ts` (`buildMounts`).
+This model must be checked against the implementation at the commit being deployed:
+`src/live-runtime-policy.ts`, `src/container-runner.ts`, `src/incus-adapter.ts`, and
+the VM disk/network transport modules. The hosted acceptance report linked in the
+[README](../README.md#reproduce-the-release-proof) identifies exactly what was tested.
+
+## Runtime Selection and Evidence
+
+Runtime Policy owns the live decision before Area51 creates an agent runtime.
+The configured host posture and available backend constrain that decision:
+
+| Mode                       | Boundary                                                                 | Scope                                                       |
+| -------------------------- | ------------------------------------------------------------------------ | ----------------------------------------------------------- |
+| Local Docker compatibility | Container namespaces and scoped mounts; shared kernel                    | Local compatibility, including macOS and Windows/WSL2 paths |
+| Production Incus container | Incus project restrictions and scoped mounts; shared kernel              | Linux host with the required Incus configuration            |
+| Production Incus VM        | KVM-backed guest kernel, managed VM disks and deny-by-default network    | Linux host with KVM and a verified VM-native runtime image  |
+| Block or quarantine        | Execution is denied; quarantine stops the runtime and preserves evidence | A policy decision, not another isolation tier               |
+
+A VM is an Incus-managed VM backed by KVM; KVM is not a further escalation after
+the VM tier. Area51 blocks when the required isolation cannot be provided rather
+than silently selecting a weaker runtime.
+
+The public proof currently covers 22 cases: commit-pinned Linux installation,
+same-VM reboot/persistence, runtime selection, hostile access attempts, egress
+controls, provider-state restoration and quarantine. Its host-credential and
+sibling-workspace probes use synthetic, unmounted canaries. They do not establish
+protection of credentials deliberately made available inside a guest, isolation
+between two active agents, or general MCP/tool authorization. Live Entra/Okta
+authorization and physical-host reboot remain outside that proof. Passing one
+acceptance run is not a production reliability guarantee; the README records
+earlier vsock provisioning failures and links the exact evidence.
 
 ## Trust Model
 
@@ -11,44 +37,47 @@ Privilege is **user-level**, persisted in the `user_roles` table (owner /
 admin, global or scoped to an agent group) plus `agent_group_members` (the
 unprivileged access gate).
 
-| Entity | Trust Level | Rationale |
-|--------|-------------|-----------|
-| Owners / admins (`user_roles`) | Trusted | Hold owner/admin roles; gate admin commands and approve credentialed actions |
+| Entity                                | Trust Level  | Rationale                                                                                |
+| ------------------------------------- | ------------ | ---------------------------------------------------------------------------------------- |
+| Owners / admins (`user_roles`)        | Trusted      | Hold owner/admin roles; gate admin commands and approve credentialed actions             |
 | Group members (`agent_group_members`) | Access-gated | Membership grants access to an agent group, but their messages are still untrusted input |
-| Unregistered senders | Untrusted | Subject to each messaging group's `unknown_sender_policy` |
-| Agent containers | Sandboxed | Long-lived per-session container; isolated by mounts, non-root, no host reach |
-| Incoming messages | User input | Potential prompt injection regardless of who sent them |
+| Unregistered senders                  | Untrusted    | Subject to each messaging group's `unknown_sender_policy`                                |
+| Agent runtimes                        | Untrusted    | Scoped container or VM; permitted mounts and relay access remain usable by the agent     |
+| Incoming messages                     | User input   | Potential prompt injection regardless of who sent them                                   |
 
 ## Security Boundaries
 
-### 1. Container Isolation (Primary Boundary)
+### 1. Docker Container Isolation (Compatibility Path)
 
 Agents execute in containers (Docker), providing:
-- **Process isolation** — container processes cannot affect the host
+
+- **Process isolation** — scoped process namespaces; the container still shares its kernel with the host
 - **Filesystem isolation** — only explicitly mounted directories are visible
 - **Non-root execution** — runs as an unprivileged user (`node`, uid 1000, or the host uid remapped in)
 - **Per-session containers** — one long-lived container per session polls that session's DBs and handles many messages, then is torn down (`--rm`) when the session goes idle.
 
-This is the primary security boundary. Rather than relying on application-level
-permission checks, the attack surface is limited by what's mounted.
+These Docker details describe the compatibility path. Production Incus modes add
+the project, disk and network restrictions described above. Application permission
+checks and runtime isolation serve different purposes; neither makes untrusted
+agent output safe by itself.
 
 ### 2. Mount Security
 
-`buildMounts` (`src/container-runner.ts`) composes a fixed set of mounts per
+For the Docker compatibility path, `buildMounts` (`src/container-runner.ts`) composes a fixed set of mounts per
 spawn. For the default (Claude) provider these are:
 
-| Container path | Host source | Mode | Purpose |
-|---|---|---|---|
-| `/workspace` | `data/v2-sessions/<group>/<session>/` | RW | Session folder — `inbound.db`, `outbound.db`, `outbox/`, `.claude/` |
-| `/workspace/agent` | `groups/<folder>/` | RW | Agent working files, standing instructions, and shared memory tree |
-| `/workspace/agent/container.json` | group `container.json` | RO | Container config — readable, not writable |
-| `/workspace/agent/CLAUDE.md` | composed `CLAUDE.md` | RO | Regenerated every spawn; agent edits would be clobbered |
-| `/workspace/agent/.claude-fragments` | group `.claude-fragments/` | RO | Composer skill/MCP fragments |
-| `/app/CLAUDE.md` | `container/CLAUDE.md` | RO | Shared base doc imported by the composed entry point |
-| `/home/node/.claude` | `data/v2-sessions/<group>/.claude-shared/` | RW | Claude state, settings, skill symlinks |
-| `/app/src` | `container/agent-runner/src/` | RO | Shared agent-runner source (same for all groups) |
-| `/app/skills` | `container/skills/` | RO | Shared container skills |
-| `/workspace/extra/<name>` | allowlisted host dir | RO (RW only if allowed) | Operator-configured additional mounts |
+| Container path                       | Host source                                | Mode                    | Purpose                                                             |
+| ------------------------------------ | ------------------------------------------ | ----------------------- | ------------------------------------------------------------------- |
+| `/workspace`                         | `data/v2-sessions/<group>/<session>/`      | RW                      | Session folder — `inbound.db`, `outbound.db`, `outbox/`, `.claude/` |
+| `/workspace/agent`                   | `groups/<folder>/`                         | RW                      | Agent working files, standing instructions, and shared memory tree  |
+| `/workspace/agent/container.json`    | group `container.json`                     | RO                      | Container config — readable, not writable                           |
+| `/workspace/agent/CLAUDE.md`         | composed `CLAUDE.md`                       | RO                      | Regenerated every spawn; agent edits would be clobbered             |
+| `/workspace/agent/.claude-fragments` | group `.claude-fragments/`                 | RO                      | Composer skill/MCP fragments                                        |
+| `/app/CLAUDE.md`                     | `container/CLAUDE.md`                      | RO                      | Shared base doc imported by the composed entry point                |
+| `/home/node/.claude`                 | `data/v2-sessions/<group>/.claude-shared/` | RW                      | Claude state, settings, skill symlinks                              |
+| `/app/src`                           | `container/agent-runner/src/`              | RO                      | Shared agent-runner source (same for all groups)                    |
+| `/app/skills`                        | `container/skills/`                        | RO                      | Shared container skills                                             |
+| `/workspace/extra/<name>`            | allowlisted host dir                       | RO (RW only if allowed) | Operator-configured additional mounts                               |
 
 The config mounts (`container.json`, `CLAUDE.md`, `.claude-fragments`) are
 **nested read-only mounts on top of the read-write group dir** — the agent can
@@ -66,6 +95,7 @@ host files.
 **Additional-mount allowlist** — extra mounts from a group's container config
 are validated against an allowlist at `~/.config/area51/mount-allowlist.json`,
 which is:
+
 - Outside the project root
 - Never mounted into containers
 - Not modifiable by agents
@@ -83,6 +113,7 @@ Its schema:
 ```
 
 **Default blocked patterns** (merged with any in the file):
+
 ```
 .ssh, .gnupg, .gpg, .aws, .azure, .gcloud, .kube, .docker,
 credentials, .env, .netrc, .npmrc, .pypirc, id_rsa, id_ed25519,
@@ -90,17 +121,19 @@ private_key, .secret
 ```
 
 **Enforcement** (`src/modules/mount-security/index.ts`):
+
 - **No allowlist file ⇒ every additional mount is blocked** — the fixed mounts above are unaffected, but nothing extra is granted until the operator creates the file.
 - Symlinks are resolved to their real path (`realpathSync`) before any check, defeating traversal via symlink.
 - The real path is rejected if it matches a blocked pattern, and rejected unless it sits under one of `allowedRoots`.
 - The container path is validated: relative, non-empty, no `..`, no leading `/`, no `:` (blocks Docker `-v` option injection). It is mounted under `/workspace/extra/`.
-- **Read-write is granted only when the mount requests it (`readonly: false`) *and* the matched root has `allowReadWrite: true`.** Otherwise the mount is forced read-only.
+- **Read-write is granted only when the mount requests it (`readonly: false`) _and_ the matched root has `allowReadWrite: true`.** Otherwise the mount is forced read-only.
 
 ### 3. Session Isolation
 
 Per-session state lives under `data/v2-sessions/<agent-group>/<session>/`
 (`inbound.db`, `outbound.db`, `outbox/`, `.claude/`). Claude state
 (`.claude-shared`) and the working folder are scoped to the agent group, so:
+
 - Different agent groups cannot see each other's conversation history or files.
 - A group's sessions share that group's memory but keep separate message DBs.
 
@@ -111,6 +144,7 @@ This prevents cross-group information disclosure.
 Real API credentials **never enter containers**. Area51 uses [OneCLI's Agent Vault](https://github.com/onecli/onecli) to proxy outbound requests and inject credentials at the gateway level.
 
 **How it works:**
+
 1. Credentials are registered once with `onecli secrets create`, stored and managed by OneCLI
 2. When Area51 spawns a container, it calls `applyContainerConfig()` to route outbound HTTPS through the OneCLI gateway
 3. The gateway matches requests by host and path, injects the real credential, and forwards
@@ -120,13 +154,14 @@ Real API credentials **never enter containers**. Area51 uses [OneCLI's Agent Vau
 Each Area51 group gets its own OneCLI agent identity. This allows different credential policies per group (e.g. your sales agent vs. support agent). OneCLI supports rate limits, and time-bound access and approval flows are on the roadmap.
 
 **Never on the container filesystem:**
+
 - The project root and `.env` — never mounted; the container only receives the paths in the mount table above.
 - The mount allowlist — external (`~/.config/area51/…`), never mounted.
 - Real credentials — injected per request by the OneCLI gateway, never written into any mount.
 
 ### 5. Egress Lockdown (Forced Proxy)
 
-The `HTTPS_PROXY` env var only redirects *proxy-aware* clients — a tool that
+The `HTTPS_PROXY` env var only redirects _proxy-aware_ clients — a tool that
 ignores it (or a raw socket) could reach the internet directly and bypass
 credential injection, approvals, and audit. Egress lockdown closes that hole at
 the network layer.
@@ -135,7 +170,7 @@ the network layer.
 (`area51-egress`) that has **no route to the internet**. The OneCLI gateway
 container is attached to that network, aliased as `host.docker.internal`, so the
 injected proxy URL (`…@host.docker.internal:10255`) resolves to the gateway
-*container-to-container*. The gateway is therefore the **only reachable hop** —
+_container-to-container_. The gateway is therefore the **only reachable hop** —
 anything else has nowhere to go. The agent is non-root with no `NET_ADMIN`, so
 it cannot undo this. Identical mechanism on macOS and Linux (no host firewall,
 no `host-gateway` route).
@@ -158,11 +193,11 @@ traffic is not confined to the internal network.
 
 **Configuration:**
 
-| Env | Default | Meaning |
-| --- | --- | --- |
-| `AREA51_EGRESS_LOCKDOWN` | `false` | Set `true` to opt in (otherwise the host-gateway path is used). |
-| `AREA51_EGRESS_NETWORK` | `area51-egress` | Network name. |
-| `ONECLI_GATEWAY_CONTAINER` | `onecli` | Gateway container to attach. |
+| Env                        | Default         | Meaning                                                         |
+| -------------------------- | --------------- | --------------------------------------------------------------- |
+| `AREA51_EGRESS_LOCKDOWN`   | `false`         | Set `true` to opt in (otherwise the host-gateway path is used). |
+| `AREA51_EGRESS_NETWORK`    | `area51-egress` | Network name.                                                   |
+| `ONECLI_GATEWAY_CONTAINER` | `onecli`        | Gateway container to attach.                                    |
 
 These variables are read from the **host process** environment (the service's
 environment / `.env`), not from inside the container. The agent container is
@@ -264,12 +299,12 @@ root instead of weakening the mapping.
 Per-container CPU and memory caps are **opt-in and unset by default** — a runaway
 agent is not throttled unless the operator configures a limit:
 
-| Env | Default | Meaning |
-| --- | --- | --- |
-| `CONTAINER_CPU_LIMIT` | *(empty — unbounded)* | Passed to `--cpus` when set (e.g. `2`). |
-| `CONTAINER_MEMORY_LIMIT` | *(empty — unbounded)* | Passed to `--memory` when set (e.g. `8g`). |
+| Env                      | Default               | Meaning                                    |
+| ------------------------ | --------------------- | ------------------------------------------ |
+| `CONTAINER_CPU_LIMIT`    | _(empty — unbounded)_ | Passed to `--cpus` when set (e.g. `2`).    |
+| `CONTAINER_MEMORY_LIMIT` | _(empty — unbounded)_ | Passed to `--memory` when set (e.g. `8g`). |
 
-Only `--memory` is a container-level cap; whether it's a *hard* cap depends on
+Only `--memory` is a container-level cap; whether it's a _hard_ cap depends on
 the host having no swap (a deployment concern). On a swapless host a runaway is
 OOM-killed at the limit.
 
@@ -318,7 +353,7 @@ This should be rare. When a zero-day fix or critical dependency requires an imme
 2. The entry must pin the **exact version** being excluded — never a range or wildcard
    ```yaml
    minimumReleaseAgeExclude:
-     some-package: "1.2.3"  # Approved by @user, 2026-04-14 — CVE-XXXX-YYYY fix
+     some-package: '1.2.3' # Approved by @user, 2026-04-14 — CVE-XXXX-YYYY fix
    ```
 3. The exclusion should be removed once the version ages past the threshold (i.e. after 3 days)
 4. Automated agents (Claude, CI bots) must never add exclusions without human sign-off
