@@ -75,17 +75,20 @@ describe('Incus VM image builder', () => {
     );
   });
 
-  it('keeps both active-agent runners and their isolation evidence in the live gate', () => {
-    expect(containment).toContain('applyIncusRuntimePlan(peerPlan');
-    expect(containment).toContain('spawnIncusExec(\n    peerPlan');
-    expect(containment).toContain('syncIncusVmInbound(peerPlan, peerSessionDir)');
-    expect(containment).toContain(
+  it.each([
+    ['LF', containment.replace(/\r\n/g, '\n')],
+    ['CRLF', containment.replace(/\r?\n/g, '\r\n')],
+  ])('keeps both active-agent runners and their isolation evidence in the %s live gate', (_ending, source) => {
+    expect(source).toContain('applyIncusRuntimePlan(peerPlan');
+    expect(source).toMatch(/spawnIncusExec\(\s*peerPlan\s*,/);
+    expect(source).toContain('syncIncusVmInbound(peerPlan, peerSessionDir)');
+    expect(source).toContain(
       "waitForRoundTrips(2, () => peerStderr, peerPlan, peerSessionDir, 'area51-peer-roundtrip-ok')",
     );
-    expect(containment).toContain('activeAgentProbe({');
-    expect(containment).toContain('Cross-agent write altered peer private file');
-    expect(containment).toContain('Both agents must remain active VMs');
-    expect(containment).toContain('area51.active_agent_isolation.v1');
+    expect(source).toContain('activeAgentProbe({');
+    expect(source).toContain('Cross-agent write altered peer private file');
+    expect(source).toContain('Both agents must remain active VMs');
+    expect(source).toContain('area51.active_agent_isolation.v1');
   });
 
   it('lets live Runtime Policy select and verify the real Incus VM', () => {
