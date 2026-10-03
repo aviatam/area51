@@ -16,6 +16,7 @@ import { syncIncusVmProviderState } from '../src/incus-vm-provider-state.js';
 import { syncIncusVmInbound, syncIncusVmOutbound } from '../src/incus-vm-session-bridge.js';
 import { selectLiveRuntimePolicy, writeLiveRuntimePolicyDecision } from '../src/live-runtime-policy.js';
 import { createVmProbeServer } from './vm-probe-server.js';
+import { activeAgentProbe } from './active-agent-probe.js';
 
 const trial = process.env.AREA51_E2E_TRIAL ?? '1';
 if (!/^[1-3]$/.test(trial)) throw new Error('AREA51_E2E_TRIAL must be 1, 2, or 3');
@@ -44,6 +45,12 @@ fs.mkdirSync(groupDir);
 fs.mkdirSync(providerDir);
 fs.writeFileSync(path.join(providerDir, 'settings.json'), '{}\n');
 fs.writeFileSync(path.join(sessionDir, 'input.txt'), 'session-input\n');
+const primaryMarker = `private-primary-${suffix}`;
+const peerMarker = `private-peer-${suffix}`;
+const activePort = 18451;
+fs.writeFileSync(path.join(sessionDir, 'private-primary.txt'), primaryMarker);
+fs.writeFileSync(path.join(sessionDir, 'identity.txt'), primaryMarker);
+fs.writeFileSync(path.join(sessionDir, 'response.txt'), 'area51-vm-roundtrip-ok');
 fs.writeFileSync(path.join(groupDir, 'agent.txt'), 'agent-definition\n');
 fs.symlinkSync('/app/CLAUDE.md', path.join(groupDir, '.claude-shared.md'));
 const riskyConfig: ContainerConfig = {
@@ -94,7 +101,11 @@ fs.writeFileSync(
   [
     "import { runPollLoop } from '/app/src/poll-loop.ts';",
     "import { MockProvider } from '/app/src/providers/mock.ts';",
-    'const provider = new MockProvider({}, () => \'<message to="e2e">area51-vm-roundtrip-ok</message>\');',
+    "import fs from 'node:fs';",
+    "import net from 'node:net';",
+    `const server = net.createServer(socket => { socket.on('error', () => {}); socket.end(fs.readFileSync('/workspace/identity.txt')); });`,
+    `await new Promise((resolve, reject) => { server.once('error', reject); server.listen(${activePort}, '0.0.0.0', resolve); });`,
+    'const provider = new MockProvider({}, () => `<message to="e2e">${fs.readFileSync("/workspace/response.txt", "utf8")}</message>`);',
     "await runPollLoop({ provider, providerName: 'mock', cwd: '/workspace/agent' });",
   ].join('\n'),
 );
@@ -154,9 +165,52 @@ const plan = makePlan(suffix, transport);
 const runtimeResources = [{ plan, transport }];
 const diagnosedInstances = new Set<string>();
 const provisioningEvents: Array<Record<string, unknown>> = [];
+const peerSessionDir = path.join(root, 'peer-session');
+const peerGroupDir = path.join(root, 'peer-group');
+fs.mkdirSync(peerSessionDir);
+fs.mkdirSync(peerGroupDir);
+fs.writeFileSync(path.join(peerSessionDir, 'private-peer.txt'), peerMarker);
+fs.writeFileSync(path.join(peerSessionDir, 'identity.txt'), peerMarker);
+fs.writeFileSync(path.join(peerSessionDir, 'response.txt'), 'area51-peer-roundtrip-ok');
+ensureSchema(path.join(peerSessionDir, 'inbound.db'), 'inbound');
+ensureSchema(path.join(peerSessionDir, 'outbound.db'), 'outbound');
+const peerInbound = openInboundDb(path.join(peerSessionDir, 'inbound.db'));
+peerInbound
+  .prepare(
+    "INSERT INTO destinations (name, display_name, type, channel_type, platform_id, agent_group_id) VALUES ('e2e', 'E2E peer', 'channel', 'test', 'e2e-platform', NULL)",
+  )
+  .run();
+insertTestMessage(peerInbound, 'peer-roundtrip-1', 'peer first message');
+peerInbound.close();
+const peerTransport = buildIncusVmRuntimeTransport(
+  [
+    { source: peerSessionDir, path: '/workspace', readonly: false },
+    { source: peerGroupDir, path: '/workspace/agent', readonly: true },
+    { source: roundtripScript, path: '/run/area51/roundtrip.ts', readonly: true },
+  ],
+  `vm-peer-${suffix}`,
+);
+const peerPlan = buildIncusRuntimePlan({
+  agentGroupFolder: `vm-peer-${suffix}`,
+  groupDir: peerGroupDir,
+  mounts: [],
+  instanceKind: 'vm',
+  instanceSuffix: suffix,
+  image: `local:${image}`,
+  vmNetwork: {
+    network: `vmp${suffix}`,
+    acl: `peer-acl-${suffix}`,
+    ipv4Cidr: '10.252.0.1/24',
+    oneCliAddress: '10.252.0.1',
+    oneCliPort: relayPort,
+  },
+  vmDisks: { pool, volumes: peerTransport.volumes },
+  vmFiles: peerTransport.files,
+});
 
 let relay: net.Server | undefined;
 let deniedEndpoint: net.Server | undefined;
+let peerRelay: net.Server | undefined;
 let deniedConnections = 0;
 let fixtureFailure: Error | undefined;
 const recordFixtureFailure = (error: Error) => (fixtureFailure ??= error);
@@ -220,11 +274,127 @@ try {
   });
 
   await waitForRoundTrips(1, () => runnerStderr);
+  runtimeResources.push({ plan: peerPlan, transport: peerTransport });
+  const peerDecision = selectLiveRuntimePolicy(cleanGateReport(peerGroupDir), {
+    backend: 'incus',
+    incusInstanceKind: 'container',
+    containerConfig: riskyConfig,
+  });
+  enforceIncusRuntimeDecision(peerDecision, peerPlan);
+  applyIncusRuntimePlan(peerPlan, {
+    executor(argv) {
+      const output = runIncus(argv);
+      if (argv[0] === 'network' && argv[1] === 'create') {
+        peerRelay = createVmProbeServer('area51-peer-relay-ok\n', () => {}, recordFixtureFailure);
+        peerRelay.listen(relayPort, '10.252.0.1');
+      }
+      return output;
+    },
+  });
+  const peerRunner = spawnIncusExec(
+    peerPlan,
+    'bun',
+    ['run', '/run/area51/roundtrip.ts'],
+    {},
+    { user: '1000', group: '1000' },
+  );
+  let peerStderr = '';
+  peerRunner.stderr?.on('data', (chunk) => (peerStderr += chunk.toString()));
+  peerRunner.on('error', (error) => (peerStderr += String(error)));
+  await waitForRoundTrips(1, () => peerStderr, peerPlan, peerSessionDir, 'area51-peer-roundtrip-ok');
+  const addressScript =
+    "import os from 'node:os'; const addresses = Object.values(os.networkInterfaces()).flat().filter(x => x && x.family === 'IPv4' && !x.internal); if (addresses.length !== 1) throw new Error('ambiguous guest address'); console.log(addresses[0].address);";
+  const primaryAddress = (await runGuest(plan, 'bun', ['-e', addressScript])).trim();
+  const peerAddress = (await runGuest(peerPlan, 'bun', ['-e', addressScript])).trim();
+  const activeProbes = await Promise.all([
+    runGuest(plan, 'bun', [
+      '-e',
+      activeAgentProbe({
+        ownAddress: primaryAddress,
+        peerAddress,
+        port: activePort,
+        ownFile: '/workspace/private-primary.txt',
+        ownMarker: primaryMarker,
+        peerFile: '/workspace/private-peer.txt',
+        peerHostFile: path.join(peerSessionDir, 'private-peer.txt'),
+      }),
+    ]),
+    runGuest(peerPlan, 'bun', [
+      '-e',
+      activeAgentProbe({
+        ownAddress: peerAddress,
+        peerAddress: primaryAddress,
+        port: activePort,
+        ownFile: '/workspace/private-peer.txt',
+        ownMarker: peerMarker,
+        peerFile: '/workspace/private-primary.txt',
+        peerHostFile: path.join(sessionDir, 'private-primary.txt'),
+      }),
+    ]),
+  ]);
+  if (!activeProbes.every((output) => output.trim() === 'area51-active-agent-isolation-ok'))
+    throw new Error('Active-agent probe evidence missing');
+  for (const [runtimePlan, file, marker] of [
+    [plan, '/workspace/private-primary.txt', primaryMarker],
+    [peerPlan, '/workspace/private-peer.txt', peerMarker],
+  ] as const) {
+    if ((await runGuest(runtimePlan, 'cat', [file])) !== marker)
+      throw new Error('Cross-agent write altered peer private file');
+  }
+  for (const [directory, file, marker] of [
+    [sessionDir, 'private-primary.txt', primaryMarker],
+    [peerSessionDir, 'private-peer.txt', peerMarker],
+  ]) {
+    if (fs.readFileSync(path.join(directory, file), 'utf8') !== marker)
+      throw new Error('Cross-agent write altered host private file');
+  }
+  const peerFollowup = openInboundDb(path.join(peerSessionDir, 'inbound.db'));
+  insertTestMessage(peerFollowup, 'peer-roundtrip-2', 'peer warm follow-up');
+  peerFollowup.close();
+  syncIncusVmInbound(peerPlan, peerSessionDir);
   const followupDb = openInboundDb(inboundPath);
   insertTestMessage(followupDb, 'vm-roundtrip-2', 'warm follow-up');
   followupDb.close();
   syncIncusVmInbound(plan, sessionDir);
   await waitForRoundTrips(2, () => runnerStderr);
+  await waitForRoundTrips(2, () => peerStderr, peerPlan, peerSessionDir, 'area51-peer-roundtrip-ok');
+  for (const runtimePlan of [plan, peerPlan]) {
+    const instances = JSON.parse(
+      runIncus(['list', runtimePlan.instance, '--project', runtimePlan.project, '--format', 'json']),
+    ) as Array<{ status?: string; type?: string }>;
+    if (instances.length !== 1 || instances[0].status !== 'Running' || instances[0].type !== 'virtual-machine')
+      throw new Error('Both agents must remain active VMs');
+  }
+  console.log(
+    'Two active VM agents passed bidirectional file/write/symlink and raw TCP isolation with independent messaging positive controls.',
+  );
+  const activeEvidenceDirectory = path.resolve('.area51/diagnostics');
+  fs.mkdirSync(activeEvidenceDirectory, { recursive: true });
+  fs.writeFileSync(
+    path.join(activeEvidenceDirectory, `active-agent-isolation-trial-${trial}.json`),
+    JSON.stringify(
+      {
+        schema: 'area51.active_agent_isolation.v1',
+        trial,
+        measured_at: new Date().toISOString(),
+        agents: [
+          { project: plan.project, instance: plan.instance, address: primaryAddress, completed_messages: 2 },
+          { project: peerPlan.project, instance: peerPlan.instance, address: peerAddress, completed_messages: 2 },
+        ],
+        both_running_vms: true,
+        bidirectional_private_file_probes_passed: true,
+        bidirectional_raw_tcp_probes_passed: true,
+        own_endpoint_positive_controls_passed: true,
+        private_markers_unchanged: true,
+        independent_messaging_passed: true,
+        provider: 'mock',
+        synthetic_canaries: true,
+      },
+      null,
+      2,
+    ) + '\n',
+    { mode: 0o600 },
+  );
 
   const providerStart = await runGuest(plan, 'bun', ['run', '/run/area51/provider-state.ts', 'write']);
   if (!providerStart.includes('area51-claude-provider-state-ok')) {
@@ -302,6 +472,7 @@ try {
 } finally {
   console.log('VM provisioning events:', JSON.stringify({ trial, events: provisioningEvents }));
   relay?.close();
+  peerRelay?.close();
   deniedEndpoint?.close();
   delete process.env.AREA51_HOST_ONLY_CANARY;
   cleanup(primaryFailure === undefined);
@@ -419,26 +590,34 @@ function compromisedGateReport(groupPath: string): AgentGateReport {
   return report;
 }
 
-async function waitForRoundTrips(expected: number, runnerStderr: () => string): Promise<void> {
+async function waitForRoundTrips(
+  expected: number,
+  runnerStderr: () => string,
+  runtimePlan = plan,
+  runtimeSessionDir = sessionDir,
+  response = 'area51-vm-roundtrip-ok',
+): Promise<void> {
   const deadline = Date.now() + 30_000;
   let last = 'no snapshot';
   while (Date.now() < deadline) {
     try {
-      syncIncusVmOutbound(plan, sessionDir);
-      const out = openOutboundDb(outboundPath);
+      syncIncusVmOutbound(runtimePlan, runtimeSessionDir);
+      const out = openOutboundDb(path.join(runtimeSessionDir, 'outbound.db'));
       const messages = out.prepare('SELECT content FROM messages_out ORDER BY seq').all() as Array<{ content: string }>;
-      const completed = (
-        out.prepare("SELECT COUNT(*) AS count FROM processing_ack WHERE status = 'completed'").get() as {
-          count: number;
-        }
-      ).count;
+      const completedIds = (
+        out
+          .prepare("SELECT message_id FROM processing_ack WHERE status = 'completed' ORDER BY message_id")
+          .all() as Array<{ message_id: string }>
+      ).map((row) => row.message_id);
+      const prefix = runtimePlan === peerPlan ? 'peer-roundtrip' : 'vm-roundtrip';
+      const expectedIds = Array.from({ length: expected }, (_, index) => `${prefix}-${index + 1}`).sort();
       out.close();
       const texts = messages.map((row) => (JSON.parse(row.content) as { text?: string }).text);
-      last = `messages=${texts.length}, completed=${completed}, texts=${JSON.stringify(texts)}`;
+      last = `messages=${texts.length}, completedIds=${JSON.stringify(completedIds)}, texts=${JSON.stringify(texts)}`;
       if (
         messages.length === expected &&
-        completed === expected &&
-        texts.every((text) => text === 'area51-vm-roundtrip-ok')
+        JSON.stringify(completedIds) === JSON.stringify(expectedIds) &&
+        texts.every((text) => text === response)
       ) {
         return;
       }
@@ -558,10 +737,18 @@ async function runGuest(runtimePlan: typeof plan, command: string, args: string[
   child.stdout?.on('data', (chunk) => (stdout += chunk.toString()));
   child.stderr?.on('data', (chunk) => (stderr += chunk.toString()));
   return await new Promise((resolve, reject) => {
-    child.on('error', reject);
-    child.on('close', (code) =>
-      code === 0 ? resolve(stdout) : reject(new Error(`Guest exited ${code}. stdout=${stdout} stderr=${stderr}`)),
-    );
+    const timer = setTimeout(() => {
+      child.kill('SIGKILL');
+      reject(new Error(`Guest timed out. stdout=${stdout} stderr=${stderr}`));
+    }, 180_000);
+    child.on('error', (error) => {
+      clearTimeout(timer);
+      reject(error);
+    });
+    child.on('close', (code) => {
+      clearTimeout(timer);
+      code === 0 ? resolve(stdout) : reject(new Error(`Guest exited ${code}. stdout=${stdout} stderr=${stderr}`));
+    });
   });
 }
 
@@ -601,8 +788,17 @@ function cleanup(assertRemoved: boolean): void {
         runtimePlan.project,
       ]),
     ]),
-    ['network', 'delete', network],
-    ['network', 'acl', 'delete', acl],
+    ...[...new Set(runtimeResources.map((resource) => resource.plan.vmNetwork!.network))].map((name) => [
+      'network',
+      'delete',
+      name,
+    ]),
+    ...[...new Set(runtimeResources.map((resource) => resource.plan.vmNetwork!.acl))].map((name) => [
+      'network',
+      'acl',
+      'delete',
+      name,
+    ]),
   ];
   for (const argv of commands) {
     try {
@@ -611,22 +807,24 @@ function cleanup(assertRemoved: boolean): void {
       console.warn(`VM containment cleanup command failed: incus ${argv.join(' ')}`, error);
     }
   }
-  const deleteProject = ['project', 'delete', plan.project, '--force'];
-  // Incus deliberately prompts even with --force; confirm without attaching an interactive terminal.
-  try {
-    execFileSync('incus', deleteProject, {
-      input: 'yes\n',
-      stdio: ['pipe', 'ignore', 'pipe'],
-      timeout: 60_000,
-    });
-  } catch (error) {
-    console.warn(`VM containment cleanup command failed: incus ${deleteProject.join(' ')}`, error);
-  }
-  try {
-    execFileSync('incus', ['project', 'show', plan.project], { stdio: 'ignore', timeout: 30_000 });
-    if (assertRemoved) throw new Error(`VM containment cleanup left project ${plan.project}`);
-    console.warn(`VM containment cleanup left project ${plan.project} after the primary failure`);
-  } catch (error) {
-    if (error instanceof Error && error.message.startsWith('VM containment cleanup left project')) throw error;
+  for (const project of new Set(runtimeResources.map((resource) => resource.plan.project))) {
+    const deleteProject = ['project', 'delete', project, '--force'];
+    // Incus deliberately prompts even with --force; confirm without attaching an interactive terminal.
+    try {
+      execFileSync('incus', deleteProject, {
+        input: 'yes\n',
+        stdio: ['pipe', 'ignore', 'pipe'],
+        timeout: 60_000,
+      });
+    } catch (error) {
+      console.warn(`VM containment cleanup command failed: incus ${deleteProject.join(' ')}`, error);
+    }
+    try {
+      execFileSync('incus', ['project', 'show', project], { stdio: 'ignore', timeout: 30_000 });
+      if (assertRemoved) throw new Error(`VM containment cleanup left project ${project}`);
+      console.warn(`VM containment cleanup left project ${project} after the primary failure`);
+    } catch (error) {
+      if (error instanceof Error && error.message.startsWith('VM containment cleanup left project')) throw error;
+    }
   }
 }
