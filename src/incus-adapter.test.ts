@@ -489,6 +489,58 @@ describe('Incus adapter', () => {
     }
   });
 
+  it('recovers a stale vsock after starting a stopped provisioning VM', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'area51-vm-sequential-recovery-'));
+    try {
+      const source = path.join(root, 'bootstrap.txt');
+      fs.writeFileSync(source, 'bootstrap');
+      let pushes = 0;
+      const executor = vi.fn((argv: string[]) => {
+        if (argv[0] !== 'file' || argv[1] !== 'push') return;
+        pushes++;
+        if (pushes === 1) throw new Error('Failed getting instance SFTP connection: Instance is not running');
+        if (pushes === 2) {
+          throw new Error(
+            'Failed getting instance SFTP connection: dial vsock vm(803786357):8443: connect: no such device',
+          );
+        }
+      });
+      const plan = { ...vmPlan(), vmFiles: [{ source, path: '/run/area51/bootstrap.txt', readonly: true as const }] };
+      applyIncusRuntimePlan(plan, { executor, vmAgentRetryAttempts: 3, vmAgentRetryDelayMs: 0 });
+      expect(pushes).toBe(3);
+      expect(executor.mock.calls.filter(([argv]) => argv[0] === 'start')).toHaveLength(2);
+      expect(executor.mock.calls.filter(([argv]) => argv[0] === 'restart')).toHaveLength(1);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('bounds both recovery actions and still fails closed on a persistent stale vsock', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'area51-vm-bounded-recovery-'));
+    try {
+      const source = path.join(root, 'bootstrap.txt');
+      fs.writeFileSync(source, 'bootstrap');
+      let pushes = 0;
+      const executor = vi.fn((argv: string[]) => {
+        if (argv[0] !== 'file' || argv[1] !== 'push') return;
+        throw new Error(
+          ++pushes === 1
+            ? 'Failed getting instance SFTP connection: Instance is not running'
+            : 'Failed getting instance SFTP connection: dial vsock vm(803786357):8443: connect: no such device',
+        );
+      });
+      const plan = { ...vmPlan(), vmFiles: [{ source, path: '/run/area51/bootstrap.txt', readonly: true as const }] };
+      expect(() => applyIncusRuntimePlan(plan, { executor, vmAgentRetryAttempts: 5, vmAgentRetryDelayMs: 0 })).toThrow(
+        'Incus command failed',
+      );
+      expect(pushes).toBe(5);
+      expect(executor.mock.calls.filter(([argv]) => argv[0] === 'start')).toHaveLength(2);
+      expect(executor.mock.calls.filter(([argv]) => argv[0] === 'restart')).toHaveLength(1);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it('fails closed when the VM agent never becomes ready', () => {
     const executor = vi.fn((argv: string[]) => {
       if (argv[0] === 'exec') throw new Error("VM agent isn't currently running");
