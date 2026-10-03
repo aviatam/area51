@@ -6,6 +6,7 @@ on:
     branches: [main]
     paths:
       - scripts/incus-vm-containment-e2e.ts
+      - scripts/active-agent-probe.ts
       - scripts/vm-probe-server.ts
       - scripts/release-acceptance-report.ts
       - scripts/verify-release-acceptance.ts
@@ -18,6 +19,8 @@ on:
       - container/agent-runner/**
       - container/skills/**
       - scripts/incus-vm-containment-e2e.ts
+      - scripts/active-agent-probe.ts
+      - scripts/active-agent-probe.test.ts
       - scripts/vm-probe-server.ts
       - scripts/vm-probe-server.test.ts
       - scripts/release-acceptance-report.ts

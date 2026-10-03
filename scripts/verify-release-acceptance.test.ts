@@ -47,9 +47,9 @@ function suites(summary: Record<string, unknown>): Array<Record<string, unknown>
 }
 
 describe('release acceptance evidence verifier', () => {
-  it('accepts the exact three-suite, twenty-two-case proof', () => {
+  it('accepts the exact three-suite, twenty-five-case proof', () => {
     const verified = verifyReleaseAcceptanceSummary(validSummary(), commit);
-    expect(verified.suites.flatMap((suite) => suite.cases)).toHaveLength(22);
+    expect(verified.suites.flatMap((suite) => suite.cases)).toHaveLength(25);
   });
 
   it.each([
@@ -59,6 +59,15 @@ describe('release acceptance evidence verifier', () => {
       'summary commit',
     ],
     ['missing suite', (summary: Record<string, unknown>) => suites(summary).pop(), 'acceptance suites'],
+    [
+      'missing active-agent evidence',
+      (summary: Record<string, unknown>) => {
+        suites(summary)[0].cases = (suites(summary)[0].cases as Array<Record<string, unknown>>).filter(
+          (testCase) => testCase.id !== 'active-agent-raw-tcp-isolated',
+        );
+      },
+      'incus-vm-containment cases',
+    ],
     [
       'different workflow run',
       (summary: Record<string, unknown>) => (suites(summary)[1].workflow_run_url = `${runUrl}0`),

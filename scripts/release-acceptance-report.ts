@@ -46,6 +46,21 @@ export const RELEASE_ACCEPTANCE_CASES: Record<AcceptanceSuite, Array<Omit<Accept
       evidence: 'Direct and guest-created symlink reads of an unmounted synthetic sibling workspace failed.',
     },
     {
+      id: 'active-agent-private-files-isolated',
+      evidence:
+        'Two active VM agents failed bidirectional peer file, host-path write and symlink probes; private markers remained unchanged after guessed guest-path writes.',
+    },
+    {
+      id: 'active-agent-raw-tcp-isolated',
+      evidence:
+        'Bidirectional raw TCP connections to a live peer failed while each agent reached its own listening endpoint.',
+    },
+    {
+      id: 'active-agent-messaging-isolated',
+      evidence:
+        'Both active mock-provider agents completed independent initial and follow-up messages without response cross-contamination.',
+    },
+    {
       id: 'host-control-api-attempts-blocked',
       evidence: 'Guest attempts to call Incus and Docker host control APIs through Unix sockets failed.',
     },
