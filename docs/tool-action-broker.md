@@ -9,7 +9,7 @@ OneCLI traffic, MCP servers or arbitrary HTTP requests.
 
 ```bash
 pnpm install --frozen-lockfile
-pnpm exec vitest run src/tool-action-broker.test.ts src/tool-action-http.test.ts
+pnpm exec vitest run src/tool-action-broker.test.ts src/tool-action-http.test.ts scripts/tool-broker-vm-fixture.test.ts
 pnpm run typecheck
 ```
 
@@ -25,9 +25,23 @@ The broker unit tests additionally cover bounded pending state, trusted policy
 snapshots, default denial of unknown actions, per-call approval, argument-size
 limits, audit failure before dispatch and ambiguous handler failure without retry.
 
-These tests are separate from the 25-case hosted-KVM release report. They use a
-local mock service and synthetic credentials, not a live business integration or
-an authenticated VM session.
+The historical main proof remains 25 cases. The expanded acceptance contract
+requires 28 cases, including broker enforcement from two live non-root VM agents.
+The containment harness hosts the broker on each agent's existing allowed relay;
+each listener accepts only that agent's token. The approval listener is separate
+on host loopback. A synthetic credentialed upstream service listens on the same
+reachable host as the primary relay but on a non-allowlisted port. Each guest must
+fail raw TCP and HTTP access to that service while broker-mediated calls succeed.
+The host verifies exactly two reads and one reviewed write, with no extra write
+from pending, denied, self-approved, modified, concurrent, replayed or expired
+requests. Expiry uses an explicitly recorded injected host clock.
+
+Every trial writes `vm-tool-broker-trial-N.json` alongside the VM diagnostics.
+The local fixture test runs the same generated guest scripts in child processes;
+it cannot establish VM network isolation. Its negative control must fail when a
+backend is reachable. Live acceptance must pass before the three new cases are
+claimed. Credentials and the business service are synthetic; this is not a live
+business integration or universal mediation of the production VM/OneCLI path.
 
 ## Integration contract
 
@@ -71,8 +85,8 @@ is never automatically retried.
 
 ## Next integration gate
 
-Wire the broker to the contained runtime's allowed relay or verify equivalent
-OneCLI enforcement. Then use an authorized test account for a narrow business
+Move the tested relay/broker wiring into an opt-in production session path, or
+verify equivalent OneCLI enforcement. Then use an authorized test account for a narrow business
 API: permitted read, blocked destructive write, exact reviewed write, expired
 approval and identity mismatch. Record upstream observations and verify that no
 alternate egress path bypasses the decision. Live Entra/Okta authorization and

@@ -46,7 +46,7 @@ The verifier checks report structure, case IDs, tested commit, workflow-run iden
 
 ## Tool-action authorization reference
 
-The [host tool broker](docs/tool-action-broker.md) adds default-deny, per-agent registered-action rules and single-use approvals bound to exact JSON arguments. Its HTTP test counts requests at a credentialed local service to verify that denied, pending, expired and replayed actions never dispatch. This is an opt-in reference boundary; the production VM/OneCLI path is not yet wired through it.
+The [host tool broker](docs/tool-action-broker.md) adds default-deny, per-agent registered-action rules and single-use approvals bound to exact JSON arguments. Its HTTP test counts requests at a credentialed local service to verify that denied, pending, expired and replayed actions never dispatch. The expanded VM acceptance harness routes two real VM agents through identity-bound broker relays and requires denied direct-backend TCP/HTTP probes. This is a test integration; the production VM/OneCLI path is not yet wired through it. The current published main proof above remains 25 cases; the candidate contract requires 28.
 
 ## Architecture
 
