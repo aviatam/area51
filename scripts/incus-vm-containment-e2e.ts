@@ -17,6 +17,7 @@ import { syncIncusVmInbound, syncIncusVmOutbound } from '../src/incus-vm-session
 import { selectLiveRuntimePolicy, writeLiveRuntimePolicyDecision } from '../src/live-runtime-policy.js';
 import { createVmProbeServer } from './vm-probe-server.js';
 import { activeAgentProbe } from './active-agent-probe.js';
+import { ToolBrokerVmFixture } from './tool-broker-vm-fixture.js';
 
 const trial = process.env.AREA51_E2E_TRIAL ?? '1';
 if (!/^[1-3]$/.test(trial)) throw new Error('AREA51_E2E_TRIAL must be 1, 2, or 3');
@@ -214,20 +215,17 @@ let peerRelay: net.Server | undefined;
 let deniedConnections = 0;
 let fixtureFailure: Error | undefined;
 const recordFixtureFailure = (error: Error) => (fixtureFailure ??= error);
+const toolBroker = new ToolBrokerVmFixture(recordFixtureFailure);
 let primaryFailure: unknown;
 try {
+  await toolBroker.startControl();
   process.env.AREA51_INCUS_STORAGE_POOL = pool;
   enforceIncusRuntimeDecision(runtimeDecision, plan);
   applyIncusRuntimePlan(plan, {
     executor(argv) {
       const output = runIncus(argv);
       if (argv[0] === 'network' && argv[1] === 'create') {
-        relay = createVmProbeServer(
-          'HTTP/1.1 200 OK\r\nContent-Length: 16\r\nConnection: close\r\n\r\narea51-relay-ok\n',
-          () => {},
-          recordFixtureFailure,
-        );
-        relay.listen(relayPort, relayAddress);
+        relay = toolBroker.startRelay('primary', relayAddress, relayPort, relayPort + 2);
         deniedEndpoint = createVmProbeServer(
           'HTTP/1.1 200 OK\r\nContent-Length: 7\r\nConnection: close\r\n\r\ncanary\n',
           () => deniedConnections++,
@@ -285,8 +283,7 @@ try {
     executor(argv) {
       const output = runIncus(argv);
       if (argv[0] === 'network' && argv[1] === 'create') {
-        peerRelay = createVmProbeServer('area51-peer-relay-ok\n', () => {}, recordFixtureFailure);
-        peerRelay.listen(relayPort, '10.252.0.1');
+        peerRelay = toolBroker.startRelay('peer', '10.252.0.1', relayPort);
       }
       return output;
     },
@@ -348,6 +345,35 @@ try {
     if (fs.readFileSync(path.join(directory, file), 'utf8') !== marker)
       throw new Error('Cross-agent write altered host private file');
   }
+  // Exercise the host broker FROM both non-root VM agents through their
+  // production-policy allowed relay. The upstream API is on a denied port.
+  const primaryToolProbe = JSON.parse(await runGuest(plan, 'bun', ['-e', toolBroker.guestProbe('primary')]));
+  const peerToolProbe = JSON.parse(await runGuest(peerPlan, 'bun', ['-e', toolBroker.guestProbe('peer')]));
+  const toolProof = await toolBroker.verifyApprovals(primaryToolProbe, peerToolProbe);
+  if (fixtureFailure) throw fixtureFailure;
+  const toolEvidenceDirectory = path.resolve('.area51/diagnostics');
+  fs.mkdirSync(toolEvidenceDirectory, { recursive: true });
+  fs.writeFileSync(
+    path.join(toolEvidenceDirectory, `vm-tool-broker-trial-${trial}.json`),
+    JSON.stringify(
+      {
+        ...toolProof,
+        trial,
+        measured_at: new Date().toISOString(),
+        primary_project: plan.project,
+        primary_instance: plan.instance,
+        peer_project: peerPlan.project,
+        peer_instance: peerPlan.instance,
+        guest_direct_backend_blocked: true,
+        upstream_positive_controls_passed: true,
+      },
+      null,
+      2,
+    ) + '\n',
+  );
+  console.log(
+    'VM tool broker: two allowed reads, one exact approved write; denied/pending/replayed/expired writes and direct upstream access blocked.',
+  );
   const peerFollowup = openInboundDb(path.join(peerSessionDir, 'inbound.db'));
   insertTestMessage(peerFollowup, 'peer-roundtrip-2', 'peer warm follow-up');
   peerFollowup.close();
@@ -471,6 +497,7 @@ try {
   throw error;
 } finally {
   console.log('VM provisioning events:', JSON.stringify({ trial, events: provisioningEvents }));
+  await toolBroker.close();
   relay?.close();
   peerRelay?.close();
   deniedEndpoint?.close();

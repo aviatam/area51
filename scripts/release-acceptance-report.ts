@@ -36,6 +36,21 @@ export const RELEASE_ACCEPTANCE_CASES: Record<AcceptanceSuite, Array<Omit<Accept
   'incus-vm-containment': [
     { id: 'weaker-runtime-fallback-blocked', evidence: 'Risky Docker posture was rejected by Runtime Policy.' },
     { id: 'risky-workload-escalated-to-vm', evidence: 'Production policy selected a real Incus VM.' },
+    {
+      id: 'vm-per-agent-tool-permissions',
+      evidence:
+        'Two non-root VM agents used identity-bound relays; allowed reads reached a synthetic credentialed service while denied and pending writes did not.',
+    },
+    {
+      id: 'vm-exact-tool-approval-single-use',
+      evidence:
+        'Host-only approval dispatched one reviewed JSON write; guest approval, modified arguments, concurrent resolution, replay and host-clock expiry did not add upstream writes.',
+    },
+    {
+      id: 'vm-direct-tool-backend-blocked',
+      evidence:
+        'Both guests failed direct raw TCP and HTTP access to the listening upstream service on a non-allowlisted port; broker-mediated reads and the approved write succeeded.',
+    },
     { id: 'host-control-sockets-hidden', evidence: 'Incus and Docker control sockets were absent in the guest.' },
     {
       id: 'host-credential-canaries-unreadable',
