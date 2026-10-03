@@ -5,15 +5,22 @@ export function activeAgentProbe(input: {
   ownAddress: string;
   peerAddress: string;
   port: number;
+  peerPort?: number;
   ownFile: string;
   ownMarker: string;
   peerFile: string;
   peerHostFile: string;
 }): string {
-  if (isIP(input.ownAddress) !== 4 || isIP(input.peerAddress) !== 4 || input.ownAddress === input.peerAddress) {
-    throw new Error('distinct IPv4 agent addresses required');
-  }
   if (!Number.isInteger(input.port) || input.port < 1 || input.port > 65535) throw new Error('invalid probe port');
+  const peerPort = input.peerPort ?? input.port;
+  if (!Number.isInteger(peerPort) || peerPort < 1 || peerPort > 65535) throw new Error('invalid probe port');
+  if (
+    isIP(input.ownAddress) !== 4 ||
+    isIP(input.peerAddress) !== 4 ||
+    (input.ownAddress === input.peerAddress && input.port === peerPort)
+  ) {
+    throw new Error('distinct IPv4 agent endpoints required');
+  }
   if (input.ownFile === input.peerFile || input.ownMarker.length === 0)
     throw new Error('distinct private files required');
   return `
@@ -43,9 +50,9 @@ assert(!escaped, 'symlink reached peer private file');
 // The guessed guest path is writable in THIS session, not the peer's session.
 fs.writeFileSync(input.peerFile, 'cross-agent-overwrite');
 assert(fs.readFileSync(input.ownFile, 'utf8') === input.ownMarker, 'own private file changed');
-const connect = (host, readBody) => new Promise((resolve) => {
+const connect = (host, port, readBody) => new Promise((resolve) => {
   let connected = false, body = '', done = false;
-  const socket = net.connect({ host, port: input.port });
+  const socket = net.connect({ host, port });
   const finish = () => { if (done) return; done = true; clearTimeout(timer); socket.destroy(); resolve({ connected, body }); };
   const timer = setTimeout(finish, 3000);
   socket.on('connect', () => { connected = true; if (!readBody) finish(); });
@@ -53,9 +60,9 @@ const connect = (host, readBody) => new Promise((resolve) => {
   socket.on('end', finish);
   socket.on('error', finish);
 });
-const own = await connect(input.ownAddress, true);
+const own = await connect(input.ownAddress, input.port, true);
 assert(own.connected && own.body === input.ownMarker, 'own listening TCP endpoint positive control failed');
-const peer = await connect(input.peerAddress, false);
+const peer = await connect(input.peerAddress, input.peerPort ?? input.port, false);
 assert(!peer.connected, 'raw TCP reached active peer');
 console.log('area51-active-agent-isolation-ok');
 `;

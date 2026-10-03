@@ -62,16 +62,30 @@ describe('Incus VM image builder', () => {
     expect(containment).toContain('non-relay internet egress succeeded');
     expect(containment).toContain('host control path visible');
     expect(containment).toContain('syncIncusVmInbound(plan, sessionDir)');
-    expect(containment).toContain('syncIncusVmOutbound(plan, sessionDir)');
+    expect(containment).toContain('syncIncusVmOutbound(runtimePlan, runtimeSessionDir)');
     expect(containment).toContain('area51-vm-roundtrip-ok');
     expect(containment).toContain("'vm-roundtrip-2'");
     expect(containment).toContain("['snapshot', 'delete', runtimePlan.instance, snapshot.name");
-    expect(containment).toContain("['project', 'delete', plan.project, '--force']");
+    expect(containment).toContain('new Set(runtimeResources.map((resource) => resource.plan.project))');
+    expect(containment).toContain("['project', 'delete', project, '--force']");
     expect(containment).toContain("input: 'yes\\n'");
     expect(workflow).toContain('incus delete "$instance" --force');
     expect(workflow.indexOf('Release verified smoke VM resources')).toBeLessThan(
       workflow.indexOf('Run VM containment E2E'),
     );
+  });
+
+  it('keeps both active-agent runners and their isolation evidence in the live gate', () => {
+    expect(containment).toContain('applyIncusRuntimePlan(peerPlan');
+    expect(containment).toContain('spawnIncusExec(\n    peerPlan');
+    expect(containment).toContain('syncIncusVmInbound(peerPlan, peerSessionDir)');
+    expect(containment).toContain(
+      "waitForRoundTrips(2, () => peerStderr, peerPlan, peerSessionDir, 'area51-peer-roundtrip-ok')",
+    );
+    expect(containment).toContain('activeAgentProbe({');
+    expect(containment).toContain('Cross-agent write altered peer private file');
+    expect(containment).toContain('Both agents must remain active VMs');
+    expect(containment).toContain('area51.active_agent_isolation.v1');
   });
 
   it('lets live Runtime Policy select and verify the real Incus VM', () => {

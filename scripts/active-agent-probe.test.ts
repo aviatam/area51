@@ -19,7 +19,12 @@ async function execute(script: string): Promise<{ code: number | null; stdout: s
   });
 }
 
-async function fixture(test: (input: Parameters<typeof activeAgentProbe>[0]) => Promise<void>): Promise<void> {
+async function fixture(
+  test: (input: Parameters<typeof activeAgentProbe>[0]) => Promise<void>,
+  peerReachable = false,
+): Promise<void> {
+  // Use two ephemeral ports on the standard loopback address. macOS does not
+  // configure 127.0.0.2 by default. Live VM probes still use distinct IPs.
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'area51-active-probe-'));
   const ownFile = path.join(root, 'own-private.txt');
   fs.writeFileSync(ownFile, 'own-marker');
@@ -31,10 +36,21 @@ async function fixture(test: (input: Parameters<typeof activeAgentProbe>[0]) => 
     server.once('error', reject);
     server.listen(0, '127.0.0.1', resolve);
   });
+  const peer = net.createServer((socket) => {
+    socket.on('error', () => {});
+    socket.end('unrelated');
+  });
+  await new Promise<void>((resolve, reject) => {
+    peer.once('error', reject);
+    peer.listen(0, '127.0.0.1', resolve);
+  });
+  const peerPort = (peer.address() as net.AddressInfo).port;
+  if (!peerReachable) await new Promise<void>((resolve) => peer.close(() => resolve()));
   try {
     await test({
       ownAddress: '127.0.0.1',
-      peerAddress: '127.0.0.2',
+      peerAddress: '127.0.0.1',
+      peerPort,
       port: (server.address() as net.AddressInfo).port,
       ownFile,
       ownMarker: 'own-marker',
@@ -43,6 +59,7 @@ async function fixture(test: (input: Parameters<typeof activeAgentProbe>[0]) => 
     });
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()));
+    if (peerReachable) await new Promise<void>((resolve) => peer.close(() => resolve()));
     fs.rmSync(root, { recursive: true, force: true });
   }
 }
@@ -70,27 +87,15 @@ describe('active agent guest probe', () => {
 
   it('rejects a reachable peer even when its response is not the expected marker', async () => {
     await fixture(async (input) => {
-      const peer = net.createServer((socket) => {
-        socket.on('error', () => {});
-        socket.end('unrelated');
-      });
-      await new Promise<void>((resolve, reject) => {
-        peer.once('error', reject);
-        peer.listen(input.port, input.peerAddress, resolve);
-      });
-      try {
-        const result = await execute(activeAgentProbe(input));
-        expect(result.code).not.toBe(0);
-        expect(result.stderr).toContain('raw TCP reached active peer');
-      } finally {
-        await new Promise<void>((resolve) => peer.close(() => resolve()));
-      }
-    });
+      const result = await execute(activeAgentProbe(input));
+      expect(result.code).not.toBe(0);
+      expect(result.stderr).toContain('raw TCP reached active peer');
+    }, true);
   });
 
   it('does not interpret a dead own endpoint as successful isolation', async () => {
     await fixture(async (input) => {
-      const result = await execute(activeAgentProbe({ ...input, ownAddress: '127.0.0.3' }));
+      const result = await execute(activeAgentProbe({ ...input, port: input.peerPort!, peerPort: input.port }));
       expect(result.code).not.toBe(0);
       expect(result.stderr).toContain('own listening TCP endpoint positive control failed');
     });
