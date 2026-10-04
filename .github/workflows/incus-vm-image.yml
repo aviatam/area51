@@ -7,6 +7,9 @@ on:
     paths:
       - scripts/incus-vm-containment-e2e.ts
       - scripts/active-agent-probe.ts
+      - scripts/tool-broker-vm-fixture.ts
+      - src/tool-action-broker.ts
+      - src/tool-action-http.ts
       - scripts/vm-probe-server.ts
       - scripts/release-acceptance-report.ts
       - scripts/verify-release-acceptance.ts
@@ -20,7 +23,11 @@ on:
       - container/skills/**
       - scripts/incus-vm-containment-e2e.ts
       - scripts/active-agent-probe.ts
+      - scripts/tool-broker-vm-fixture.ts
+      - src/tool-action-broker.ts
+      - src/tool-action-http.ts
       - scripts/active-agent-probe.test.ts
+      - scripts/tool-broker-vm-fixture.test.ts
       - scripts/vm-probe-server.ts
       - scripts/vm-probe-server.test.ts
       - scripts/release-acceptance-report.ts
