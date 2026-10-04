@@ -89,7 +89,9 @@ function click(id: string, userId = 'slack:admin', value = 'approve') {
 it('connects actual delivery and authorized approval registries with one execution', async () => {
   await request();
   const row = getPendingApprovalsByAction('tool_action')[0];
-  expect(row.question).toContain('{"agentGroupId":"ag-1","tool":"send","args":{"text":"reviewed"}}\nExpires at ');
+  expect(row.question).toContain(
+    '```json\n{"agentGroupId":"ag-1","tool":"send","args":{"text":"reviewed"}}\n```\nExpires at ',
+  );
   expect(row.expires_at).toBeTruthy();
   expect(state.execute).not.toHaveBeenCalled();
   await click(row.approval_id, 'slack:guest');

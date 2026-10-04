@@ -49,7 +49,8 @@ supports acknowledgement-only actions, not arbitrary response-data retrieval.
 
 ## Approval and recovery behavior
 
-An administrator sees the entire canonical action/arguments and a deadline;
+An administrator sees the trusted group identity, entire canonical action/arguments
+in a literal code block, and a deadline;
 previews exceeding 3000 characters are denied instead of truncated. String
 arguments are limited to 2048 characters and exclude controls, bidi overrides
 and backticks that could obscure the displayed request. Unknown arguments and
