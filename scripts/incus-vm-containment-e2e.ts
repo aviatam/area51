@@ -18,6 +18,7 @@ import { selectLiveRuntimePolicy, writeLiveRuntimePolicyDecision } from '../src/
 import { createVmProbeServer } from './vm-probe-server.js';
 import { activeAgentProbe } from './active-agent-probe.js';
 import { ToolBrokerVmFixture } from './tool-broker-vm-fixture.js';
+import { sessionToolVmProof } from './session-tool-vm-proof.js';
 
 const trial = process.env.AREA51_E2E_TRIAL ?? '1';
 if (!/^[1-3]$/.test(trial)) throw new Error('AREA51_E2E_TRIAL must be 1, 2, or 3');
@@ -374,6 +375,20 @@ try {
   console.log(
     'VM tool broker: two allowed reads, one exact approved write; denied/pending/replayed/expired writes and direct upstream access blocked.',
   );
+  const sessionToolProof = await sessionToolVmProof({
+    primary: plan,
+    primaryDirectory: sessionDir,
+    peer: peerPlan,
+    peerDirectory: peerSessionDir,
+    runGuest,
+  });
+  fs.writeFileSync(
+    path.join(toolEvidenceDirectory, `vm-session-tools-trial-${trial}.json`),
+    JSON.stringify({ ...sessionToolProof, trial, measured_at: new Date().toISOString() }, null, 2) + '\n',
+  );
+  console.log(
+    'VM session tools: actual guest MCP tool and DB bridge delivered one allowed and one exact approved action.',
+  );
   const peerFollowup = openInboundDb(path.join(peerSessionDir, 'inbound.db'));
   insertTestMessage(peerFollowup, 'peer-roundtrip-2', 'peer warm follow-up');
   peerFollowup.close();
@@ -630,7 +645,9 @@ async function waitForRoundTrips(
     try {
       syncIncusVmOutbound(runtimePlan, runtimeSessionDir);
       const out = openOutboundDb(path.join(runtimeSessionDir, 'outbound.db'));
-      const messages = out.prepare('SELECT content FROM messages_out ORDER BY seq').all() as Array<{ content: string }>;
+      const messages = out
+        .prepare("SELECT content FROM messages_out WHERE kind != 'system' ORDER BY seq")
+        .all() as Array<{ content: string }>;
       const completedIds = (
         out
           .prepare("SELECT message_id FROM processing_ack WHERE status = 'completed' ORDER BY message_id")

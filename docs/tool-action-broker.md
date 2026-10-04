@@ -25,8 +25,8 @@ The broker unit tests additionally cover bounded pending state, trusted policy
 snapshots, default denial of unknown actions, per-call approval, argument-size
 limits, audit failure before dispatch and ambiguous handler failure without retry.
 
-The historical main proof remains 25 cases. The expanded acceptance contract
-requires 28 cases, including broker enforcement from two live non-root VM agents.
+The [merged-main proof](https://github.com/aviatam/area51/actions/runs/37186795701)
+passed all 28 cases, including broker enforcement from two live non-root VM agents.
 The containment harness hosts the broker on each agent's existing allowed relay;
 each listener accepts only that agent's token. The approval listener is separate
 on host loopback. A synthetic credentialed upstream service listens on the same
@@ -85,8 +85,10 @@ is never automatically retried.
 
 ## Next integration gate
 
-Move the tested relay/broker wiring into an opt-in production session path, or
-verify equivalent OneCLI enforcement. Then use an authorized test account for a narrow business
+The opt-in [production session path](production-tool-actions.md) connects the
+agent tool to the host broker and existing administrator approval channel. It
+adds no network relay or egress exception. Validate that path from a production
+VM session, then use an authorized test account for a narrow business
 API: permitted read, blocked destructive write, exact reviewed write, expired
 approval and identity mismatch. Record upstream observations and verify that no
 alternate egress path bypasses the decision. Live Entra/Okta authorization and

@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 export type ToolArguments = Record<string, unknown>;
 export type ToolPermission = 'allow' | 'deny' | 'approval';
 export interface ToolAction {
+  validate?: (args: ToolArguments) => boolean;
   execute: (args: ToolArguments) => Promise<unknown>;
 }
 export type ToolResult =
@@ -50,7 +51,10 @@ export class ToolActionBroker {
       Object.entries(options.policy).map(([agent, rules]) => [agent, new Map(Object.entries(rules))]),
     );
     this.actions = new Map(
-      Object.entries(options.actions).map(([name, handler]) => [name, { execute: handler.execute }]),
+      Object.entries(options.actions).map(([name, handler]) => [
+        name,
+        { execute: handler.execute, validate: handler.validate },
+      ]),
     );
     this.approvers = new Set(options.approvers);
     this.now = options.now ?? Date.now;
@@ -77,6 +81,7 @@ export class ToolActionBroker {
         if (!serialized || Buffer.byteLength(serialized) > 65_536) throw new Error('Invalid arguments');
         snapshot = JSON.parse(serialized) as ToolArguments;
         if (!snapshot || typeof snapshot !== 'object' || Array.isArray(snapshot)) throw new Error('Object required');
+        if (handler.validate && !handler.validate(snapshot)) throw new Error('Invalid action arguments');
       } catch {
         return this.finish(agentId, action, { status: 'denied' });
       }

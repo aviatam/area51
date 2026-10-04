@@ -31,22 +31,22 @@ The first demo path combines:
 
 The [cross-OS workflow](https://github.com/aviatam/area51/actions/workflows/test-matrix.yml) gates host behavior on Ubuntu and macOS and a blocking portable suite on Windows. The Windows lane does not run the Unix-dependent tests.
 
-The separate [hosted-KVM acceptance run](https://github.com/aviatam/area51/actions/runs/37110853466) tested merged-main commit `c3f83cd106edd8f0b3024d06ef2f359f24e4fc66`. Download its `release-acceptance-37110853466` artifact and extract `release-acceptance.json`. From a checkout of that tested commit, verify the report:
+The separate [hosted-KVM acceptance run](https://github.com/aviatam/area51/actions/runs/37186795701) tested merged-main commit `f9b7c12015e3d8530db026c91f38e00cb4e04544`. Download its `release-acceptance-37186795701` artifact and extract `release-acceptance.json`. From a checkout of that tested commit, verify the report:
 
 ```bash
 pnpm install --frozen-lockfile
 pnpm run verify:release-evidence -- \
   --file release-acceptance.json \
-  --commit c3f83cd106edd8f0b3024d06ef2f359f24e4fc66
+  --commit f9b7c12015e3d8530db026c91f38e00cb4e04544
 ```
 
-The report covers 25 cases across a public commit-pinned Linux install, same-VM reboot and disk persistence, runtime selection, network isolation, and quarantine. Additional hostile probes attempt unmounted synthetic host-credential and sibling-workspace reads, host control API access, and HTTP/raw TCP access to a host-verified non-allowlisted endpoint. Three full containment trials also probe two simultaneously active VM agents in distinct projects and networks: bidirectional private-file reads/writes and TCP connections are blocked while both agents continue independent messaging. The workflow requires both the installer and live Incus/KVM jobs to pass before publishing it. Successful verification prints `Release evidence: VERIFIED (3 suites, 25 cases)`.
+The report covers 28 cases across a public commit-pinned Linux install, same-VM reboot and disk persistence, runtime selection, network isolation, and quarantine. Additional hostile probes attempt unmounted synthetic host-credential and sibling-workspace reads, host control API access, and HTTP/raw TCP access to a host-verified non-allowlisted endpoint. Three full containment trials also probe two simultaneously active VM agents in distinct projects and networks: bidirectional private-file reads/writes and TCP connections are blocked while both agents continue independent messaging. The workflow requires both the installer and live Incus/KVM jobs to pass before publishing it. Successful verification prints `Release evidence: VERIFIED (3 suites, 28 cases)`.
 
 The verifier checks report structure, case IDs, tested commit, workflow-run identity, reboot measurements, and stated gaps; it does not independently attest the host or the truth of each recorded observation. Synthetic canaries do not prove protection of real credentials, real-provider behavior or general MCP/tool authorization. Live Entra/Okta authorization and physical-host reboot remain untested. A bounded recovery fix passed the previously stuck stopped-VM/start/vsock/restart sequence. The underlying Incus VM stop cause remains unexplained; passing acceptance is evidence for this tested run, not a production reliability guarantee. See the [governed escalation demo](docs/governed-escalation-demo.md) for the local fixture and live exercise.
 
 ## Tool-action authorization reference
 
-The [host tool broker](docs/tool-action-broker.md) adds default-deny, per-agent registered-action rules and single-use approvals bound to exact JSON arguments. Its HTTP test counts requests at a credentialed local service to verify that denied, pending, expired and replayed actions never dispatch. The expanded VM acceptance harness routes two real VM agents through identity-bound broker relays and requires denied direct-backend TCP/HTTP probes. This is a test integration; the production VM/OneCLI path is not yet wired through it. The current published main proof above remains 25 cases; the candidate contract requires 28.
+The [host tool broker](docs/tool-action-broker.md) adds default-deny, per-agent registered-action rules and single-use approvals bound to exact JSON arguments. Its HTTP test counts requests at a credentialed local service to verify that denied, pending, expired and replayed actions never dispatch. The expanded VM acceptance harness routes two real VM agents through identity-bound broker relays and requires denied direct-backend TCP/HTTP probes. The merged-main proof above includes all 28 cases. An opt-in [production session path](docs/production-tool-actions.md) now connects the agent MCP tool, host-owned policy and credentials, and administrator approvals through the existing session channel. It governs registered actions on that path; existing OneCLI/MCP traffic remains separately authorized. See the [Linux GA gates](docs/linux-ga-readiness.md) for the outstanding release requirements.
 
 ## Architecture
 
