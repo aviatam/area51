@@ -99,6 +99,7 @@ it('connects actual delivery and authorized approval registries with one executi
   await Promise.all([click(row.approval_id), click(row.approval_id)]);
   await click(row.approval_id);
   expect(state.execute).toHaveBeenCalledExactlyOnceWith({ text: 'reviewed' });
+  expect(JSON.stringify(vi.mocked(writeSessionMessage).mock.calls)).toContain('Tool request req-1: executed.');
   expect(getPendingApprovalsByAction('tool_action')).toHaveLength(0);
 });
 

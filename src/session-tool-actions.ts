@@ -23,8 +23,20 @@ export class SessionToolActions {
       approvers: (group: string) => string[];
       reserve: (session: ToolSession, requestId: string) => boolean;
       active?: (session: ToolSession) => boolean;
-      approval: (session: ToolSession, id: string, preview: string, expiresAt: number) => Promise<boolean>;
-      audit?: (event: { sessionId: string; action: string; status: string }) => void;
+      approval: (
+        session: ToolSession,
+        id: string,
+        preview: string,
+        expiresAt: number,
+        requestId: string,
+      ) => Promise<boolean>;
+      audit?: (event: {
+        sessionId: string;
+        requestId: string;
+        approvalId?: string;
+        action: string;
+        status: string;
+      }) => void;
       now?: () => number;
     },
   ) {}
@@ -55,7 +67,14 @@ export class SessionToolActions {
       approvalTtlMs: config.approvalTtlMs,
       maxPending: 1,
       now: this.ports.now,
-      audit: (event) => this.ports.audit?.({ sessionId: session.id, action: event.action, status: event.status }),
+      audit: (event) =>
+        this.ports.audit?.({
+          sessionId: session.id,
+          requestId: content.requestId as string,
+          approvalId: event.approvalId,
+          action: event.action,
+          status: event.status,
+        }),
     });
     const result = await broker.bindAgent(session.agent_group_id)(
       content.tool,
@@ -81,7 +100,7 @@ export class SessionToolActions {
     try {
       const deadline = this.pending.get(result.approvalId)!.expiresAt;
       const delivered = await Promise.race([
-        this.ports.approval(session, result.approvalId, preview, deadline),
+        this.ports.approval(session, result.approvalId, preview, deadline, content.requestId),
         new Promise<boolean>((resolve) => {
           timer = setTimeout(() => resolve(false), Math.max(1, deadline - this.now()));
         }),

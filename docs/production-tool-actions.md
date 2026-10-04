@@ -44,7 +44,10 @@ JSON POST with a 10-second timeout and never retries it.
 
 The agent invokes `tool_action({tool: "demo.send", args: {text: "reviewed"}})`.
 The agent receives submission acknowledgement, followed by a system status
-message. Upstream bodies, secrets and raw errors are not returned. This version
+message carrying the submitted request ID, so concurrent requests can be matched
+to their decisions. Audit records include session, request and approval IDs with
+action/status, and omit arguments and credentials. Upstream bodies, secrets and
+raw errors are not returned. This version
 supports acknowledgement-only actions, not arbitrary response-data retrieval.
 
 ## Approval and recovery behavior

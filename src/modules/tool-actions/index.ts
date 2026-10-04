@@ -31,6 +31,9 @@ registerMigration({
 });
 
 const configurationFile = path.join(os.homedir(), '.config', 'area51', 'tool-actions.json');
+function requestId(value: unknown): string {
+  return typeof value === 'string' && /^[a-zA-Z0-9_-]{1,128}$/.test(value) ? value : 'invalid';
+}
 const tools = new SessionToolActions({
   configuration: () => loadToolConfiguration(configurationFile),
   approvers: pickApprover,
@@ -46,14 +49,14 @@ const tools = new SessionToolActions({
         AND (SELECT COUNT(*) FROM tool_action_requests) < 50000`,
       )
       .run(session.id, requestId, new Date().toISOString(), session.id).changes === 1,
-  approval: async (session, id, preview, expiresAt) => {
+  approval: async (session, id, preview, expiresAt, requestId) => {
     const fullSession = getSession(session.id);
     if (!fullSession || !getDeliveryAdapter()) return false;
     return requestApproval({
       session: fullSession,
       agentName: session.agent_group_id,
       action: 'tool_action',
-      payload: { brokerApprovalId: id },
+      payload: { brokerApprovalId: id, requestId },
       title: `Approve tool action: ${session.agent_group_id}`,
       question: `\`\`\`json\n${preview}\n\`\`\`\nExpires at ${new Date(expiresAt).toISOString()}`,
       expiresAt: new Date(expiresAt).toISOString(),
@@ -67,10 +70,10 @@ registerDeliveryAction(
   async (content, session) => {
     try {
       const result = await tools.request(session, content);
-      notifyAgent(session, `Tool action ${result.status}.`);
+      notifyAgent(session, `Tool request ${requestId(content.requestId)}: ${result.status}.`);
     } catch {
       // No raw config, credential, upstream or audit-sink errors enter the inbox.
-      notifyAgent(session, 'Tool action failed; no automatic retry.');
+      notifyAgent(session, `Tool request ${requestId(content.requestId)}: failed; no automatic retry.`);
     }
   },
   unguarded('SessionToolActions consults the default-deny broker and durably reserves requests before dispatch.'),
@@ -82,15 +85,16 @@ registerApprovalHandler('tool_action', async ({ session, payload, userId, notify
       typeof payload.brokerApprovalId === 'string'
         ? await tools.resolve(session, payload.brokerApprovalId, userId, true)
         : { status: 'denied' };
-    notify(`Tool action ${result.status}.`);
+    notify(`Tool request ${requestId(payload.requestId)}: ${result.status}.`);
   } catch {
-    notify('Tool action failed; no automatic retry.');
+    notify(`Tool request ${requestId(payload.requestId)}: failed; no automatic retry.`);
   }
 });
-registerApprovalResolvedHandler(({ approval }) => {
+registerApprovalResolvedHandler(({ approval, session, outcome }) => {
   if (approval.action !== 'tool_action') return;
   const payload = JSON.parse(approval.payload) as Record<string, unknown>;
   if (typeof payload.brokerApprovalId === 'string') tools.cancel(payload.brokerApprovalId);
+  if (outcome === 'reject') notifyAgent(session, `Tool request ${requestId(payload.requestId)}: denied.`);
 });
 onHostShutdown(() => tools.cancel());
 onHostStart(() => {
