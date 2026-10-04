@@ -54,7 +54,7 @@ const tools = new SessionToolActions({
       agentName: session.agent_group_id,
       action: 'tool_action',
       payload: { brokerApprovalId: id },
-      title: 'Approve tool action',
+      title: `Approve tool action: ${session.agent_group_id}`,
       question: `${preview}\nExpires at ${new Date(expiresAt).toISOString()}`,
       expiresAt: new Date(expiresAt).toISOString(),
     });

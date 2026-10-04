@@ -65,7 +65,8 @@ export class SessionToolActions {
     const admin = this.ports.approvers(session.agent_group_id)[0];
     const snapshot = admin && broker.inspectApproval(result.approvalId, admin);
     // Show the complete canonical request; never truncate an approval preview.
-    const preview = snapshot && JSON.stringify({ tool: snapshot.action, args: snapshot.args });
+    const preview =
+      snapshot && JSON.stringify({ agentGroupId: session.agent_group_id, tool: snapshot.action, args: snapshot.args });
     if (!preview || preview.length > 3000) {
       broker.cancelPending();
       return { status: 'denied' };
@@ -76,13 +77,20 @@ export class SessionToolActions {
       revision: config.revision,
       expiresAt: this.now() + config.approvalTtlMs,
     });
+    let timer: ReturnType<typeof setTimeout> | undefined;
     try {
-      if (
-        await this.ports.approval(session, result.approvalId, preview, this.pending.get(result.approvalId)!.expiresAt)
-      )
-        return result;
+      const deadline = this.pending.get(result.approvalId)!.expiresAt;
+      const delivered = await Promise.race([
+        this.ports.approval(session, result.approvalId, preview, deadline),
+        new Promise<boolean>((resolve) => {
+          timer = setTimeout(() => resolve(false), Math.max(1, deadline - this.now()));
+        }),
+      ]);
+      if (delivered) return result;
     } catch {
       // Delivery failure must leave no executable continuation.
+    } finally {
+      if (timer) clearTimeout(timer);
     }
     this.pending.delete(result.approvalId);
     broker.cancelPending();

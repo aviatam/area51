@@ -93,12 +93,17 @@ required before claiming complete mediation of a real service.
 Run host tests with:
 
 ```bash
-pnpm exec vitest run src/session-tool-actions.test.ts src/tool-action-config.test.ts src/modules/tool-actions/index.test.ts
+pnpm exec vitest run src/session-tool-actions.test.ts src/session-tool-recovery.test.ts src/tool-action-config.test.ts src/modules/tool-actions/index.test.ts
 pnpm run typecheck
 ```
 
 Run container tool tests from `container/agent-runner` with `bun run test`.
-CI tests the real delivery/approval registries against SQLite and the adapter
+CI kills separate Node processes while approval is pending and after an upstream
+write has reached the service, then restarts with the same SQLite ledger to
+require denial of stale approvals and duplicate requests. This proves the
+broker subprocess recovery scenario; it does not establish physical-host or
+full service recovery. CI also tests the real delivery/approval registries against
+SQLite and the adapter
 against an actual local credentialed HTTP service. These are synthetic-account
 tests. Real-account, production VM session-path, physical-host reboot and
 independent review remain [Linux GA gates](linux-ga-readiness.md).

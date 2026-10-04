@@ -54,7 +54,7 @@ export async function sessionToolVmProof(input: {
       db.prepare('INSERT OR IGNORE INTO requests VALUES (?, ?)').run(session.id, id).changes === 1,
     approval: async (_session, id, preview) => {
       approvalId = id;
-      assert.equal(preview, '{"tool":"send","args":{"text":"reviewed-vm-write"}}');
+      assert.equal(preview, '{"agentGroupId":"primary","tool":"send","args":{"text":"reviewed-vm-write"}}');
       return true;
     },
   });

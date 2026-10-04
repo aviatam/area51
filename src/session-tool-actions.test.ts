@@ -77,7 +77,7 @@ it('approves the immutable exact snapshot once under concurrent resolution', asy
   args.text = 'changed';
   const result = await pending;
   if (result.status !== 'pending') throw new Error('Expected approval');
-  expect(f.approval.mock.calls[0][2]).toBe('{"tool":"send","args":{"text":"reviewed"}}');
+  expect(f.approval.mock.calls[0][2]).toBe('{"agentGroupId":"agent-a","tool":"send","args":{"text":"reviewed"}}');
   expect(await f.service.resolve({ ...session, id: 'other-session' }, result.approvalId, 'slack:admin', true)).toEqual({
     status: 'denied',
   });
@@ -119,6 +119,27 @@ it('does not retry ambiguous upstream failure when the outbox is redelivered', a
   expect(await f.request('read-1', 'read')).toEqual({ status: 'failed' });
   expect(await f.request('read-1', 'read')).toEqual({ status: 'denied' });
   expect(f.execute).toHaveBeenCalledTimes(1);
+});
+
+it('cancels a continuation when approval delivery hangs past its deadline', async () => {
+  vi.useFakeTimers();
+  try {
+    const f = setup();
+    f.approval.mockImplementation(() => new Promise(() => {}));
+    const service = new SessionToolActions({
+      ...f.ports,
+      configuration: () => ({ ...f.ports.configuration(), approvalTtlMs: 1000 }),
+    });
+    const pending = service.request(session, { action: 'tool_action', tool: 'send', args: {}, requestId: 'hung' });
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(await pending).toEqual({ status: 'denied' });
+    expect(await service.resolve(session, f.approval.mock.calls[0][1], 'slack:admin', true)).toEqual({
+      status: 'denied',
+    });
+    expect(f.execute).not.toHaveBeenCalled();
+  } finally {
+    vi.useRealTimers();
+  }
 });
 
 const servers: ReturnType<typeof createServer>[] = [];
