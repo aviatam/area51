@@ -40,7 +40,7 @@ human decision; use it only for operations deliberately granted that authority.
 Only the host chooses the URL and credential. Destinations use HTTPS; loopback
 HTTP is permitted for local validation. URLs containing credentials, queries or
 fragments, unknown fields and redirects are rejected. The adapter makes one
-JSON POST with a 10-second timeout and never retries it.
+JSON POST (default) or argument-free GET with a 10-second timeout and never retries it.
 
 The agent invokes `tool_action({tool: "demo.send", args: {text: "reviewed"}})`.
 The agent receives submission acknowledgement, followed by a system status
@@ -109,5 +109,12 @@ broker subprocess recovery scenario; it does not establish physical-host or
 full service recovery. CI also tests the real delivery/approval registries against
 SQLite and the adapter
 against an actual local credentialed HTTP service. These are synthetic-account
-tests. Real-account, production VM session-path, physical-host reboot and
-independent review remain [Linux GA gates](linux-ga-readiness.md).
+tests. The separate real GitHub API probe uses a temporary repository-scoped Actions
+credential: it permits one GET and one administrator-reviewed neutral check
+creation on the candidate commit, then reconciles actual GitHub check records.
+Denied, pending, expired, revoked and replayed writes must create no extra
+checks. The administrator is a host fixture; this is not a signed-in channel
+validation or a combined live VM-to-GitHub deployment.
+
+Other real-account integrations, full production VM/session/channel deployment,
+physical-host reboot and independent review remain [Linux GA gates](linux-ga-readiness.md).

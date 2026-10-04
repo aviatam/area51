@@ -60,6 +60,26 @@ it('blocks redirects and cancels response bodies without leaking them', async ()
   expect(cancel).toHaveBeenCalledTimes(1);
 });
 
+it('supports a fixed GET destination without a guest-selected method, query or body', async () => {
+  const send = vi.fn().mockResolvedValue({ ok: true, status: 200, body: null });
+  const config = fixture();
+  const raw = {
+    ...config,
+    actions: { read: { ...config.actions.send, method: 'GET', arguments: {}, required: [] } },
+    policy: { agent: { read: 'allow' } },
+  };
+  const parsed = parseToolConfiguration(JSON.stringify(raw), send);
+  expect(parsed.actions.read.validate!({})).toBe(true);
+  expect(parsed.actions.read.validate!({ method: 'POST' })).toBe(false);
+  await parsed.actions.read.execute({});
+  expect(send.mock.calls[0][1]).toMatchObject({ method: 'GET', body: undefined, redirect: 'error' });
+  expect(() =>
+    parseToolConfiguration(
+      JSON.stringify({ ...raw, actions: { read: { ...raw.actions.read, arguments: { query: 'string' } } } }),
+    ),
+  ).toThrow('no guest arguments');
+});
+
 const dirs: string[] = [];
 afterEach(() => {
   for (const dir of dirs.splice(0)) fs.rmSync(dir, { recursive: true, force: true });

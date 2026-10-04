@@ -19,7 +19,7 @@ function keys(value: Record<string, unknown>, permitted: string[]): void {
   if (Object.keys(value).some((key) => !permitted.includes(key))) throw new Error('Unknown configuration field');
 }
 
-/** Fixed host-owned destinations, credentials and argument fields. Upstream
+/** Fixed host-owned destinations, methods, credentials and argument fields. Upstream
  * bodies are never returned to the agent or logged. No redirects or retries. */
 export function parseToolConfiguration(raw: string, send: typeof fetch = fetch): ToolConfiguration {
   if (Buffer.byteLength(raw) > 65_536) throw new Error('Tool configuration too large');
@@ -33,7 +33,9 @@ export function parseToolConfiguration(raw: string, send: typeof fetch = fetch):
   for (const [name, value] of Object.entries(object(config.actions))) {
     if (!/^[a-z][a-z0-9_.-]{0,63}$/.test(name)) throw new Error('Invalid action name');
     const spec = object(value);
-    keys(spec, ['url', 'token', 'arguments', 'required']);
+    keys(spec, ['url', 'method', 'token', 'arguments', 'required']);
+    const method = spec.method ?? 'POST';
+    if (method !== 'POST' && method !== 'GET') throw new Error('Only fixed GET or POST actions supported');
     if (typeof spec.url !== 'string' || typeof spec.token !== 'string' || !spec.token || /[\r\n]/.test(spec.token))
       throw new Error('Fixed URL and credential required');
     const url = new URL(spec.url);
@@ -47,6 +49,7 @@ export function parseToolConfiguration(raw: string, send: typeof fetch = fetch):
     )
       throw new Error('HTTPS destination without URL credentials, query or fragment required');
     const fields = object(spec.arguments);
+    if (method === 'GET' && Object.keys(fields).length) throw new Error('GET actions accept no guest arguments');
     if (
       Object.entries(fields).some(
         ([key, type]) =>
@@ -77,11 +80,11 @@ export function parseToolConfiguration(raw: string, send: typeof fetch = fetch):
       async execute(args) {
         if (!validate(args)) throw new Error('Invalid action arguments');
         const response = await send(url, {
-          method: 'POST',
+          method,
           redirect: 'error',
           signal: AbortSignal.timeout(10_000),
           headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
-          body: JSON.stringify(args),
+          body: method === 'POST' ? JSON.stringify(args) : undefined,
         });
         await response.body?.cancel();
         if (!response.ok) throw new Error('Upstream action failed');

@@ -1,6 +1,8 @@
 name: CI
 
 on:
+  push:
+    branches: [main]
   pull_request:
     branches: [main]
 
@@ -64,3 +66,34 @@ jobs:
       - name: Container tests
         working-directory: container/agent-runner
         run: bun run test
+
+  github-tool-api-proof:
+    name: Real GitHub tool API proof
+    needs: ci
+    if: github.repository == 'aviatam/area51' && (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      checks: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Verify session-broker decisions against real GitHub API
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          AREA51_TEST_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: node --import tsx scripts/github-tool-api-proof.ts
+      - name: Upload upstream observations
+        uses: actions/upload-artifact@v4
+        with:
+          name: github-tool-api-proof-${{ github.run_id }}
+          path: .area51/diagnostics/github-tool-api-proof.json
+          if-no-files-found: error
