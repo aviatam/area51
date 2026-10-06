@@ -19,6 +19,7 @@ import { startHostModules, stopHostModules } from './host-lifecycle.js';
 import { routeInbound } from './router.js';
 import { log } from './log.js';
 import { enforceUpgradeTripwire } from './upgrade-state.js';
+import { enforceRecoveryGate } from './recovery-gate.js';
 
 // Response registry lives in response-registry.ts to break the
 // circular import cycle: src/index.ts imports src/modules/index.js for side
@@ -62,6 +63,7 @@ import {
 } from './channels/channel-registry.js';
 
 async function main(): Promise<void> {
+  enforceRecoveryGate(process.cwd());
   log.info('Area51 starting');
 
   // 0. Circuit breaker — backoff on rapid restarts

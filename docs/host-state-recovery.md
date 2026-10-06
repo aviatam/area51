@@ -51,9 +51,20 @@ node --import tsx scripts/recovery-snapshot.ts restore \
 Restore refuses an existing destination, verifies the complete payload before
 creating staging, and never overwrites a live install. An error may leave an
 incomplete staging directory; do not activate it. Successful restore writes
-`RESTORED.json` with `activationAllowed: false`. That flag is informational;
-the current host does not enforce it. Staging must remain disconnected from
-channels, guests and external tools until an operator completes reconciliation.
+`RESTORED.json` with `activationAllowed: false`. Restore also writes
+`install/data/recovery-hold.json` BEFORE copying state. The current host refuses
+startup whenever that hold exists, even if it is corrupt or edited to claim
+activation is allowed. It also detects the parent `RESTORED.json` of older
+staging restores. Partial restores stay held. Copying the entire restored
+install elsewhere preserves its in-install hold. Restoring state alone onto
+historical code does not retrofit that code's startup gate.
+
+No automatic release command is provided. Keep channels, guests and external
+tools disabled until a separately reviewed reconciliation/activation workflow
+has resolved external effects and stale pending work. Do not delete markers to
+silence the gate or clear the upgrade marker as a substitute for reconciliation.
+Like other local service files, markers can be removed by a trusted host operator;
+this is a startup guard, not tamper protection against a privileged administrator.
 
 Restore the exact recorded code commit and its pinned dependencies separately.
 Check SQLite integrity/foreign keys, marker compatibility, permissions, mounted
@@ -74,3 +85,23 @@ migration failure, and restoration of previous/current schemas. It checks SQLite
 integrity, role/session/approval preservation and duplicate reservation denial.
 It does not boot the full historical application, restore Incus disks, exercise a
 live admin channel, or close the complete GA recovery gate.
+
+## Separate-runner disk recovery proof
+
+The hosted VM workflow exports the stopped smoke VM root disk and an attached
+custom filesystem volume separately, alongside a synthetic host-state snapshot.
+The source VM is then deleted. A different GitHub runner with a freshly initialized
+Incus daemon verifies archive hashes, imports both disks, restores host state,
+checks central SQLite integrity and durable reservations, and attempts the actual
+host entrypoint. Startup must fail at the recovery hold before database mutation
+or channel initialization. The imported VM must have no NIC before it is started;
+it must retain the root marker, provider-state fixture and pending-work database
+and must not see the private host configuration.
+
+Only synthetic fixtures are transferred. Binary transfer artifacts expire after
+one day; the small `clean-host-recovery` observation artifact remains available
+under normal CI retention. The existing 28-case report remains unchanged; this
+recovery observation is a separate schema and publication additionally requires
+the recovery job to pass. A green disk-recovery fixture is not a full production
+disaster-recovery exercise: OneCLI/gateway state, external mounts, live provider
+effects, production activation and channel reconnection still require validation.

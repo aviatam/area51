@@ -3,6 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, expect, it, vi } from 'vitest';
 import { createSnapshot, restoreSnapshot, verifySnapshot } from './recovery-snapshot.js';
+import { enforceRecoveryGate, RECOVERY_HOLD_FILE } from './recovery-gate.js';
 
 const dirs: string[] = [];
 afterEach(() => {
@@ -91,6 +92,28 @@ it('does not restore an incomplete interrupted snapshot', () => {
   const r = f.create();
   fs.unlinkSync(path.join(f.options.output, 'COMPLETE'));
   expect(() => restoreSnapshot(f.options.output, r.manifestSha256, path.join(f.dir, 'restore'))).toThrow();
+});
+it('installs the hold before a restore copy failure can leave partial state', () => {
+  const f = fixture();
+  const r = f.create();
+  const stage = path.join(f.dir, 'partial-restore');
+  vi.spyOn(fs, 'copyFileSync').mockImplementation(() => {
+    throw new Error('Injected copy failure');
+  });
+  expect(() => restoreSnapshot(f.options.output, r.manifestSha256, stage)).toThrow('Injected copy failure');
+  expect(() => enforceRecoveryGate(path.join(stage, 'install'))).toThrow('Restored installation is held');
+});
+it('does not inherit an old hold marker when restoring a held snapshot again', () => {
+  const f = fixture();
+  fs.writeFileSync(path.join(f.install, 'data', RECOVERY_HOLD_FILE), '{"activationAllowed":true}');
+  const r = f.create();
+  const stage = path.join(f.dir, 'held-restore');
+  restoreSnapshot(f.options.output, r.manifestSha256, stage);
+  expect(JSON.parse(fs.readFileSync(path.join(stage, 'install', 'data', RECOVERY_HOLD_FILE), 'utf8'))).toMatchObject({
+    activationAllowed: false,
+    manifestSha256: r.manifestSha256,
+  });
+  expect(() => enforceRecoveryGate(path.join(stage, 'install'))).toThrow('Restored installation is held');
 });
 it('does not mark a snapshot complete when source state changes during capture', () => {
   const f = fixture();
