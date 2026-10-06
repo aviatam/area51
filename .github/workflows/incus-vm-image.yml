@@ -8,8 +8,13 @@ on:
       - scripts/incus-vm-containment-e2e.ts
       - scripts/active-agent-probe.ts
       - scripts/tool-broker-vm-fixture.ts
+      - scripts/session-tool-vm-proof.ts
       - src/tool-action-broker.ts
       - src/tool-action-http.ts
+      - src/tool-action-config.ts
+      - src/session-tool-actions.ts
+      - src/modules/tool-actions/**
+      - src/modules/approvals/**
       - scripts/vm-probe-server.ts
       - scripts/release-acceptance-report.ts
       - scripts/verify-release-acceptance.ts
@@ -24,8 +29,13 @@ on:
       - scripts/incus-vm-containment-e2e.ts
       - scripts/active-agent-probe.ts
       - scripts/tool-broker-vm-fixture.ts
+      - scripts/session-tool-vm-proof.ts
       - src/tool-action-broker.ts
       - src/tool-action-http.ts
+      - src/tool-action-config.ts
+      - src/session-tool-actions.ts
+      - src/modules/tool-actions/**
+      - src/modules/approvals/**
       - scripts/active-agent-probe.test.ts
       - scripts/tool-broker-vm-fixture.test.ts
       - scripts/vm-probe-server.ts

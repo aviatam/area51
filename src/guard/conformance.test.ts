@@ -21,10 +21,15 @@ import '../cli/dispatch.js'; // registers the cli_command approval handler
 
 import { commandGuard, listCommands } from '../cli/registry.js';
 import { getApprovalHandler } from '../modules/approvals/primitive.js';
+import { getDeliveryAction } from '../delivery.js';
 import { defineGuardedAction, listGuardedActions } from './guard-actions.js';
 import { HOLD } from './types.js';
 
 describe('guard conformance', () => {
+  it('production module barrel installs both session tool dispatch and its approval continuation', () => {
+    expect(getDeliveryAction('tool_action')).toBeDefined();
+    expect(getApprovalHandler('tool_action')).toBeDefined();
+  });
   it('every holding action pairs with a registered approval handler', () => {
     const holding = listGuardedActions().filter((spec) => spec.grantActionName);
     expect(holding.length).toBeGreaterThan(0);
