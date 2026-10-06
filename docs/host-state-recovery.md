@@ -105,3 +105,9 @@ recovery observation is a separate schema and publication additionally requires
 the recovery job to pass. A green disk-recovery fixture is not a full production
 disaster-recovery exercise: OneCLI/gateway state, external mounts, live provider
 effects, production activation and channel reconnection still require validation.
+
+The first export exercise hit an Incus guest shutdown timeout. The fixture uses
+guest-initiated systemd poweroff after flushing writes and requires actual
+`Stopped` state before export; it never force-stops a running guest to claim a
+consistent backup. The observation records the shutdown transport. This does
+not resolve the underlying Incus ACPI shutdown reliability issue.

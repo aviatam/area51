@@ -28,3 +28,12 @@ it('does not rebuild the guest image on the clean restore runner', () => {
     true,
   );
 });
+it('attaches the separately backed-up volume before boot and requires guest shutdown before export', () => {
+  const boot = workflow.jobs['vm-image'].steps.find((step: any) => step.name === 'Boot and verify baked runtime').run;
+  expect(boot.indexOf('recovery-state disk')).toBeLessThan(boot.indexOf('incus start'));
+  const source = fs.readFileSync(new URL('./clean-host-recovery-proof.ts', import.meta.url), 'utf8');
+  expect(source).toContain('await stopFromGuest(vm)');
+  expect(source).toContain('systemctl poweroff');
+  expect(source).toContain('refusing backup');
+  expect(source).not.toContain("incus(['stop', vm");
+});

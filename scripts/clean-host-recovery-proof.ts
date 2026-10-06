@@ -37,27 +37,27 @@ async function ready(instance: string) {
   }
   throw new Error('Recovered guest did not become ready');
 }
+async function stopFromGuest(instance: string) {
+  // The hosted VM's ACPI stop path can time out. A guest-initiated, flushed
+  // systemd shutdown must actually reach Stopped; never force a backup through.
+  incus(['exec', instance, '--', 'sh', '-c', 'nohup sh -c "sleep 1; sync; systemctl poweroff" >/dev/null 2>&1 &']);
+  for (let n = 0; n < 90; n++) {
+    const state = JSON.parse(incus(['list', instance, '--format', 'json']));
+    assert.equal(state.length, 1);
+    if (state[0].status === 'Stopped') return;
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+  }
+  throw new Error('Guest-initiated shutdown did not reach Stopped; refusing backup');
+}
 
 if (mode === 'export') {
   const vm = `area51-vm-image-smoke-${runId}`;
   const info = JSON.parse(incus(['list', vm, '--format', 'json']));
   assert.equal(info.length, 1);
   assert.equal(info[0].type, 'virtual-machine');
-  incus(['stop', vm, '--timeout', '120']);
-  incus(['storage', 'volume', 'create', 'default', volume, 'size=256MiB']);
-  incus([
-    'config',
-    'device',
-    'add',
-    vm,
-    'recovery-state',
-    'disk',
-    `source=${volume}`,
-    'pool=default',
-    'path=/workspace/recovery-proof',
-  ]);
-  incus(['start', vm]);
-  await ready(vm);
+  const attached = JSON.parse(incus(['config', 'show', vm, '--expanded', '--format', 'json'])).devices;
+  assert.equal(attached['recovery-state'].source, volume);
+  assert.equal(attached['recovery-state'].path, '/workspace/recovery-proof');
   const seed = `
     import fs from 'node:fs'; import { Database } from 'bun:sqlite';
     fs.writeFileSync('/etc/area51/recovery-root-marker','synthetic-root-disk-preserved');
@@ -68,7 +68,7 @@ if (mode === 'export') {
     console.log('synthetic-recovery-state-seeded');
   `;
   assert.equal(incus(['exec', vm, '--', 'bun', '-e', seed]).trim(), 'synthetic-recovery-state-seeded');
-  incus(['stop', vm, '--timeout', '120']);
+  await stopFromGuest(vm);
   // The exported VM is networkless. Do not export permissive image NICs.
   incus(['config', 'device', 'add', vm, 'eth0', 'none']);
   const devices = JSON.parse(incus(['config', 'show', vm, '--expanded', '--format', 'json'])).devices;
@@ -122,6 +122,7 @@ if (mode === 'export') {
         files,
         syntheticData: true,
         networklessExport: true,
+        shutdownTransport: 'guest-systemd-poweroff',
       },
       null,
       2,
@@ -220,6 +221,7 @@ if (mode === 'export') {
       external_provider_effects_reconciled: false,
       production_activation_tested: false,
       synthetic_data: true,
+      source_shutdown_transport: bundle.shutdownTransport,
     };
     fs.mkdirSync('.area51/diagnostics', { recursive: true });
     fs.writeFileSync('.area51/diagnostics/clean-host-recovery.json', JSON.stringify(report, null, 2) + '\n');

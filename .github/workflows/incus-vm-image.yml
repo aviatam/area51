@@ -130,7 +130,11 @@ jobs:
           AREA51_INCUS_VM_IMAGE_ALIAS: area51-agent-v2-vm-ci-${{ github.run_id }}
         run: |
           instance="area51-vm-image-smoke-${{ github.run_id }}"
-          incus launch "local:${AREA51_INCUS_VM_IMAGE_ALIAS}" "$instance" --vm
+          incus init "local:${AREA51_INCUS_VM_IMAGE_ALIAS}" "$instance" --vm
+          volume="area51-recovery-state-${{ github.run_id }}"
+          incus storage volume create default "$volume" size=256MiB
+          incus config device add "$instance" recovery-state disk source="$volume" pool=default path=/workspace/recovery-proof
+          incus start "$instance"
           ready=false
           for _ in $(seq 1 90); do
             if incus exec "$instance" -- true >/dev/null 2>&1; then
