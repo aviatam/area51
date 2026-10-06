@@ -39,6 +39,16 @@ jobs:
       - name: Host tests
         run: pnpm exec vitest run
 
+      - name: Populated host-state recovery proof
+        run: node --import tsx scripts/host-state-recovery-proof.ts
+
+      - name: Upload host-state recovery evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: host-state-recovery-proof-${{ github.run_id }}
+          path: .area51/diagnostics/host-state-recovery-proof.json
+          if-no-files-found: error
+
       - name: Governed bundle deployment
         run: |
           pnpm exec vitest --config vitest.skills.config.ts run .claude/skills/governed-escalation-demo/tests/*.test.ts
