@@ -10,7 +10,7 @@ afterEach(() => {
   for (const dir of dirs.splice(0)) fs.rmSync(dir, { recursive: true, force: true });
 });
 function fixture() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'area51-recovery-'));
+  const dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'area51-recovery-')));
   dirs.push(dir);
   const install = path.join(dir, 'install');
   const hostConfig = path.join(dir, 'config');
