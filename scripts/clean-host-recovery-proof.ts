@@ -7,6 +7,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import Database from 'better-sqlite3';
+import { parse as parseYaml } from 'yaml';
 import { getRegisteredMigrations, runMigrations } from '../src/db/migrations/index.js';
 import '../src/modules/index.js';
 import { createSnapshot, restoreSnapshot } from '../src/recovery-snapshot.js';
@@ -55,7 +56,7 @@ if (mode === 'export') {
   const info = JSON.parse(incus(['list', vm, '--format', 'json']));
   assert.equal(info.length, 1);
   assert.equal(info[0].type, 'virtual-machine');
-  const attached = JSON.parse(incus(['config', 'show', vm, '--expanded', '--format', 'json'])).devices;
+  const attached = parseYaml(incus(['config', 'show', vm, '--expanded'])).devices;
   assert.equal(attached['recovery-state'].source, volume);
   assert.equal(attached['recovery-state'].path, '/workspace/recovery-proof');
   const seed = `
@@ -71,7 +72,7 @@ if (mode === 'export') {
   await stopFromGuest(vm);
   // The exported VM is networkless. Do not export permissive image NICs.
   incus(['config', 'device', 'add', vm, 'eth0', 'none']);
-  const devices = JSON.parse(incus(['config', 'show', vm, '--expanded', '--format', 'json'])).devices;
+  const devices = parseYaml(incus(['config', 'show', vm, '--expanded'])).devices;
   assert(!Object.values(devices).some((device: any) => device.type === 'nic'));
   fs.mkdirSync(path.dirname(bundleDir), { recursive: true });
   fs.mkdirSync(bundleDir, { mode: 0o700 });
@@ -183,7 +184,7 @@ if (mode === 'export') {
     const before = JSON.parse(incus(['list', restoredVm, '--format', 'json']));
     assert.equal(before.length, 1);
     assert.equal(before[0].status, 'Stopped');
-    const devices = JSON.parse(incus(['config', 'show', restoredVm, '--expanded', '--format', 'json'])).devices;
+    const devices = parseYaml(incus(['config', 'show', restoredVm, '--expanded'])).devices;
     assert(!Object.values(devices).some((device: any) => device.type === 'nic'), 'Restored VM has a network device');
     incus(['start', restoredVm]);
     await ready(restoredVm);

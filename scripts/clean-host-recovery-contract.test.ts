@@ -37,3 +37,8 @@ it('attaches the separately backed-up volume before boot and requires guest shut
   expect(source).toContain('refusing backup');
   expect(source).not.toContain("incus(['stop', vm");
 });
+it('parses expanded configuration as YAML without an unsupported format flag', () => {
+  const source = fs.readFileSync(new URL('./clean-host-recovery-proof.ts', import.meta.url), 'utf8');
+  expect(source.match(/parseYaml\(incus\(\['config', 'show', .* '--expanded'\]\)\)/g)).toHaveLength(3);
+  expect(source).not.toContain("'--expanded', '--format'");
+});
