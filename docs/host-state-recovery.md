@@ -111,3 +111,12 @@ guest-initiated systemd poweroff after flushing writes and requires actual
 `Stopped` state before export; it never force-stops a running guest to claim a
 consistent backup. The observation records the shutdown transport. This does
 not resolve the underlying Incus ACPI shutdown reliability issue.
+
+The containment rerun also observed an acknowledged VM start followed by a
+stopped instance and an Incus managed-disk `device or resource busy` error.
+Bootstrap provisioning permits at most two stopped-VM recovery starts per
+command, within the existing retry deadline, rather than waiting after one
+ineffective start. Persistent failure still aborts provisioning. This applies
+only to bootstrap file/exec operations, not business-action retries or release
+of a recovery hold. It is a bounded mitigation, not proof that the underlying
+Incus device-cleanup problem is resolved; native acceptance must pass again.
