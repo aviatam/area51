@@ -2,6 +2,7 @@
 import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import { RECOVERY_HOLD_FILE } from './recovery-gate.js';
 
 type Entry = { path: string; kind: 'directory' | 'file'; size: number; sha256: string; executable: boolean };
 export interface SnapshotManifest {
@@ -216,7 +217,24 @@ export function restoreSnapshot(snapshot: string, expectedDigest: string, destin
     throw new Error('Incomplete snapshot');
   const manifest = verifySnapshot(base, expectedDigest);
   const target = newDestination(destination, [base]);
-  copy(manifest.entries, (entry) => path.join(base, 'payload', entry.path), target);
+  // Install the hold BEFORE copying state. Even a partial restore cannot boot.
+  const holdPath = path.join(target, 'install', 'data', RECOVERY_HOLD_FILE);
+  fs.mkdirSync(path.dirname(holdPath), { recursive: true, mode: 0o700 });
+  fs.writeFileSync(
+    holdPath,
+    JSON.stringify({
+      schema: 'area51.recovery-hold.v1',
+      commit: manifest.commit,
+      manifestSha256: expectedDigest,
+      activationAllowed: false,
+    }) + '\n',
+    { flag: 'wx', mode: 0o600 },
+  );
+  copy(
+    manifest.entries.filter((entry) => entry.path !== `install/data/${RECOVERY_HOLD_FILE}`),
+    (entry) => path.join(base, 'payload', entry.path),
+    target,
+  );
   fs.writeFileSync(
     path.join(target, 'RESTORED.json'),
     JSON.stringify(

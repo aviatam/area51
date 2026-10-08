@@ -3,8 +3,10 @@
 The [offline host-state recovery utility](host-state-recovery.md) adds verified
 snapshots and non-overwriting staging restore. Its CI proof covers a populated
 SQLite migration boundary and previous/current schema recovery. This is partial
-recovery evidence: runtime disks, external state, historical code boot and safe
-live activation are not covered, so the complete recovery gate remains open.
+recovery evidence. The separate-runner VM proof adds root/custom-disk transfer
+and enforced startup hold checks, but external state, historical code boot and
+safe live activation remain outside that fixture. The complete recovery gate
+remains open until those end-to-end requirements are verified.
 
 Area51 is not declared GA by passing its containment suite. GA requires a
 reviewed release candidate and the gates below. Each result must identify the

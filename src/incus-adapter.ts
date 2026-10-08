@@ -364,7 +364,9 @@ function runCommands(
   const results: IncusCommandResult[] = [];
   for (const argv of commands) {
     const maxAttempts = Math.max(1, options.vmAgentRetryAttempts ?? 60);
-    let startedStoppedVm = false;
+    // Incus can acknowledge a start before asynchronous device setup fails.
+    // Permit one further bootstrap-only recovery, never an unbounded restart.
+    let stoppedVmStarts = 0;
     let restartedVsockVm = false;
     for (let attempt = 1; ; attempt += 1) {
       try {
@@ -373,7 +375,7 @@ function runCommands(
         break;
       } catch (error) {
         const vsockUnavailable = isVmVsockUnavailable(error);
-        const recoveryAvailable = vsockUnavailable ? !restartedVsockVm : !startedStoppedVm;
+        const recoveryAvailable = vsockUnavailable ? !restartedVsockVm : stoppedVmStarts < 2;
         if (provisioningVm && isVmProcessUnavailable(argv, error) && recoveryAvailable && attempt < maxAttempts) {
           const restart = vsockUnavailable
             ? ['restart', provisioningVm.instance, '--force', '--project', provisioningVm.project]
@@ -393,7 +395,7 @@ function runCommands(
             }
           }
           if (vsockUnavailable) restartedVsockVm = true;
-          else startedStoppedVm = true;
+          else stoppedVmStarts += 1;
           sleepSync(Math.max(0, options.vmAgentRetryDelayMs ?? 2000));
           continue;
         }

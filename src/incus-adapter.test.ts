@@ -464,6 +464,36 @@ describe('Incus adapter', () => {
     }
   });
 
+  it.each([false, true])(
+    'bounds recovery when acknowledged VM starts leave it stopped (persistent=%s)',
+    (persistent) => {
+      const root = fs.mkdtempSync(path.join(os.tmpdir(), 'area51-vm-async-start-'));
+      try {
+        const source = path.join(root, 'bootstrap.txt');
+        fs.writeFileSync(source, 'bootstrap');
+        let starts = 0;
+        const executor = vi.fn((argv: string[]) => {
+          if (argv[0] === 'start') starts += 1;
+          if (argv[0] === 'file' && argv[1] === 'push' && (persistent || starts < 3)) {
+            throw new Error('Failed getting instance SFTP connection: Instance is not running');
+          }
+        });
+        const plan = { ...vmPlan(), vmFiles: [{ source, path: '/run/area51/bootstrap.txt', readonly: true as const }] };
+        const provision = () =>
+          applyIncusRuntimePlan(plan, { executor, vmAgentRetryAttempts: 5, vmAgentRetryDelayMs: 0 });
+        if (persistent) expect(provision).toThrow('Incus command failed');
+        else expect(provision().commands.every((command) => command.ok)).toBe(true);
+        expect(starts).toBe(3); // Initial start plus at most two bootstrap recovery starts.
+        expect(executor.mock.calls.filter(([argv]) => argv[0] === 'restart')).toHaveLength(0);
+        expect(executor.mock.calls.filter(([argv]) => argv[0] === 'file' && argv[1] === 'push')).toHaveLength(
+          persistent ? 5 : 3,
+        );
+      } finally {
+        fs.rmSync(root, { recursive: true, force: true });
+      }
+    },
+  );
+
   it('force-restarts a provisioning VM after its vsock process disappears', () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'area51-vm-vsock-'));
     try {
