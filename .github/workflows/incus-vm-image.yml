@@ -10,6 +10,7 @@ on:
       - scripts/tool-broker-vm-fixture.ts
       - scripts/session-tool-vm-proof.ts
       - scripts/clean-host-recovery-proof.ts
+      - scripts/prepare-ci-apt.sh
       - src/recovery-gate.ts
       - src/recovery-snapshot.ts
       - src/index.ts
@@ -35,6 +36,7 @@ on:
       - scripts/tool-broker-vm-fixture.ts
       - scripts/session-tool-vm-proof.ts
       - scripts/clean-host-recovery-proof.ts
+      - scripts/prepare-ci-apt.sh
       - src/recovery-gate.ts
       - src/recovery-snapshot.ts
       - src/index.ts
@@ -92,6 +94,7 @@ jobs:
           test -w /dev/kvm
       - name: Install and initialize Incus
         run: |
+          bash scripts/prepare-ci-apt.sh
           key_file="$(mktemp)"
           curl -fsSL https://pkgs.zabbly.com/key.asc -o "$key_file"
           gpg --show-keys --with-colons "$key_file" | grep -q '^fpr:::::::::4EFC590696CB15B87C73A3AD82CC8797C838DCFD:'
@@ -285,6 +288,7 @@ jobs:
           test -w /dev/kvm
       - name: Install and initialize Incus
         run: |
+          bash scripts/prepare-ci-apt.sh
           key_file="$(mktemp)"
           curl -fsSL https://pkgs.zabbly.com/key.asc -o "$key_file"
           gpg --show-keys --with-colons "$key_file" | grep -q '^fpr:::::::::4EFC590696CB15B87C73A3AD82CC8797C838DCFD:'
@@ -338,6 +342,9 @@ jobs:
       AREA51_REEXEC_SG: '1'
       AREA51_SKIP: environment,container,onecli,auth,mounts,service,cli-agent,timezone,channel,verify,first-chat
     steps:
+      - uses: actions/checkout@v7.0.1
+      - name: Prepare disposable runner package downloads
+        run: bash scripts/prepare-ci-apt.sh
       - name: Verify disposable KVM host
         run: |
           test "$(id -u)" -ne 0

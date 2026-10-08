@@ -3,6 +3,17 @@ import { expect, it } from 'vitest';
 import { parse } from 'yaml';
 
 const workflow = parse(fs.readFileSync(new URL('../.github/workflows/incus-vm-image.yml', import.meta.url), 'utf8'));
+it('prepares bounded HTTPS package downloads on every disposable native runner', () => {
+  for (const name of ['vm-image', 'clean-host-recovery', 'linux-installer']) {
+    const steps = workflow.jobs[name].steps;
+    const setup = steps.findIndex((step: any) => step.run?.includes('bash scripts/prepare-ci-apt.sh'));
+    expect(setup).toBeGreaterThanOrEqual(0);
+    const checkout = steps.findIndex((step: any) => step.uses?.startsWith('actions/checkout@'));
+    expect(checkout).toBeLessThan(setup);
+    const installer = steps.findIndex((step: any) => step.name === 'Run candidate one-command installer');
+    if (name === 'linux-installer') expect(setup).toBeLessThan(installer);
+  }
+});
 it('requires a distinct dependent runner for recovery and gates report publication on it', () => {
   expect(workflow.jobs['clean-host-recovery'].needs).toBe('vm-image');
   expect(workflow.jobs['clean-host-recovery']['runs-on']).toBe('ubuntu-latest');
