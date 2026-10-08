@@ -112,6 +112,35 @@ guest-initiated systemd poweroff after flushing writes and requires actual
 consistent backup. The observation records the shutdown transport. This does
 not resolve the underlying Incus ACPI shutdown reliability issue.
 
+## Offline preparation for reconciliation
+
+With services and guests still stopped, run from the checked-out candidate code:
+
+```sh
+node --import tsx scripts/recovery-reconciliation.ts prepare /absolute/RESTORED_STAGING --offline
+```
+
+This requires a complete staged restore with matching private hold/provenance
+files and a private regular central database. It checks database integrity, then
+atomically records restored approval IDs/actions and deletes all restored
+approval rows. Previously sent cards no longer have an approval row to claim.
+The original verified snapshot retains the pre-invalidation database. Detailed
+identifiers remain in the private database's `recovery_preparation.report_json`;
+the command prints counts only. An interrupted transaction rolls back both the
+audit and invalidation. Repeating preparation returns the same report; new
+approval rows appearing afterwards cause refusal and require investigation.
+
+The report lists reservations as uncertain, not completed writes. It explicitly
+records absent reservation ledgers on older schemas. Preserve reservations and
+compare the snapshot boundary with upstream audit logs, including writes after
+capture that cannot appear in the restored database. Inventory and reconcile
+each session queue, scheduled task, provider/gateway state and external runtime
+asset separately. Preparation changes neither sessions nor those work queues.
+It performs no network requests, business-action retries or activation, and
+does not mark external effects reconciled. Both startup hold markers remain.
+There is intentionally no release command: a reviewed, complete reconciliation
+and activation procedure is still required before reconnecting production.
+
 The containment rerun also observed an acknowledged VM start followed by a
 stopped instance and an Incus managed-disk `device or resource busy` error.
 Bootstrap provisioning permits at most two stopped-VM recovery starts per

@@ -8,6 +8,8 @@ import Database from 'better-sqlite3';
 import { getRegisteredMigrations, runMigrations } from '../src/db/migrations/index.js';
 import '../src/modules/tool-actions/index.js';
 import { createSnapshot, restoreSnapshot } from '../src/recovery-snapshot.js';
+import { prepareRestoredState } from '../src/recovery-reconciliation.js';
+import { enforceRecoveryGate } from '../src/recovery-gate.js';
 
 const work = fs.mkdtempSync(path.join(os.tmpdir(), 'area51-state-proof-'));
 const install = path.join(work, 'install');
@@ -136,6 +138,39 @@ assert.equal(
   '{"token":"synthetic-private-token"}',
 );
 const sha = process.env.GITHUB_SHA ?? 'local';
+const staging = path.join(work, 'recovered');
+assert.throws(() => prepareRestoredState(staging, false), /offline acknowledgement/);
+// An injected invalidation failure must roll back the durable audit AND deletion.
+db = new Database(path.join(staging, 'install', 'data', 'v2.db'));
+db.exec(
+  "CREATE TRIGGER fail_invalidation BEFORE DELETE ON pending_approvals BEGIN SELECT RAISE(ABORT, 'injected invalidation failure'); END",
+);
+db.close();
+assert.throws(() => prepareRestoredState(staging, true), /injected invalidation failure/);
+db = new Database(path.join(staging, 'install', 'data', 'v2.db'));
+assert.equal((db.prepare('SELECT COUNT(*) AS n FROM pending_approvals').get() as { n: number }).n, 1);
+assert.equal(db.prepare("SELECT name FROM sqlite_master WHERE name='recovery_preparation'").get(), undefined);
+db.exec('DROP TRIGGER fail_invalidation');
+db.close();
+const preparation = prepareRestoredState(staging, true);
+assert.equal(preparation.invalidatedApprovals.length, 1);
+assert.equal(preparation.uncertainReservations.length, 1);
+assert.equal(preparation.activationAllowed, false);
+assert.equal(preparation.externalEffectsReconciled, false);
+assert.deepEqual(prepareRestoredState(staging, true), preparation);
+assert.throws(() => enforceRecoveryGate(path.join(staging, 'install')), /Restored installation is held/);
+db = new Database(path.join(staging, 'install', 'data', 'v2.db'));
+assert.equal((db.prepare('SELECT COUNT(*) AS n FROM pending_approvals').get() as { n: number }).n, 0);
+assert.equal((db.prepare('SELECT COUNT(*) AS n FROM tool_action_requests').get() as { n: number }).n, 1);
+assert.deepEqual(db.prepare('SELECT status FROM sessions').all(), [{ status: 'active' }]);
+db.exec(
+  "INSERT INTO pending_approvals (approval_id,session_id,request_id,action,payload,created_at) VALUES ('new','session','new','tool_action','{}','2026-01-02')",
+);
+db.close();
+assert.throws(() => prepareRestoredState(staging, true), /Approvals appeared/);
+const olderPreparation = prepareRestoredState(path.join(work, 'rollback'), true);
+assert.equal(olderPreparation.reservationLedgerPresent, false);
+assert.equal(olderPreparation.postSnapshotEffectsKnown, false);
 const report = {
   schema: 'area51.host_state_recovery_proof.v1',
   tested_commit: sha,
@@ -152,6 +187,12 @@ const report = {
   database_integrity_verified: true,
   durable_request_reservations_preserved: true,
   private_configuration_preserved: true,
+  restored_approvals_invalidated_with_durable_audit: true,
+  preparation_failure_transaction_rolled_back: true,
+  repeated_preparation_idempotent: true,
+  new_approval_after_preparation_refused: true,
+  preparation_preserved_reservations_sessions_and_hold: true,
+  older_missing_reservation_ledger_explicit: true,
   activation_allowed: false,
   incus_disks_restored: false,
   external_writes_reconciled: false,
