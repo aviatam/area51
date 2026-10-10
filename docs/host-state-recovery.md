@@ -106,6 +106,24 @@ the recovery job to pass. A green disk-recovery fixture is not a full production
 disaster-recovery exercise: OneCLI/gateway state, external mounts, live provider
 effects, production activation and channel reconnection still require validation.
 
+The v2 transfer and observation schemas retain hashed machine IDs as diagnostic
+data, not as the distinct-runner gate. A merged-main run failed that older gate
+because both jobs reported the same machine ID. Equal image-carried IDs alone
+cannot establish runner reuse. The new gate requires GitHub-hosted execution in
+the exact source/restore job roles, different kernel boot-ID hashes and different
+hostname hashes. Missing/malformed observations or the same boot/hostname fail
+closed. The distinct dependent `ubuntu-latest` jobs and fresh empty Incus check
+remain required. Older v1 bundles are rejected; create a fresh v2 bundle.
+
+These observations distinguish runner boot instances under the trusted workflow
+and GitHub's hosted-runner contract; they are not hardware attestation. A rebooted
+or renamed self-hosted machine is not qualified by this fixture. GitHub documents
+new VMs for standard hosted runners, but also warns that nested virtualization
+is experimental and unsupported. A production hardware pilot remains required.
+References: [GitHub hosted runners](https://docs.github.com/en/actions/concepts/runners/github-hosted-runners),
+[runner variables](https://docs.github.com/en/actions/reference/workflows-and-actions/variables),
+and [kernel boot IDs](https://www.kernel.org/doc/html/latest/admin-guide/sysctl/kernel.html#random).
+
 The first export exercise hit an Incus guest shutdown timeout. The fixture uses
 guest-initiated systemd poweroff after flushing writes and requires actual
 `Stopped` state before export; it never force-stops a running guest to claim a

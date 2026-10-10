@@ -3,6 +3,15 @@ import { expect, it } from 'vitest';
 import { parse } from 'yaml';
 
 const workflow = parse(fs.readFileSync(new URL('../.github/workflows/incus-vm-image.yml', import.meta.url), 'utf8'));
+it('requires v2 runner identity checks before disk import without dropping fresh-Incus checks', () => {
+  const source = fs.readFileSync(new URL('./clean-host-recovery-proof.ts', import.meta.url), 'utf8');
+  expect(source).toContain("assert.equal(bundle.schema, 'area51.clean_host_bundle.v2')");
+  expect(source.indexOf('assertSeparateRecoveryRunners(bundle.sourceRunnerIdentity, runnerIdentity)')).toBeLessThan(
+    source.indexOf("incus(['import'"),
+  );
+  expect(source).toContain("assert.deepEqual(JSON.parse(incus(['list', '--format', 'json'])), [])");
+  expect(source).not.toContain('assert.notEqual(bundle.sourceMachine');
+});
 it('prepares bounded HTTPS package downloads on every disposable native runner', () => {
   for (const name of ['vm-image', 'clean-host-recovery', 'linux-installer']) {
     const steps = workflow.jobs[name].steps;

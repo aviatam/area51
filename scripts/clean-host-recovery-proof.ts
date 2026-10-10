@@ -12,6 +12,7 @@ import { getRegisteredMigrations, runMigrations } from '../src/db/migrations/ind
 import '../src/modules/index.js';
 import { createSnapshot, restoreSnapshot } from '../src/recovery-snapshot.js';
 import { enforceRecoveryGate } from '../src/recovery-gate.js';
+import { assertSeparateRecoveryRunners, identifyRecoveryRunner } from './recovery-runner-identity.js';
 
 const runId = process.env.GITHUB_RUN_ID;
 assert(runId && /^\d+$/.test(runId), 'Only a disposable GitHub runner may run this proof');
@@ -24,7 +25,13 @@ const volume = `area51-recovery-state-${runId}`;
 const restoredVm = `area51-restored-${runId}`;
 const incus = (args: string[]) =>
   execFileSync('incus', args, { encoding: 'utf8', timeout: 300_000, maxBuffer: 8 * 1024 * 1024 });
-const machineId = () => createHash('sha256').update(fs.readFileSync('/etc/machine-id')).digest('hex');
+const runnerIdentity = identifyRecoveryRunner({
+  machineId: fs.readFileSync('/etc/machine-id', 'utf8'),
+  bootId: fs.readFileSync('/proc/sys/kernel/random/boot_id', 'utf8'),
+  hostname: os.hostname(),
+  environment: process.env.RUNNER_ENVIRONMENT,
+  job: process.env.GITHUB_JOB,
+});
 async function hash(file: string) {
   const digest = createHash('sha256');
   for await (const chunk of fs.createReadStream(file)) digest.update(chunk);
@@ -52,6 +59,7 @@ async function stopFromGuest(instance: string) {
 }
 
 if (mode === 'export') {
+  assert.equal(runnerIdentity.job, 'vm-image');
   const vm = `area51-vm-image-smoke-${runId}`;
   const info = JSON.parse(incus(['list', vm, '--format', 'json']));
   assert.equal(info.length, 1);
@@ -114,9 +122,9 @@ if (mode === 'export') {
     path.join(bundleDir, 'bundle.json'),
     JSON.stringify(
       {
-        schema: 'area51.clean_host_bundle.v1',
+        schema: 'area51.clean_host_bundle.v2',
         runId,
-        sourceMachine: machineId(),
+        sourceRunnerIdentity: runnerIdentity,
         testedCommit: process.env.GITHUB_SHA,
         hostManifestSha256: snapshot.manifestSha256,
         volume,
@@ -134,12 +142,12 @@ if (mode === 'export') {
   console.log('Synthetic recovery bundle exported with root disk, custom volume and verified host state.');
 } else {
   const bundle = JSON.parse(fs.readFileSync(path.join(bundleDir, 'bundle.json'), 'utf8'));
-  assert.equal(bundle.schema, 'area51.clean_host_bundle.v1');
+  assert.equal(bundle.schema, 'area51.clean_host_bundle.v2');
   assert.equal(bundle.runId, runId);
   assert.equal(bundle.volume, volume);
   assert.equal(bundle.syntheticData, true);
   assert.equal(bundle.testedCommit, process.env.GITHUB_SHA);
-  assert.notEqual(bundle.sourceMachine, machineId(), 'Restore must run on a different host');
+  assertSeparateRecoveryRunners(bundle.sourceRunnerIdentity, runnerIdentity);
   assert.deepEqual(JSON.parse(incus(['list', '--format', 'json'])), []);
   for (const name of ['vm.tar.gz', 'volume.tar.gz'])
     assert.equal(await hash(path.join(bundleDir, name)), bundle.files[name], 'Archive integrity mismatch');
@@ -201,11 +209,15 @@ if (mode === 'export') {
     `;
     assert.equal(incus(['exec', restoredVm, '--', 'bun', '-e', verify]).trim(), 'clean-host-guest-state-verified');
     const report = {
-      schema: 'area51.clean_host_recovery.v1',
+      schema: 'area51.clean_host_recovery.v2',
       tested_commit: process.env.GITHUB_SHA,
       measured_at: new Date().toISOString(),
-      source_machine: bundle.sourceMachine,
-      target_machine: machineId(),
+      source_runner_identity: bundle.sourceRunnerIdentity,
+      target_runner_identity: runnerIdentity,
+      image_machine_id_equal: bundle.sourceRunnerIdentity.machineId === runnerIdentity.machineId,
+      distinct_boot_instances: true,
+      distinct_runner_hostnames: true,
+      physical_host_attested: false,
       separate_github_runner: true,
       original_instance_absent: true,
       archives_verified: true,

@@ -10,6 +10,8 @@ on:
       - scripts/tool-broker-vm-fixture.ts
       - scripts/session-tool-vm-proof.ts
       - scripts/clean-host-recovery-proof.ts
+      - scripts/recovery-runner-identity.ts
+      - scripts/recovery-runner-identity.test.ts
       - scripts/prepare-ci-apt.sh
       - src/recovery-gate.ts
       - src/recovery-snapshot.ts
@@ -36,6 +38,8 @@ on:
       - scripts/tool-broker-vm-fixture.ts
       - scripts/session-tool-vm-proof.ts
       - scripts/clean-host-recovery-proof.ts
+      - scripts/recovery-runner-identity.ts
+      - scripts/recovery-runner-identity.test.ts
       - scripts/prepare-ci-apt.sh
       - src/recovery-gate.ts
       - src/recovery-snapshot.ts
