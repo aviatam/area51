@@ -151,6 +151,23 @@ the command prints counts only. An interrupted transaction rolls back both the
 audit and invalidation. Repeating preparation returns the same report; new
 approval rows appearing afterwards cause refusal and require investigation.
 
+Preparation v2 binds the audit to a logical digest of all central tables/schema
+(except its own audit table), plus a private-file inventory of restored data,
+session queues/scheduled tasks, provider state, groups, store and host configuration.
+Repeating preparation refuses changed reservations, roles, sessions, schema or
+payload rather than returning an obsolete audit. It compares payload inventories
+before/after invalidation; detected changes roll back the audit and approval
+deletion. Central SQLite bytes/sidecars are excluded from the payload digest
+because its logical state is measured under the database transaction. Other
+SQLite files and their sidecars remain inventoried as bytes. All writers must
+still be stopped: these checks are drift detection, not automatic quiescence,
+tamper protection or proof of external-state reconciliation.
+
+An older v1 preparation record lacks this binding and is refused. Preserve it
+for investigation; create a new staging restore from the original verified
+snapshot, then prepare with current code. Do not delete the audit or hold to
+force a refresh. No command here releases either startup hold.
+
 The report lists reservations as uncertain, not completed writes. It explicitly
 records absent reservation ledgers on older schemas. Preserve reservations and
 compare the snapshot boundary with upstream audit logs, including writes after
