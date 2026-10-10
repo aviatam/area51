@@ -158,6 +158,16 @@ assert.equal(preparation.uncertainReservations.length, 1);
 assert.equal(preparation.activationAllowed, false);
 assert.equal(preparation.externalEffectsReconciled, false);
 assert.deepEqual(prepareRestoredState(staging, true), preparation);
+assert.match(preparation.centralStateSha256, /^[a-f0-9]{64}$/);
+assert.match(preparation.payloadStateSha256, /^[a-f0-9]{64}$/);
+const driftStaging = path.join(work, 'drift-check');
+restoreSnapshot(path.join(work, 'current'), second.manifestSha256, driftStaging);
+prepareRestoredState(driftStaging, true);
+const driftDb = new Database(path.join(driftStaging, 'install', 'data', 'v2.db'));
+driftDb.exec("INSERT INTO tool_action_requests VALUES ('session','after-preparation','2026-01-03')");
+driftDb.close();
+assert.throws(() => prepareRestoredState(driftStaging, true), /state changed/);
+assert.throws(() => enforceRecoveryGate(path.join(driftStaging, 'install')), /Restored installation is held/);
 assert.throws(() => enforceRecoveryGate(path.join(staging, 'install')), /Restored installation is held/);
 db = new Database(path.join(staging, 'install', 'data', 'v2.db'));
 assert.equal((db.prepare('SELECT COUNT(*) AS n FROM pending_approvals').get() as { n: number }).n, 0);
@@ -190,6 +200,8 @@ const report = {
   restored_approvals_invalidated_with_durable_audit: true,
   preparation_failure_transaction_rolled_back: true,
   repeated_preparation_idempotent: true,
+  preparation_state_digest_bound: true,
+  changed_reservation_after_preparation_refused: true,
   new_approval_after_preparation_refused: true,
   preparation_preserved_reservations_sessions_and_hold: true,
   older_missing_reservation_ledger_explicit: true,
