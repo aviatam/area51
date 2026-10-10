@@ -110,8 +110,11 @@ The v2 transfer and observation schemas retain hashed machine IDs as diagnostic
 data, not as the distinct-runner gate. A merged-main run failed that older gate
 because both jobs reported the same machine ID. Equal image-carried IDs alone
 cannot establish runner reuse. The new gate requires GitHub-hosted execution in
-the exact source/restore job roles, different kernel boot-ID hashes and different
-hostname hashes. Missing/malformed observations or the same boot/hostname fail
+the exact source/restore job roles and different kernel boot-ID hashes.
+Hostnames, like machine IDs, are diagnostic image-carried values: PR #50's
+first run used different GitHub worker IDs but reported matching hostnames.
+The report records actual hostname equality instead of asserting uniqueness.
+Missing/malformed observations or the same boot fail
 closed. The distinct dependent `ubuntu-latest` jobs and fresh empty Incus check
 remain required. Older v1 bundles are rejected; create a fresh v2 bundle.
 

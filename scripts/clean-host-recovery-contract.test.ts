@@ -11,6 +11,8 @@ it('requires v2 runner identity checks before disk import without dropping fresh
   );
   expect(source).toContain("assert.deepEqual(JSON.parse(incus(['list', '--format', 'json'])), [])");
   expect(source).not.toContain('assert.notEqual(bundle.sourceMachine');
+  expect(source).toContain('image_hostname_equal: bundle.sourceRunnerIdentity.hostname === runnerIdentity.hostname');
+  expect(source).not.toContain('distinct_runner_hostnames: true');
 });
 it('prepares bounded HTTPS package downloads on every disposable native runner', () => {
   for (const name of ['vm-image', 'clean-host-recovery', 'linux-installer']) {

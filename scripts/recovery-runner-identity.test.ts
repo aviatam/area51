@@ -24,10 +24,16 @@ it('rejects the same boot even after hostname and machine ID change', () => {
     assertSeparateRecoveryRunners(source, { ...target, bootId: source.bootId, machineId: 'c'.repeat(64) }),
   ).toThrow('different Linux boot');
 });
-it('rejects a different boot with the same hostname', () => {
-  expect(() => assertSeparateRecoveryRunners(source, { ...target, hostname: source.hostname })).toThrow(
-    'different runner hostname',
+it('accepts different hosted boot instances with shared image hostname and machine ID', () => {
+  expect(() => assertSeparateRecoveryRunners(source, { ...target, hostname: source.hostname })).not.toThrow();
+});
+it('rejects the same boot even when every image identifier is shared', () => {
+  expect(() => assertSeparateRecoveryRunners(source, { ...source, job: 'clean-host-recovery' })).toThrow(
+    'different Linux boot',
   );
+});
+it.each(['bootId', 'hostname', 'machineId'])('rejects malformed target %s evidence', (key) => {
+  expect(() => assertSeparateRecoveryRunners(source, { ...target, [key]: 'invalid' })).toThrow();
 });
 it.each([
   undefined,

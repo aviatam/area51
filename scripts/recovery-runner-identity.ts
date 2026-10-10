@@ -52,8 +52,7 @@ export function assertSeparateRecoveryRunners(source: unknown, target: unknown):
   validate(target);
   assert.equal(source.job, 'vm-image');
   assert.equal(target.job, 'clean-host-recovery');
-  // /etc/machine-id may be copied with the hosted image. Keep it diagnostic.
+  // Hosted images may share machine IDs and hostnames. Keep both diagnostic.
   // A different job alone, or a random token, is not sufficient evidence.
   assert.notEqual(source.bootId, target.bootId, 'Restore must use a different Linux boot instance');
-  assert.notEqual(source.hostname, target.hostname, 'Restore must use a different runner hostname');
 }
