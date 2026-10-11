@@ -100,7 +100,7 @@ function payloadStateDigest(root: string): string {
   return hash(JSON.stringify(entries));
 }
 
-export function prepareRestoredState(staging: string, offlineAcknowledged: boolean) {
+export function validateHeldRestore(staging: string, offlineAcknowledged: boolean) {
   if (!offlineAcknowledged) throw new Error('Explicit offline acknowledgement required');
   const root = path.resolve(staging);
   if (fs.realpathSync(root) !== root || root === path.parse(root).root)
@@ -131,6 +131,11 @@ export function prepareRestoredState(staging: string, offlineAcknowledged: boole
   const stat = fs.lstatSync(file);
   if (!stat.isFile() || stat.nlink !== 1 || (stat.mode & 0o077) !== 0)
     throw new Error('Private regular database required');
+  return { root, install, hold, file };
+}
+
+export function prepareRestoredState(staging: string, offlineAcknowledged: boolean) {
+  const { root, install, hold, file } = validateHeldRestore(staging, offlineAcknowledged);
   const db = new Database(file, { fileMustExist: true });
   try {
     db.pragma('foreign_keys=ON');

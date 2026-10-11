@@ -2,10 +2,11 @@ name: Historical Rollback Proof
 
 on:
   push:
-    branches: [main]
+    branches: [main, 'fix/recovery-*']
     paths:
       - .github/workflows/historical-rollback.yml
       - scripts/historical-rollback-proof.ts
+      - scripts/recovery-reservations.ts
       - src/recovery-*.ts
       - src/db/**
       - src/index.ts
@@ -16,6 +17,7 @@ on:
     paths:
       - .github/workflows/historical-rollback.yml
       - scripts/historical-rollback-proof.ts
+      - scripts/recovery-reservations.ts
       - src/recovery-*.ts
       - src/db/**
       - src/index.ts
@@ -49,9 +51,13 @@ jobs:
         run: pnpm --dir "$RUNNER_TEMP/area51-historical" install --frozen-lockfile
       - name: Prove code and populated-state rollback with held historical startup
         run: node --import tsx scripts/historical-rollback-proof.ts "$RUNNER_TEMP/area51-historical"
+      - name: Prove surviving reservations prevent post-snapshot replay
+        run: pnpm exec vitest run src/recovery-reservations.test.ts src/recovery-reconciliation.test.ts src/recovery-snapshot.test.ts src/recovery-gate.test.ts --reporter=default --reporter=junit --outputFile.junit=.area51/diagnostics/recovery-reservations-junit.xml
       - name: Retain sanitized observation report
         uses: actions/upload-artifact@v4
         with:
           name: historical-rollback-proof-${{ github.run_id }}
-          path: .area51/diagnostics/historical-rollback-proof.json
+          path: |
+            .area51/diagnostics/historical-rollback-proof.json
+            .area51/diagnostics/recovery-reservations-junit.xml
           if-no-files-found: error

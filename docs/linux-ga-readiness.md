@@ -70,6 +70,11 @@ implementing the controls.
 
 ## Release decision
 
+The [surviving-reservation import](recovery-reservation-import.md) preserves
+post-snapshot request IDs from a surviving database before offline preparation.
+It keeps unknown external effects and activation blocked. Missing evidence or
+new sessions absent from the backup still require reconciliation; GA-04 remains open.
+
 The [historical source rollback proof](historical-rollback-proof.md) defines a
 separate hosted exercise for exact source/locked dependency restoration and held
 historical startup. Its observation does not substitute for running recovery,
