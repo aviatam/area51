@@ -137,7 +137,25 @@ export function importSurvivingReservations(
           for (const row of source.rows)
             if (!existing.get(row.session_id, row.request_id))
               throw new Error('Imported reservation disappeared; keep held');
-          return JSON.parse(prior.report_json);
+          const report = JSON.parse(prior.report_json);
+          const current = ledger(db);
+          if (
+            report.schema !== 'area51.recovery-reservation-import.v1' ||
+            report.manifestSha256 !== hold.manifestSha256 ||
+            report.commit !== hold.commit ||
+            report.sourceLedgerSha256 !== source.sha256 ||
+            report.targetLedgerSha256 !== digest(current) ||
+            report.sourceReservations !== source.rows.length ||
+            report.preservedReservations !== current.length ||
+            !Number.isInteger(report.importedReservations) ||
+            report.importedReservations < 0 ||
+            report.importedReservations > source.rows.length ||
+            report.externalEffectsReconciled !== false ||
+            report.postSnapshotEffectsKnown !== false ||
+            report.activationAllowed !== false
+          )
+            throw new Error('Reservation import audit or target drift; keep held');
+          return report;
         }
         let imported = 0;
         const insert = db.prepare(
@@ -151,6 +169,7 @@ export function importSurvivingReservations(
           commit: hold.commit,
           importedAt: new Date().toISOString(),
           sourceLedgerSha256: source.sha256,
+          targetLedgerSha256: digest(rows),
           sourceReservations: source.rows.length,
           importedReservations: imported,
           preservedReservations: rows.length,

@@ -241,6 +241,16 @@ it('refuses staged state as its own surviving evidence', () => {
   const f = fixture();
   expect(() => importSurvivingReservations(f.staging, f.target, f.digest(), true)).toThrow('outside');
 });
+it.each(['audit', 'target'])('refuses repeated import with %s drift', (kind) => {
+  const f = fixture();
+  f.add();
+  const digest = f.digest();
+  importSurvivingReservations(f.staging, f.source, digest, true);
+  if (kind === 'audit') f.change(f.target, "UPDATE recovery_reservation_imports SET report_json='{}'");
+  else
+    f.change(f.target, "INSERT INTO tool_action_requests VALUES ('session','unexpected','2026-01-03T00:00:00.000Z')");
+  expect(() => importSurvivingReservations(f.staging, f.source, digest, true)).toThrow('drift');
+});
 it.each(["request_id='invalid/request'", "created_at='2026-02-30T00:00:00.000Z'"])(
   'refuses malformed ledger field %s',
   (assignment) => {

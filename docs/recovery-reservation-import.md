@@ -13,7 +13,7 @@ Restoring an older snapshot can lose tool-action request reservations written af
    node --import tsx scripts/recovery-reservations.ts import /absolute/staging /absolute/surviving/data/v2.db EXPECTED_LEDGER_DIGEST --offline
    ```
 
-4. Run the existing offline preparation only after importing. Preparation invalidates stale approvals and binds the resulting logical database and restored payload. Repeating the import before preparation returns its original audit; repeating it after preparation refuses rather than changing bound state.
+4. Run the existing offline preparation only after importing. Preparation invalidates stale approvals and binds the resulting logical database and restored payload. Repeating the import before preparation returns its original audit only if the audit and target ledger remain unchanged; repeating it after preparation refuses rather than changing bound state.
 
 Output contains counts and digests, never request IDs or credentials. The target transaction preserves existing reservations and timestamps, adds missing IDs and records import provenance. Failures roll back the entire import. The source opens read-only; SQLite may create or update its coordination sidecars, so preserve the source directory and use private permissions.
 
