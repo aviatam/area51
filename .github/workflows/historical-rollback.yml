@@ -1,0 +1,57 @@
+name: Historical Rollback Proof
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/historical-rollback.yml
+      - scripts/historical-rollback-proof.ts
+      - src/recovery-*.ts
+      - src/db/**
+      - src/index.ts
+      - src/modules/**
+      - package.json
+      - pnpm-lock.yaml
+  pull_request:
+    paths:
+      - .github/workflows/historical-rollback.yml
+      - scripts/historical-rollback-proof.ts
+      - src/recovery-*.ts
+      - src/db/**
+      - src/index.ts
+      - src/modules/**
+      - package.json
+      - pnpm-lock.yaml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  rollback:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install candidate locked dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Check out exact historical code
+        run: git worktree add --detach "$RUNNER_TEMP/area51-historical" c3dd1e8f9ceeb0b459d2b324d05a6f66dd884356
+      - name: Install historical locked dependencies
+        run: pnpm --dir "$RUNNER_TEMP/area51-historical" install --frozen-lockfile
+      - name: Prove code and populated-state rollback with held historical startup
+        run: node --import tsx scripts/historical-rollback-proof.ts "$RUNNER_TEMP/area51-historical"
+      - name: Retain sanitized observation report
+        uses: actions/upload-artifact@v4
+        with:
+          name: historical-rollback-proof-${{ github.run_id }}
+          path: .area51/diagnostics/historical-rollback-proof.json
+          if-no-files-found: error

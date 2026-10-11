@@ -70,6 +70,11 @@ implementing the controls.
 
 ## Release decision
 
+The [historical source rollback proof](historical-rollback-proof.md) defines a
+separate hosted exercise for exact source/locked dependency restoration and held
+historical startup. Its observation does not substitute for running recovery,
+supported-updater failure testing or GA-03/GA-04 live acceptance.
+
 Keep this candidate in beta until every gate within the published scope passes.
 A Linux-only release does not require Windows/macOS deployment. A release that
 omits enterprise SSO must say so and still prove its supported administrator
