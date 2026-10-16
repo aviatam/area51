@@ -3,9 +3,10 @@ name: Incus VM Image Smoke
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches: [main, 'test/mvp-live-*']
     paths:
       - scripts/incus-vm-containment-e2e.ts
+      - scripts/mvp-live-github-proof.ts
       - scripts/active-agent-probe.ts
       - scripts/tool-broker-vm-fixture.ts
       - scripts/session-tool-vm-proof.ts
@@ -34,6 +35,7 @@ on:
       - container/agent-runner/**
       - container/skills/**
       - scripts/incus-vm-containment-e2e.ts
+      - scripts/mvp-live-github-proof.ts
       - scripts/active-agent-probe.ts
       - scripts/tool-broker-vm-fixture.ts
       - scripts/session-tool-vm-proof.ts
@@ -77,9 +79,41 @@ permissions:
   contents: read
 
 jobs:
+  mvp-host-tests:
+    name: MVP controller and host regression proof
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: |
+          pnpm run audit:high
+          pnpm exec tsc --noEmit
+          pnpm run lint
+          pnpm run format:check
+          pnpm exec eslint scripts/mvp-live-github-proof.ts scripts/mvp-live-github-proof.test.ts
+          pnpm exec tsc --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext --esModuleInterop --skipLibCheck --strict scripts/mvp-live-github-proof.ts scripts/mvp-proof-summary.ts
+      - run: pnpm exec vitest run --reporter=default --reporter=junit --outputFile.junit=.area51/diagnostics/mvp-host-tests.xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mvp-host-tests-${{ github.run_id }}
+          path: .area51/diagnostics/mvp-host-tests.xml
+          if-no-files-found: warn
+
   vm-image:
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    permissions:
+      contents: read
+      checks: write
     steps:
       - uses: actions/checkout@v7.0.1
       - uses: pnpm/action-setup@v4
@@ -231,6 +265,8 @@ jobs:
         env:
           AREA51_INCUS_VM_IMAGE_ALIAS: area51-agent-v2-vm-ci-${{ github.run_id }}
           AREA51_INCUS_STORAGE_POOL: default
+          AREA51_MVP_LIVE_GITHUB: ${{ github.ref_name == 'test/mvp-live-proof' && '1' || '0' }}
+          GITHUB_TOKEN: ${{ github.ref_name == 'test/mvp-live-proof' && github.token || '' }}
         run: |
           set -euo pipefail
           mkdir -p .area51/diagnostics
@@ -247,6 +283,16 @@ jobs:
           path: .area51/diagnostics/
           include-hidden-files: true
           if-no-files-found: warn
+      - name: Publish validated live MVP examples
+        if: github.ref_name == 'test/mvp-live-proof'
+        run: node --import tsx scripts/mvp-proof-summary.ts
+      - name: Retain validated live MVP summary
+        if: github.ref_name == 'test/mvp-live-proof'
+        uses: actions/upload-artifact@v4
+        with:
+          name: mvp-live-summary-${{ github.run_id }}
+          path: .area51/diagnostics/mvp-live-summary.md
+          if-no-files-found: error
       - name: Write VM hostile-containment acceptance evidence
         run: |
           pnpm exec tsx scripts/release-acceptance-report.ts \

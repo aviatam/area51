@@ -19,6 +19,7 @@ import { createVmProbeServer } from './vm-probe-server.js';
 import { activeAgentProbe } from './active-agent-probe.js';
 import { ToolBrokerVmFixture } from './tool-broker-vm-fixture.js';
 import { sessionToolVmProof } from './session-tool-vm-proof.js';
+import { mvpLiveGithubProof } from './mvp-live-github-proof.js';
 
 const trial = process.env.AREA51_E2E_TRIAL ?? '1';
 if (!/^[1-3]$/.test(trial)) throw new Error('AREA51_E2E_TRIAL must be 1, 2, or 3');
@@ -389,6 +390,22 @@ try {
   console.log(
     'VM session tools: actual guest MCP tool and DB bridge delivered one allowed and one exact approved action.',
   );
+  if (process.env.AREA51_MVP_LIVE_GITHUB === '1') {
+    const live = await mvpLiveGithubProof({
+      primary: plan,
+      primaryDirectory: sessionDir,
+      peer: peerPlan,
+      peerDirectory: peerSessionDir,
+      runGuest,
+    });
+    fs.writeFileSync(
+      path.join(toolEvidenceDirectory, `mvp-live-github-trial-${trial}.json`),
+      JSON.stringify(live, null, 2) + '\n',
+    );
+    console.log(
+      'MVP live GitHub: VM request accepted upstream, worker killed before response, restored redelivery denied; exactly one upstream write.',
+    );
+  }
   const peerFollowup = openInboundDb(path.join(peerSessionDir, 'inbound.db'));
   insertTestMessage(peerFollowup, 'peer-roundtrip-2', 'peer warm follow-up');
   peerFollowup.close();
