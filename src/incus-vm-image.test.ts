@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { describe, expect, it } from 'vitest';
+import { parse } from 'yaml';
 
 const script = fs.readFileSync(path.join(process.cwd(), 'container', 'incus', 'build-vm.sh'), 'utf8');
 const workflow = fs.readFileSync(path.join(process.cwd(), '.github', 'workflows', 'incus-vm-image.yml'), 'utf8');
@@ -123,6 +124,7 @@ describe('Incus VM image builder', () => {
     expect(containment).toContain('Host denied-endpoint control failed');
     expect(containment).toContain('raw TCP relay positive control failed');
     expect(containment).toContain('deniedConnections !== 0');
-    expect(workflow).toContain('branches: [main]');
+    // Keep main coverage while allowing the explicit disposable MVP proof branch.
+    expect(parse(workflow).on.push.branches).toEqual(['main', 'test/mvp-live-*']);
   });
 });

@@ -7,6 +7,7 @@ on:
     paths:
       - scripts/incus-vm-containment-e2e.ts
       - scripts/mvp-live-github-proof.ts
+      - src/incus-vm-image.test.ts
       - scripts/active-agent-probe.ts
       - scripts/tool-broker-vm-fixture.ts
       - scripts/session-tool-vm-proof.ts
@@ -109,6 +110,7 @@ jobs:
           if-no-files-found: warn
 
   vm-image:
+    needs: mvp-host-tests
     runs-on: ubuntu-latest
     timeout-minutes: 45
     permissions:
@@ -383,6 +385,7 @@ jobs:
           if-no-files-found: error
 
   linux-installer:
+    needs: mvp-host-tests
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
