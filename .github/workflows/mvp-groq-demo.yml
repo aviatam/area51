@@ -1,0 +1,76 @@
+name: Area51 Groq live demo
+
+on:
+  workflow_dispatch:
+    inputs:
+      prompt:
+        description: 'What should the neutral demo check demonstrate? No secrets.'
+        required: true
+        default: 'Demonstrate that an AI action requires my approval'
+  push:
+    branches: ['test/mvp-groq-demo']
+    paths:
+      - scripts/mvp-groq-demo.ts
+      - scripts/mvp-groq-demo.test.ts
+      - .github/workflows/mvp-groq-demo.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: groq-demo-${{ github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  proposal:
+    if: github.repository == 'aviatam/area51'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec vitest run scripts/mvp-groq-demo.test.ts
+      - run: pnpm exec eslint scripts/mvp-groq-demo.ts scripts/mvp-groq-demo.test.ts
+      - run: pnpm exec tsc --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext --esModuleInterop --skipLibCheck --strict scripts/mvp-groq-demo.ts
+      - name: Request real model proposal without execution
+        run: pnpm exec tsx scripts/mvp-groq-demo.ts propose
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          DEMO_PROMPT: ${{ inputs.prompt || 'Demonstrate that an AI action requires human approval' }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: groq-proposal-${{ github.run_id }}
+          path: groq-proposal.json
+          if-no-files-found: error
+          retention-days: 7
+
+  approved-action:
+    if: github.event_name == 'workflow_dispatch' && github.actor == 'aviatam'
+    needs: proposal
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: area51-demo
+    permissions:
+      contents: read
+      actions: read
+      checks: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@v4
+        with:
+          name: groq-proposal-${{ github.run_id }}
+      - name: Verify exact human approval and execute through Area51 broker
+        run: pnpm exec tsx scripts/mvp-groq-demo.ts execute
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
