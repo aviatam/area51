@@ -1,5 +1,5 @@
 /** Bounded host-side Groq demo. VM containment/recovery is proved separately.
- * No external write before an owner review of the exact proposal digest. */
+ * Owner-started workflow dispatch authorizes one fixed neutral GitHub check. */
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import fs from 'node:fs';
@@ -30,7 +30,7 @@ export function validateProposal(value: unknown, context: Context): Proposal {
   assert.equal(context.repo, 'aviatam/area51');
   assert.match(context.sha, /^[a-f0-9]{40}$/);
   assert.match(context.run, /^[1-9][0-9]*$/);
-  assert.equal(context.attempt, '1', 'Reruns require a fresh proposal and approval');
+  assert.equal(context.attempt, '1', 'Reruns require a fresh workflow run');
   assert.equal(p.model, 'openai/gpt-oss-20b');
   assert.equal(p.tool, 'create_neutral_check');
   assert(p.args && Object.keys(p.args).join(',') === 'title' && title(p.args.title));
@@ -90,7 +90,7 @@ export async function propose(
           type: 'function',
           function: {
             name: 'create_neutral_check',
-            description: 'Propose a neutral demo check, requiring separate human approval.',
+            description: 'Propose a neutral check for the owner-started demo workflow.',
             parameters: {
               type: 'object',
               properties: {
@@ -138,24 +138,19 @@ export async function propose(
     context,
   );
 }
-export function ownerApproved(reviews: unknown, hash: string): boolean {
-  assert.match(hash, /^[a-f0-9]{64}$/);
-  if (!Array.isArray(reviews)) return false;
-  const relevant = reviews.filter(
-    (r) => Array.isArray(r?.environments) && r.environments.some((e: { name?: string }) => e.name === 'area51-demo'),
-  );
-  // Reject ambiguity, old approvals and subsequent rejections.
-  return (
-    relevant.length === 1 &&
-    relevant[0].state === 'approved' &&
-    relevant[0].user?.login === 'aviatam' &&
-    relevant[0].user?.type === 'User' &&
-    relevant[0].comment === `approve ${hash}`
-  );
+export interface RunnerContext extends Context {
+  event: string;
+  actor: string;
+  triggeringActor: string;
 }
-export async function execute(p: Proposal, reviews: unknown, token: string, send: typeof fetch = fetch) {
-  validateProposal(p, p.context);
-  assert(ownerApproved(reviews, digest(p)), 'Missing owner approval comment bound to proposal digest');
+export async function execute(p: Proposal, runner: RunnerContext, token: string, send: typeof fetch = fetch) {
+  // These fields come from GitHub's runner environment, never from the artifact
+  // or model response. Only the owner's initial manual run may execute.
+  assert.equal(runner.event, 'workflow_dispatch', 'Only a manual workflow run may execute');
+  assert.equal(runner.actor, 'aviatam', 'Only the repository owner may execute');
+  assert.equal(runner.triggeringActor, 'aviatam', 'Only the repository owner may trigger execution');
+  const { repo, sha, run, attempt } = runner;
+  validateProposal(p, { repo, sha, run, attempt });
   assert(token, 'Temporary GitHub token missing');
   const headers = {
     authorization: `Bearer ${token}`,
@@ -176,8 +171,8 @@ export async function execute(p: Proposal, reviews: unknown, token: string, send
   const existing = (await observations.json()) as { total_count: number };
   assert.equal(existing.total_count, 0, 'Existing check: refuse replay');
   const broker = new ToolActionBroker({
-    policy: { demo: { create_neutral_check: 'approval' } },
-    approvers: ['github:aviatam'],
+    policy: { demo: { create_neutral_check: 'allow' } },
+    approvers: [],
     actions: {
       create_neutral_check: {
         validate: (args) => JSON.stringify(args) === JSON.stringify(p.args),
@@ -192,7 +187,10 @@ export async function execute(p: Proposal, reviews: unknown, token: string, send
               head_sha: p.context.sha,
               status: 'completed',
               conclusion: 'neutral',
-              output: { title: p.args.title, summary: `Human-approved Groq demo. Proposal SHA-256: ${digest(p)}` },
+              output: {
+                title: p.args.title,
+                summary: `Owner-started Groq demo, no additional approval. Proposal SHA-256: ${digest(p)}`,
+              },
             }),
           });
           assert.equal(response.status, 201, 'GitHub write failed; no automatic retry');
@@ -203,10 +201,7 @@ export async function execute(p: Proposal, reviews: unknown, token: string, send
       },
     },
   });
-  const pending = await broker.bindAgent('demo')(p.tool, p.args);
-  assert.equal(pending.status, 'pending');
-  if (pending.status !== 'pending') throw new Error('Broker did not hold action');
-  const result = await broker.resolve(pending.approvalId, 'github:aviatam', true);
+  const result = await broker.bindAgent('demo')(p.tool, p.args);
   assert.equal(result.status, 'executed', 'Ambiguous or failed action: inspect GitHub; do not retry');
   return result;
 }
@@ -219,7 +214,7 @@ async function main() {
   };
   if (process.argv[2] === 'propose') {
     const p = await propose(
-      process.env.DEMO_PROMPT || 'Demonstrate Area51 human approval',
+      process.env.DEMO_PROMPT || 'Demonstrate an Area51 governed action',
       process.env.GROQ_API_KEY || '',
       context,
     );
@@ -227,28 +222,29 @@ async function main() {
     if (process.env.GITHUB_STEP_SUMMARY)
       fs.appendFileSync(
         process.env.GITHUB_STEP_SUMMARY,
-        `## Groq proposal — awaiting human approval\n\nReal Groq tool call succeeded. No GitHub write performed.\n\nTitle: ${p.args.title}\n\nCommit: ${context.sha}\n\nProposal SHA-256: ${digest(p)}\n\nTo approve, review the area51-demo environment with this exact comment:\n\napprove ${digest(p)}\n\nThis model runs on the host runner. VM containment and recovery evidence is separate.\n`,
+        `## Groq proposal\n\nReal Groq tool call succeeded. This proposal step performed no GitHub write.\n\nTitle: ${p.args.title}\n\nCommit: ${context.sha}\n\nProposal SHA-256: ${digest(p)}\n\nThe owner's manual workflow run proceeds to execution without an additional approval. Push runs remain proposal-only.\n\nThis model runs on the host runner. VM containment and recovery evidence is separate.\n`,
       );
     console.log('Groq key validated; one tool proposal received; external action not executed.');
   } else if (process.argv[2] === 'execute') {
-    assert.equal(process.env.GITHUB_EVENT_NAME, 'workflow_dispatch');
-    assert.equal(process.env.GITHUB_ACTOR, 'aviatam');
     const p = validateProposal(JSON.parse(fs.readFileSync('groq-proposal.json', 'utf8')), context);
-    const response = await fetch(`https://api.github.com/repos/${context.repo}/actions/runs/${context.run}/approvals`, {
-      headers: { authorization: `Bearer ${process.env.GITHUB_TOKEN}`, accept: 'application/vnd.github+json' },
-      redirect: 'error',
-      signal: AbortSignal.timeout(15000),
-    });
-    assert.equal(response.status, 200, 'Cannot verify human review');
-    const result = await execute(p, await response.json(), process.env.GITHUB_TOKEN || '');
+    const result = await execute(
+      p,
+      {
+        ...context,
+        event: process.env.GITHUB_EVENT_NAME!,
+        actor: process.env.GITHUB_ACTOR!,
+        triggeringActor: process.env.GITHUB_TRIGGERING_ACTOR!,
+      },
+      process.env.GITHUB_TOKEN || '',
+    );
     if (result.status === 'executed' && process.env.GITHUB_STEP_SUMMARY)
-      fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `\nApproved check: ${result.value}\n`);
+      fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `\nDemo check: ${result.value}\n`);
   } else throw new Error('Expected propose or execute');
 }
 if (process.argv[1] && fileURLToPath(import.meta.url) === fs.realpathSync(process.argv[1])) {
   void main().catch(() => {
     console.error(
-      'Groq demo failed closed. Check secret presence, HTTP status, proposal and owner review. Upstream content withheld.',
+      'Groq demo failed closed. Check secret presence, proposal and owner-started workflow context. Upstream content withheld.',
     );
     process.exitCode = 1;
   });
