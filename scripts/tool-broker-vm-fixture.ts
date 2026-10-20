@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
-import { createServer, type Server } from 'node:http';
+import { createServer, type Server, type RequestListener } from 'node:http';
 import type { AddressInfo } from 'node:net';
 
 import { ToolActionBroker, type ToolAuditEvent } from '../src/tool-action-broker.js';
@@ -23,6 +23,13 @@ export class ToolBrokerVmFixture {
   private controlUrl = '';
   private readonly relayUrls = new Map<BrokerAgent, string>();
   private readonly broker: ToolActionBroker;
+  private modelHandler?: RequestListener;
+
+  /** Optional bounded model gateway, on the primary relay only. Test/proof
+   * orchestration owns its authentication and removes it after use. */
+  setModelHandler(handler?: RequestListener): void {
+    this.modelHandler = handler;
+  }
 
   constructor(private readonly onFailure: (error: Error) => void) {
     this.broker = new ToolActionBroker({
@@ -99,6 +106,10 @@ export class ToolBrokerVmFixture {
     const handler = toolActionHttpHandler(this.broker, [{ token, agentId: agent }]);
     const relay = this.track(
       createServer((request, response) => {
+        if (agent === 'primary' && request.url === '/groq-demo/propose' && this.modelHandler) {
+          this.modelHandler(request, response);
+          return;
+        }
         if (request.method === 'GET' && request.url === '/health') {
           response.writeHead(200, { connection: 'close' });
           response.end('area51-relay-ok\n');
