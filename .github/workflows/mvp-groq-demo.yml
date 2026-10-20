@@ -4,11 +4,11 @@ on:
   workflow_dispatch:
     inputs:
       prompt:
-        description: 'What should the neutral demo check demonstrate? No secrets.'
+        description: 'Creates one neutral GitHub check automatically. Enter a demo request; no secrets.'
         required: true
-        default: 'Demonstrate that an AI action requires my approval'
+        default: 'Demonstrate a governed AI action in Area51'
   push:
-    branches: ['test/mvp-groq-demo']
+    branches: ['test/mvp-groq-demo', 'fix/groq-demo-direct']
     paths:
       - scripts/mvp-groq-demo.ts
       - scripts/mvp-groq-demo.test.ts
@@ -41,7 +41,7 @@ jobs:
         run: pnpm exec tsx scripts/mvp-groq-demo.ts propose
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-          DEMO_PROMPT: ${{ inputs.prompt || 'Demonstrate that an AI action requires human approval' }}
+          DEMO_PROMPT: ${{ inputs.prompt || 'Demonstrate a governed AI action in Area51' }}
       - uses: actions/upload-artifact@v4
         with:
           name: groq-proposal-${{ github.run_id }}
@@ -49,12 +49,11 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-  approved-action:
-    if: github.event_name == 'workflow_dispatch' && github.actor == 'aviatam'
+  execute-action:
+    if: github.event_name == 'workflow_dispatch' && github.actor == 'aviatam' && github.triggering_actor == 'aviatam'
     needs: proposal
     runs-on: ubuntu-24.04
     timeout-minutes: 10
-    environment: area51-demo
     permissions:
       contents: read
       actions: read
@@ -70,7 +69,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: groq-proposal-${{ github.run_id }}
-      - name: Verify exact human approval and execute through Area51 broker
+      - name: Execute bounded demo through Area51 broker
         run: pnpm exec tsx scripts/mvp-groq-demo.ts execute
         env:
           GITHUB_TOKEN: ${{ github.token }}
