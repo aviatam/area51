@@ -1,0 +1,77 @@
+name: Dependency security across managers
+on:
+  workflow_dispatch:
+  push:
+    branches: [test/litellm-quarantine]
+    paths:
+      - .claude/skills/dependency-security/**
+      - src/python-package-risk.ts
+      - .github/workflows/dependency-security.yml
+  pull_request:
+    paths:
+      - .claude/skills/dependency-security/**
+      - src/python-package-risk.ts
+      - .github/workflows/dependency-security.yml
+permissions:
+  contents: read
+jobs:
+  verify:
+    name: Dependency scan (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Apply skill twice
+        run: |
+          node .claude/skills/dependency-security/install.mjs
+          node .claude/skills/dependency-security/install.mjs
+      - name: Typecheck and verify composed gate
+        run: |
+          pnpm exec tsc --noEmit
+          pnpm exec tsc --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext --resolveJsonModule --esModuleInterop --skipLibCheck --strict .claude/skills/dependency-security/prove.ts
+          pnpm exec vitest run src/dependency-security.test.ts src/python-package-risk.test.ts src/agent-gate.test.ts src/runtime-policy.test.ts src/live-runtime-policy.test.ts src/incus-quarantine-policy.test.ts
+      - name: Full composed host tests
+        if: runner.os == 'Linux'
+        run: pnpm exec vitest run
+      - name: Verify formatting and lint
+        if: runner.os == 'Linux'
+        run: |
+          pnpm exec prettier --check .claude/skills/dependency-security/ .github/workflows/dependency-security.yml src/python-package-risk.ts src/agent-gate.ts
+          pnpm exec eslint src/dependency-security.ts src/dependency-security.test.ts src/python-package-risk.ts
+      - name: Download checksum-pinned scanner
+        run: |
+          scanner_path="$(node .claude/skills/dependency-security/download.mjs)"
+          printf 'AREA51_DEPENDENCY_SCANNER=%s\n' "$scanner_path" >> "$GITHUB_ENV"
+      - name: Ten actual manager parsers and live advisory decisions
+        env:
+          AREA51_DEPENDENCY_SECURITY: required
+        run: |
+          pnpm exec tsx .claude/skills/dependency-security/prove.ts
+          cat .area51/diagnostics/dependency-security/summary.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Verify complete removal
+        run: |
+          node .claude/skills/dependency-security/install.mjs --remove
+          git diff --exit-code -- src/agent-gate.ts
+          pnpm exec tsc --noEmit
+      - name: Upload exact scan evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-security-${{ runner.os }}-${{ github.run_id }}
+          path: .area51/diagnostics/dependency-security
+          include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 30

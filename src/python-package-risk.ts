@@ -6,6 +6,9 @@ import type { AgentGateFinding } from './agent-gate.js';
 export const PYTHON_EVIDENCE_FILES = ['requirements.txt', 'requirements.lock', 'python-packages.json'];
 // Published incidents, not a general malware detector. Never download these versions to inspect them.
 const COMPROMISED_LITELLM = new Set(['1.82.7', '1.82.8', '1.107.0']);
+export function isKnownCompromisedPythonPackage(name: string, version: string): boolean {
+  return name.toLowerCase().replace(/[-_.]+/g, '-') === 'litellm' && COMPROMISED_LITELLM.has(version);
+}
 const INCIDENT_SOURCES = [
   'https://github.com/BerriAI/litellm/issues/24518',
   'https://www.stepsecurity.io/blog/litellm-1-107-0-compromised-pypi-backdoored-wheels-credential-stealer',
@@ -33,7 +36,7 @@ export function scanPythonPackageRisk(groupDir: string): { findings: AgentGateFi
   const inspect = (name: string, version: string | undefined, source: string): void => {
     packages++;
     if (name.toLowerCase().replace(/[-_.]+/g, '-') !== 'litellm') return;
-    if (version && COMPROMISED_LITELLM.has(version)) {
+    if (version && isKnownCompromisedPythonPackage(name, version)) {
       finding(
         'pypi-litellm-compromised',
         `LiteLLM ${version} is a reported malicious release. This is a known-version match.`,
@@ -79,5 +82,5 @@ export function scanPythonPackageRisk(groupDir: string): { findings: AgentGateFi
 }
 
 export function isPackageRiskFinding(finding: AgentGateFinding): boolean {
-  return finding.severity === 'high' && /^(npm-|pypi-)/.test(finding.id);
+  return finding.severity === 'high' && /^(npm-|pypi-|dependency-)/.test(finding.id);
 }

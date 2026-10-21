@@ -79,6 +79,23 @@ coverage. It does not continuously monitor a running process, discover unknown m
 move a running container into a VM. The proof starts the agent in a VM and stops it on the
 known-version finding. See the linked skill for installation, evidence limits and cleanup.
 
+## Dependency security across package managers
+
+Apply the optional [dependency-security skill](../.claude/skills/dependency-security/SKILL.md)
+to connect a checksum-pinned OSV-Scanner to normal Agent Gate preflights. The proof matrix
+covers npm, pnpm, pip, uv, Poetry, Maven, Gradle, Cargo, Go and NuGet against current OSV
+advisories. The host stages regular inventory files, overrides agent ignore rules, excludes
+provider credentials, and disables dependency installation, Maven resolution and build/call
+analysis. Enable required mode in the host service environment as documented in the skill.
+
+The installed gate records `dependency_scan.status`: `disabled`, `complete` or `incomplete`.
+Required scans that cannot verify the scanner, input coverage or service response fail closed.
+Completed advisory matches use a conservative review policy through the existing quarantine
+or block decision. A vulnerability advisory does not prove malicious code or exploitation.
+Manifest coverage is not installed-image attestation or complete transitive resolution;
+review the skill's explicit coverage and evidence limits. Each preflight or explicit scan
+refreshes the OSV lookup; a continuous monitor is a separate capability.
+
 ## Scenario Files
 
 For a clear failure demo, add concrete use-case scenarios under:
