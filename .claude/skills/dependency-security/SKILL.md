@@ -46,6 +46,8 @@ The proof uses actual scanner parsing and current OSV responses for metadata con
 
 There is no continuous background monitor, scheduled advisory refresh, isolated package-build service, automatic repair, or unknown-malware behavioral detector in this skill. New advisories are considered on the next preflight or explicit scan. Treat container/VM migration as a separate runtime operation; the host stops quarantined workloads.
 
+The pinned scanner itself runs as a trusted host executable. Its minimal environment excludes provider/CI secrets, but is not a filesystem sandbox. Parser vulnerabilities or a malicious release accepted into the reviewed pin remain host-side risks; the agent VM boundary does not isolate the scanner process.
+
 ## Troubleshooting
 
 Check `dependency_scan.status` and findings in the gate JSON. `scan-incomplete` can mean a missing/changed scanner, unsupported/unresolved inventory, parser skip, resource limit or OSV outage. Use a verified scanner and resolved input; do not weaken the host policy to conceal missing coverage. See `REMOVE.md` for rollback.

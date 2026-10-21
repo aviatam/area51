@@ -140,8 +140,7 @@ describe('installed dependency security skill', () => {
     expect(files.map((f) => f.path)).toEqual(['nested/poetry.lock']);
     expect(fs.readdirSync(destination)).toEqual(['nested']);
   });
-  it('rejects a symlink inventory without following it', () => {
-    if (process.platform === 'win32') return;
+  it.skipIf(process.platform === 'win32')('rejects a symlink inventory without following it', () => {
     const root = temp(),
       outside = temp();
     fs.writeFileSync(path.join(outside, 'secret'), 'secret');

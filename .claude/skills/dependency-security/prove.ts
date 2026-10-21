@@ -57,6 +57,7 @@ try {
     };
   });
   const decision = selectRuntimePolicy(report, { profile: 'maximum', incusAvailable: true });
+  if (report.counts.packages < rows.length) throw new Error('Gate package counts omit the installed scanner inventory');
   const blocked = selectRuntimePolicy(report, { incusAvailable: false, allowDockerFallback: false });
   if (decision.action !== 'quarantine' || blocked.action !== 'block')
     throw new Error('Host policy did not enforce dependency findings');

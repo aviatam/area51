@@ -14,6 +14,9 @@ on:
       - .github/workflows/dependency-security.yml
 permissions:
   contents: read
+concurrency:
+  group: dependency-security-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
 jobs:
   verify:
     name: Dependency scan (${{ matrix.os }})
@@ -42,7 +45,10 @@ jobs:
         run: |
           pnpm exec tsc --noEmit
           pnpm exec tsc --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext --resolveJsonModule --esModuleInterop --skipLibCheck --strict .claude/skills/dependency-security/prove.ts
-          pnpm exec vitest run src/dependency-security.test.ts src/python-package-risk.test.ts src/agent-gate.test.ts src/runtime-policy.test.ts src/live-runtime-policy.test.ts src/incus-quarantine-policy.test.ts
+          pnpm exec vitest run src/dependency-security.test.ts src/python-package-risk.test.ts src/agent-gate.test.ts src/runtime-policy.test.ts src/incus-quarantine-policy.test.ts
+      - name: Unix host decision-file permissions
+        if: runner.os != 'Windows'
+        run: pnpm exec vitest run src/live-runtime-policy.test.ts
       - name: Full composed host tests
         if: runner.os == 'Linux'
         run: pnpm exec vitest run

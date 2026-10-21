@@ -12,6 +12,11 @@ const copies = [
 const patches = [
   [
     'src/agent-gate.ts',
+    '      packages: packages.length + python.packages,',
+    '      packages: packages.length + python.packages + dependencySecurity.summary.packages.length,',
+  ],
+  [
+    'src/agent-gate.ts',
     "import YAML from 'yaml';",
     "import YAML from 'yaml';\nimport { scanDependencySecurity } from './dependency-security.js';",
   ],
