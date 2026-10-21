@@ -116,7 +116,11 @@ export class GroqProvider implements AgentProvider {
                 body: JSON.stringify({ messages: history.messages }),
                 signal: AbortSignal.any([controller.signal, AbortSignal.timeout(120000)]),
               });
-              if (!response.ok) throw new Error(`Host model gateway returned ${response.status}`);
+              if (!response.ok) {
+                stage = `gateway-${response.status}`;
+                throw new Error('Host model gateway rejected the request');
+              }
+              stage = 'model-decode';
               const text = await response.text();
               if (text.length > 16000) throw new Error('Model response exceeds budget');
               const reply = JSON.parse(text) as Message;
@@ -125,7 +129,9 @@ export class GroqProvider implements AgentProvider {
               history.messages.push(reply);
               const calls = reply.tool_calls ?? [];
               if (calls.length === 0) {
+                stage = 'empty-model-result';
                 if (!reply.content?.trim()) throw new Error('Model returned no response');
+                stage = 'history-save';
                 save();
                 yield { type: 'result', text: reply.content };
                 completed = true;

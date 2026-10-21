@@ -54,6 +54,8 @@ export interface GatewayEvent {
   finishReason?: string;
   contentType?: string;
   toolCalls?: number;
+  contentLength?: number;
+  gatewayError?: string;
 }
 
 export function groqAgentGateway(input: {
@@ -69,7 +71,10 @@ export function groqAgentGateway(input: {
   const budget = input.budget ?? 16;
   if (!Number.isInteger(budget) || budget < 1 || budget > 16) throw new Error('Invalid gateway budget');
   return (request, response) => {
+    let event: GatewayEvent | undefined;
     const reply = (status: number, value: unknown) => {
+      if (status >= 400 && event && value && typeof value === 'object' && 'error' in value)
+        event.gatewayError = String(value.error);
       response.writeHead(status, { 'content-type': 'application/json', 'cache-control': 'no-store' });
       response.end(JSON.stringify(value));
     };
@@ -92,7 +97,6 @@ export function groqAgentGateway(input: {
       busy = true;
       try {
         let upstream: Response | undefined;
-        let event: GatewayEvent | undefined;
         for (let attempt = 0; attempt < 2 && calls < budget; attempt++) {
           calls++;
           upstream = await fetcher('https://api.groq.com/openai/v1/chat/completions', {
@@ -133,6 +137,7 @@ export function groqAgentGateway(input: {
             ? choice.finish_reason
             : 'other';
           event.contentType = message?.content === null ? 'null' : typeof message?.content;
+          event.contentLength = typeof message?.content === 'string' ? message.content.length : 0;
           event.toolCalls = Array.isArray(message?.tool_calls) ? message.tool_calls.length : -1;
         }
         if (
