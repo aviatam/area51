@@ -465,6 +465,9 @@ try {
   }
   deleteIncusRuntime(plan);
 
+  const { prepareGroqAgentMvp, groqAgentMvp } = await import('./groq-agent-mvp.js');
+  prepareGroqAgentMvp(groupDir);
+
   const restartTransport = makeTransport(`vm-e2e-${suffix}-restart`);
   const restartPlan = makePlan(`${suffix}-r`, restartTransport);
   runtimeResources.push({ plan: restartPlan, transport: restartTransport });
@@ -472,6 +475,22 @@ try {
   const providerRestart = await runGuest(restartPlan, 'bun', ['run', '/run/area51/provider-state.ts', 'verify']);
   if (!providerRestart.includes('area51-claude-provider-state-ok')) {
     throw new Error(`Claude provider restart failed: ${providerRestart}`);
+  }
+
+  if (process.env.AREA51_GROQ_AGENT_MVP === '1') {
+    const proof = await groqAgentMvp({
+      primary: restartPlan,
+      primaryDirectory: sessionDir,
+      peer: peerPlan,
+      peerDirectory: peerSessionDir,
+      runGuest,
+      runIncus,
+      setModelHandler: (handler) => toolBroker.setModelHandler(handler),
+    });
+    fs.writeFileSync(path.join(toolEvidenceDirectory, 'groq-agent-mvp.json'), JSON.stringify(proof, null, 2) + '\n');
+    console.log(
+      'Groq agent MVP: normal entry, conversation, kernel reboot, actual MCP and one real GitHub action passed.',
+    );
   }
 
   const quarantineDecision = selectLiveRuntimePolicy(compromisedGateReport(groupDir), {
