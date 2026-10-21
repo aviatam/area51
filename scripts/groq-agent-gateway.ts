@@ -48,15 +48,26 @@ export function validateMessages(body: unknown): Array<Record<string, unknown>> 
   return messages;
 }
 
+export interface GatewayEvent {
+  status: number;
+  modelCall: number;
+  finishReason?: string;
+  contentType?: string;
+  toolCalls?: number;
+}
+
 export function groqAgentGateway(input: {
   token: string;
   key: string;
-  record: (event: { status: number; modelCall: number }) => void;
+  record: (event: GatewayEvent) => void;
+  budget?: number;
   fetcher?: typeof fetch;
 }): RequestListener {
   let calls = 0;
   let busy = false;
   const fetcher = input.fetcher ?? fetch;
+  const budget = input.budget ?? 16;
+  if (!Number.isInteger(budget) || budget < 1 || budget > 16) throw new Error('Invalid gateway budget');
   return (request, response) => {
     const reply = (status: number, value: unknown) => {
       response.writeHead(status, { 'content-type': 'application/json', 'cache-control': 'no-store' });
@@ -77,11 +88,12 @@ export function groqAgentGateway(input: {
         return reply(400, { error: 'request' });
       }
       if (busy) return reply(409, { error: 'busy' });
-      if (calls >= 16) return reply(429, { error: 'session budget' });
+      if (calls >= budget) return reply(429, { error: 'session budget' });
       busy = true;
       try {
         let upstream: Response | undefined;
-        for (let attempt = 0; attempt < 2 && calls < 16; attempt++) {
+        let event: GatewayEvent | undefined;
+        for (let attempt = 0; attempt < 2 && calls < budget; attempt++) {
           calls++;
           upstream = await fetcher('https://api.groq.com/openai/v1/chat/completions', {
             method: 'POST',
@@ -99,8 +111,9 @@ export function groqAgentGateway(input: {
               reasoning_effort: 'low',
             }),
           });
-          input.record({ status: upstream.status, modelCall: calls });
-          if (upstream.status !== 429 || attempt === 1 || calls >= 16) break;
+          event = { status: upstream.status, modelCall: calls };
+          input.record(event);
+          if (upstream.status !== 429 || attempt === 1 || calls >= budget) break;
           await upstream.body?.cancel();
           // Inference only: never use this retry mechanism for an external write.
           const seconds = Number(upstream.headers.get('retry-after') ?? '20');
@@ -111,7 +124,17 @@ export function groqAgentGateway(input: {
         if (!upstream?.ok) return reply(502, { error: 'model unavailable' });
         const rawReply = await upstream.text();
         if (rawReply.length > 32000) return reply(502, { error: 'model response budget' });
-        const message = JSON.parse(rawReply).choices?.[0]?.message;
+        const choice = JSON.parse(rawReply).choices?.[0];
+        const message = choice?.message;
+        if (event) {
+          event.finishReason = ['stop', 'length', 'tool_calls', 'function_call', 'content_filter'].includes(
+            choice?.finish_reason,
+          )
+            ? choice.finish_reason
+            : 'other';
+          event.contentType = message?.content === null ? 'null' : typeof message?.content;
+          event.toolCalls = Array.isArray(message?.tool_calls) ? message.tool_calls.length : -1;
+        }
         if (
           !message ||
           message.role !== 'assistant' ||

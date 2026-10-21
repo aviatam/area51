@@ -222,7 +222,9 @@ export async function groqAgentMvp(input: {
     throw new Error('Normal agent did not complete a turn; see redacted model status and runner diagnostics');
   }
   try {
-    input.setModelHandler(groqAgentGateway({ token: relayToken, key, record: (event) => modelEvents.push(event) }));
+    input.setModelHandler(
+      groqAgentGateway({ token: relayToken, key, budget: 12, record: (event) => modelEvents.push(event) }),
+    );
     await input.runGuest(input.primary, 'bun', [
       '-e',
       "if(process.getuid()!==1000 || process.env.GROQ_API_KEY!==undefined || process.env.GITHUB_TOKEN!==undefined) throw Error('Guest identity or credential boundary failed');console.log('guest-safe');",
