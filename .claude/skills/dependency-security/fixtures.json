@@ -1,0 +1,82 @@
+[
+  {
+    "manager": "npm",
+    "file": "package-lock.json",
+    "ecosystem": "npm",
+    "name": "lodash",
+    "version": "4.17.11",
+    "content": "{\"name\":\"demo\",\"lockfileVersion\":3,\"packages\":{\"\":{\"name\":\"demo\",\"dependencies\":{\"lodash\":\"4.17.11\"}},\"node_modules/lodash\":{\"version\":\"4.17.11\",\"resolved\":\"https://registry.npmjs.org/lodash/-/lodash-4.17.11.tgz\"}}}"
+  },
+  {
+    "manager": "pnpm",
+    "file": "pnpm-lock.yaml",
+    "ecosystem": "npm",
+    "name": "lodash",
+    "version": "4.17.11",
+    "content": "lockfileVersion: '9.0'\nimporters:\n  .:\n    dependencies:\n      lodash:\n        specifier: 4.17.11\n        version: 4.17.11\npackages:\n  lodash@4.17.11:\n    resolution: {integrity: sha512-fixture}\nsnapshots:\n  lodash@4.17.11: {}\n"
+  },
+  {
+    "manager": "pip",
+    "file": "requirements.txt",
+    "ecosystem": "PyPI",
+    "name": "requests",
+    "version": "2.19.1",
+    "content": "requests==2.19.1\n"
+  },
+  {
+    "manager": "uv",
+    "file": "uv.lock",
+    "ecosystem": "PyPI",
+    "name": "requests",
+    "version": "2.19.1",
+    "content": "version = 1\nrevision = 3\nrequires-python = \">=3.10\"\n[[package]]\nname = \"requests\"\nversion = \"2.19.1\"\nsource = { registry = \"https://pypi.org/simple\" }\n"
+  },
+  {
+    "manager": "Poetry",
+    "file": "poetry.lock",
+    "ecosystem": "PyPI",
+    "name": "requests",
+    "version": "2.19.1",
+    "content": "[[package]]\nname = \"requests\"\nversion = \"2.19.1\"\ndescription = \"Fixture only; never installed\"\noptional = false\npython-versions = \">=3.10\"\nfiles = []\n[metadata]\nlock-version = \"2.1\"\npython-versions = \">=3.10\"\ncontent-hash = \"fixture\"\n"
+  },
+  {
+    "manager": "Maven",
+    "file": "pom.xml",
+    "ecosystem": "Maven",
+    "name": "org.apache.logging.log4j:log4j-core",
+    "version": "2.14.1",
+    "content": "<project xmlns=\"http://maven.apache.org/POM/4.0.0\"><modelVersion>4.0.0</modelVersion><groupId>example</groupId><artifactId>demo</artifactId><version>1.0</version><dependencies><dependency><groupId>org.apache.logging.log4j</groupId><artifactId>log4j-core</artifactId><version>2.14.1</version></dependency></dependencies></project>"
+  },
+  {
+    "manager": "Gradle",
+    "file": "gradle.lockfile",
+    "ecosystem": "Maven",
+    "name": "org.apache.logging.log4j:log4j-core",
+    "version": "2.14.1",
+    "content": "# Fixture only; never built\norg.apache.logging.log4j:log4j-core:2.14.1=runtimeClasspath\nempty=\n"
+  },
+  {
+    "manager": "Cargo",
+    "file": "Cargo.lock",
+    "ecosystem": "crates.io",
+    "name": "regex",
+    "version": "1.5.4",
+    "content": "version = 3\n[[package]]\nname = \"regex\"\nversion = \"1.5.4\"\nsource = \"registry+https://github.com/rust-lang/crates.io-index\"\nchecksum = \"0000000000000000000000000000000000000000000000000000000000000000\"\n"
+  },
+  {
+    "manager": "Go",
+    "file": "go.mod",
+    "ecosystem": "Go",
+    "name": "github.com/gogo/protobuf",
+    "version": "v1.3.1",
+    "content": "module example.org/demo\n\ngo 1.20\n\nrequire github.com/gogo/protobuf v1.3.1\n"
+  },
+  {
+    "manager": "NuGet",
+    "file": "packages.lock.json",
+    "ecosystem": "NuGet",
+    "name": "Newtonsoft.Json",
+    "version": "12.0.1",
+    "content": "{\"version\":1,\"dependencies\":{\"net8.0\":{\"Newtonsoft.Json\":{\"type\":\"Direct\",\"requested\":\"[12.0.1, )\",\"resolved\":\"12.0.1\",\"contentHash\":\"fixture\"}}}}"
+  }
+]

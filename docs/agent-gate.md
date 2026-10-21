@@ -54,6 +54,48 @@ Disable quarantine only for dry read-only scans:
 area51 agent-gate scan --group support-agent --quarantine false
 ```
 
+### LiteLLM and Python dependency evidence
+
+The gate reads root-level `requirements.txt`, `requirements.lock`, and `python-packages.json`
+(a `pip list --format=json` export). It detects the reported malicious LiteLLM releases
+`1.82.7`, `1.82.8`, and `1.107.0` without installing or importing them. An unresolved LiteLLM
+declaration, such as `litellm>=1.0`, fails closed for review. Pin the reviewed resolved version
+or supply the exact installed inventory. Other unblocked versions are not a safety certification.
+
+Python findings participate in the same host runtime policy as compromised npm packages:
+quarantine with Incus, or block when the required isolation is unavailable. Disabling evidence
+copying does not disable that runtime decision. Running the scan command alone produces a
+report and evidence; enforcement requires the runtime controller to apply the decision.
+
+The [LiteLLM quarantine proof](../.claude/skills/litellm-quarantine/SKILL.md) runs a minimal
+two-turn task agent with actual LiteLLM 1.106.2 and live Groq inference in an Incus VM. Its host
+harness changes only the dependency declaration to 1.107.0, explicitly rescans, and applies
+quarantine to the existing VM. It checks stopped state, removed NIC, retained snapshot,
+process exit, and rejected execution. The malicious package is never executed.
+
+This scanner checks supplied version evidence, not package contents or provenance. Nested
+requirements, `pyproject.toml`, uv/Poetry lockfiles and arbitrary image layers are outside its
+coverage. It does not continuously monitor a running process, discover unknown malware, or
+move a running container into a VM. The proof starts the agent in a VM and stops it on the
+known-version finding. See the linked skill for installation, evidence limits and cleanup.
+
+## Dependency security across package managers
+
+Apply the optional [dependency-security skill](../.claude/skills/dependency-security/SKILL.md)
+to connect a checksum-pinned OSV-Scanner to normal Agent Gate preflights. The proof matrix
+covers npm, pnpm, pip, uv, Poetry, Maven, Gradle, Cargo, Go and NuGet against current OSV
+advisories. The host stages regular inventory files, overrides agent ignore rules, excludes
+provider credentials, and disables dependency installation, Maven resolution and build/call
+analysis. Enable required mode in the host service environment as documented in the skill.
+
+The installed gate records `dependency_scan.status`: `disabled`, `complete` or `incomplete`.
+Required scans that cannot verify the scanner, input coverage or service response fail closed.
+Completed advisory matches use a conservative review policy through the existing quarantine
+or block decision. A vulnerability advisory does not prove malicious code or exploitation.
+Manifest coverage is not installed-image attestation or complete transitive resolution;
+review the skill's explicit coverage and evidence limits. Each preflight or explicit scan
+refreshes the OSV lookup; a continuous monitor is a separate capability.
+
 ## Scenario Files
 
 For a clear failure demo, add concrete use-case scenarios under:
