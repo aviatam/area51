@@ -150,9 +150,13 @@ export async function groqAgentMvp(input: {
   async function stop() {
     if (!runner) return;
     // Kill the guest entry, not just the local Incus client, before reboot/cleanup.
-    await input.runGuest(input.primary, 'pkill', ['-f', '^bun run /app/src/index.ts$']);
-    runner.kill();
-    runner = undefined;
+    try {
+      if (runner.exitCode === null)
+        await input.runGuest(input.primary, 'bash', ['-lc', "pkill -f '^bun run /app/src/index.ts$' || test $? -eq 1"]);
+    } finally {
+      runner.kill();
+      runner = undefined;
+    }
   }
   function send(text: string, kind: 'chat' | 'system' = 'chat') {
     const db = openInboundDb(path.join(input.primaryDirectory, 'inbound.db'));
@@ -208,6 +212,7 @@ export async function groqAgentMvp(input: {
         const reply = replies.join('\n');
         assert(reply?.trim(), 'Empty chat output');
         transcript.push({ user: text, assistant: reply });
+        console.log(`Groq MVP: normal conversation turn ${transcript.length} completed`);
         return reply;
       }
       await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -329,6 +334,12 @@ export async function groqAgentMvp(input: {
       reservations.close();
       fs.rmSync(hostState, { recursive: true, force: true });
       fs.writeFileSync('.area51/diagnostics/groq-agent-model-status.json', JSON.stringify(modelEvents, null, 2));
+      fs.writeFileSync('.area51/diagnostics/groq-agent-progress.json', JSON.stringify({ transcript, writes }, null, 2));
+      const safeLogs = [relayToken, key, githubToken].reduce(
+        (logs, secret) => logs.replaceAll(secret, '[REDACTED]'),
+        runnerLogs.join(''),
+      );
+      fs.writeFileSync('.area51/diagnostics/groq-agent-runner.log', safeLogs);
     }
   }
 }

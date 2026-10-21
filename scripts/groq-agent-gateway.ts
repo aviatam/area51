@@ -81,7 +81,7 @@ export function groqAgentGateway(input: {
       busy = true;
       try {
         let upstream: Response | undefined;
-        for (let attempt = 0; attempt < 2; attempt++) {
+        for (let attempt = 0; attempt < 2 && calls < 16; attempt++) {
           calls++;
           upstream = await fetcher('https://api.groq.com/openai/v1/chat/completions', {
             method: 'POST',
@@ -100,7 +100,7 @@ export function groqAgentGateway(input: {
             }),
           });
           input.record({ status: upstream.status, modelCall: calls });
-          if (upstream.status !== 429 || attempt === 1) break;
+          if (upstream.status !== 429 || attempt === 1 || calls >= 16) break;
           await upstream.body?.cancel();
           // Inference only: never use this retry mechanism for an external write.
           const seconds = Number(upstream.headers.get('retry-after') ?? '20');

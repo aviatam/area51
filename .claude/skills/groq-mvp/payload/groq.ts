@@ -42,6 +42,7 @@ export class GroqProvider implements AgentProvider {
     const events: AsyncIterable<ProviderEvent> = {
       async *[Symbol.asyncIterator]() {
         let client: Client | undefined;
+        let stage = 'configuration';
         try {
           const endpoint = options.env?.AREA51_GROQ_RELAY_URL;
           const token = options.env?.AREA51_GROQ_RELAY_TOKEN;
@@ -107,6 +108,7 @@ export class GroqProvider implements AgentProvider {
             save();
             let completed = false;
             for (let round = 0; round < 6; round++) {
+              stage = 'model';
               yield { type: 'activity' };
               const response = await fetch(url, {
                 method: 'POST',
@@ -138,6 +140,7 @@ export class GroqProvider implements AgentProvider {
               const server = options.mcpServers?.area51;
               if (!server || server.type === 'http') throw new Error('Built-in stdio MCP server required');
               if (!client) {
+                stage = 'mcp-connect';
                 client = new Client({ name: 'area51-groq-mvp', version: '1.0.0' });
                 const env = Object.fromEntries(
                   Object.entries(options.env ?? {}).filter((pair): pair is [string, string] => pair[1] !== undefined),
@@ -151,14 +154,17 @@ export class GroqProvider implements AgentProvider {
                   }),
                 );
               }
+              stage = 'mcp-call';
               const receipt = await client.callTool(
                 { name: 'tool_action', arguments: JSON.parse(call.function.arguments) },
                 undefined,
                 { signal: controller.signal, timeout: 15000 },
               );
+              stage = 'mcp-receipt';
               const requestId = JSON.stringify(receipt).match(/Tool request ([0-9a-f-]{36}) submitted\./)?.[1];
               if (!requestId || receipt.isError) throw new Error('Tool request was not accepted');
               let result: string | undefined;
+              stage = 'host-result';
               const deadline = Date.now() + 120000;
               while (Date.now() < deadline && !controller.signal.aborted) {
                 const row = getPendingMessages().find(
@@ -183,7 +189,7 @@ export class GroqProvider implements AgentProvider {
           if (!controller.signal.aborted)
             yield {
               type: 'error',
-              message: 'Groq turn stopped safely. Inspect host diagnostics; uncertain actions are never retried.',
+              message: `Groq turn stopped safely at ${stage}. Inspect host diagnostics; uncertain actions are never retried.`,
               retryable: false,
             };
         } finally {

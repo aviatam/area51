@@ -8,6 +8,38 @@ afterEach(async () => {
 });
 
 describe('bounded host model gateway', () => {
+  it('does not spend a seventeenth inference request on a rate-limit retry', async () => {
+    let calls = 0;
+    const server = createServer(
+      groqAgentGateway({
+        token: 'synthetic-relay',
+        key: 'synthetic-host',
+        record: () => {},
+        fetcher: (async () => {
+          if (++calls === 16) return new Response('{}', { status: 429, headers: { 'retry-after': '1' } });
+          return new Response(JSON.stringify({ choices: [{ message: { role: 'assistant', content: 'ok' } }] }));
+        }) as typeof fetch,
+      }),
+    );
+    servers.push(server);
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const { port } = server.address() as { port: number };
+    for (let index = 1; index <= 16; index++) {
+      const response = await fetch(`http://127.0.0.1:${port}/groq-demo/propose`, {
+        method: 'POST',
+        headers: { authorization: 'Bearer synthetic-relay' },
+        body: JSON.stringify({
+          messages: [
+            { role: 'system', content: 'demo' },
+            { role: 'user', content: 'hello' },
+          ],
+        }),
+      });
+      expect(response.status).toBe(index === 16 ? 502 : 200);
+    }
+    expect(calls).toBe(16);
+  });
+
   it('rejects model/URL overrides and malformed contexts', () => {
     for (const body of [
       null,

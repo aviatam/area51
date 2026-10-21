@@ -27,6 +27,17 @@ The first demo path combines:
 - **Exposure reports** that connect an agent, repo, or code-change workspace to one assessment surface
 - **Fail-closed reports** for demos and CI
 
+## Try the live agent MVP
+
+Open [Area51 working agent MVP](https://github.com/aviatam/area51/actions/workflows/groq-agent-mvp.yml),
+choose **Run workflow**, and enter a synthetic question. The owner-started run
+uses the normal Groq agent inside an Incus VM: conversation, VM reboot, recall,
+and one real GitHub check through the host action broker. The completed summary
+contains the conversation and a checklist with the actual result link.
+The bounded demo action requires no second human approval. Credentials stay on
+the host. Each run is ephemeral; see the [MVP guide](docs/groq-agent-mvp.md) for
+setup, limits and reproducible evidence.
+
 ## Reproduce the Release Proof
 
 The [cross-OS workflow](https://github.com/aviatam/area51/actions/workflows/test-matrix.yml) gates host behavior on Ubuntu and macOS and a blocking portable suite on Windows. The Windows lane does not run the Unix-dependent tests.
