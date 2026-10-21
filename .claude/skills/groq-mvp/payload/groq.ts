@@ -143,11 +143,16 @@ export class GroqProvider implements AgentProvider {
                 stage = 'mcp-connect';
                 client = new Client({ name: 'area51-groq-mvp', version: '1.0.0' });
                 const env = Object.fromEntries(
-                  Object.entries(options.env ?? {}).filter((pair): pair is [string, string] => pair[1] !== undefined),
+                  Object.entries(options.env ?? {}).filter(
+                    (pair): pair is [string, string] =>
+                      ['HOME', 'PATH', 'TZ'].includes(pair[0]) && pair[1] !== undefined,
+                  ),
                 );
                 await client.connect(
                   new StdioClientTransport({
-                    command: server.command,
+                    // Incus can start Bun with a minimal guest environment whose
+                    // PATH omits /usr/local/bin. Reuse this runner's actual binary.
+                    command: server.command === 'bun' ? process.execPath : server.command,
                     args: server.args,
                     env: { ...env, ...server.env },
                     cwd: server.cwd ?? input.cwd,

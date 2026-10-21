@@ -67,11 +67,12 @@ setInterval(()=>fs.writeFileSync(${JSON.stringify(observation)},JSON.stringify(o
     const provider = createProvider('groq', {
       env: {
         ...process.env,
+        PATH: '/usr/bin:/bin',
         AREA51_GROQ_RELAY_URL: `http://127.0.0.1:${port}/groq-demo/propose`,
         AREA51_GROQ_RELAY_TOKEN: 'synthetic',
         AREA51_GROQ_HISTORY_PATH: path.join(root, 'history.json'),
       },
-      mcpServers: { area51: { command: process.execPath, args: ['run', child] } },
+      mcpServers: { area51: { command: 'bun', args: ['run', child] } },
     });
     const query = provider.query({ prompt: 'Perform the demo action', cwd: root });
     let completed = false;
