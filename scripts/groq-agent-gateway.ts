@@ -138,10 +138,13 @@ export function groqAgentGateway(input: {
         if (
           !message ||
           message.role !== 'assistant' ||
-          (message.content !== null && typeof message.content !== 'string')
+          (message.content !== null && message.content !== undefined && typeof message.content !== 'string') ||
+          (message.content === undefined && message.tool_calls?.length !== 1)
         )
           return reply(502, { error: 'model response' });
-        const result: Record<string, unknown> = { role: 'assistant', content: message.content };
+        // Groq omits content for a pure tool call. The provider wire format
+        // represents that valid response explicitly as content: null.
+        const result: Record<string, unknown> = { role: 'assistant', content: message.content ?? null };
         if (message.tool_calls?.length) {
           if (message.tool_calls.length !== 1) return reply(502, { error: 'tool count' });
           const call = message.tool_calls[0];

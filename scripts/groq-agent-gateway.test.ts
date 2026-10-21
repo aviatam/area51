@@ -8,6 +8,48 @@ afterEach(async () => {
 });
 
 describe('bounded host model gateway', () => {
+  it('normalizes a real Groq pure tool-call response with omitted content', async () => {
+    const toolCall = {
+      id: 'call-1',
+      type: 'function',
+      function: {
+        name: 'area51__tool_action',
+        arguments: JSON.stringify({ tool: 'groq_mvp_check', args: { title: 'Area51 MVP live demo' } }),
+      },
+    };
+    const events: Array<{ contentType?: string; toolCalls?: number }> = [];
+    const server = createServer(
+      groqAgentGateway({
+        token: 'synthetic',
+        key: 'host-only',
+        record: (event) => events.push(event),
+        fetcher: (async () =>
+          new Response(
+            JSON.stringify({
+              choices: [{ finish_reason: 'tool_calls', message: { role: 'assistant', tool_calls: [toolCall] } }],
+            }),
+          )) as typeof fetch,
+      }),
+    );
+    servers.push(server);
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const { port } = server.address() as { port: number };
+    const response = await fetch(`http://127.0.0.1:${port}/groq-demo/propose`, {
+      method: 'POST',
+      headers: { authorization: 'Bearer synthetic' },
+      body: JSON.stringify({
+        messages: [
+          { role: 'system', content: 'demo' },
+          { role: 'user', content: 'Action' },
+        ],
+      }),
+    });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ role: 'assistant', content: null, tool_calls: [toolCall] });
+    expect(events[0].contentType).toBe('undefined');
+    expect(events[0].toolCalls).toBe(1);
+  });
+
   it('does not spend a seventeenth inference request on a rate-limit retry', async () => {
     let calls = 0;
     const server = createServer(
