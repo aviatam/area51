@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 
 import YAML from 'yaml';
+import { isPackageRiskFinding, PYTHON_EVIDENCE_FILES, scanPythonPackageRisk } from './python-package-risk.js';
 
 export type AgentGatePillar = 'capabilities' | 'evolution' | 'skill_efficiency' | 'integration' | 'security';
 export type AgentGateSeverity = 'info' | 'warning' | 'high';
@@ -135,6 +136,8 @@ export async function scanAgentGate(options: ScanAgentGateOptions): Promise<Agen
   const packages = collectPackageCandidates(groupDir, containerConfig);
   const mcpServers = collectMcpServers(containerConfig);
   const findings: AgentGateFinding[] = [];
+  const python = scanPythonPackageRisk(groupDir);
+  findings.push(...python.findings);
 
   if (agentFiles.length === 0) {
     findings.push({
@@ -261,7 +264,7 @@ export async function scanAgentGate(options: ScanAgentGateOptions): Promise<Agen
       policy_files: policyFiles.length,
       scenario_files: scenarioFiles.length,
       mcp_servers: mcpServers.length,
-      packages: packages.length,
+      packages: packages.length + python.packages,
       findings: findings.length,
       high_findings: highFindings,
     },
@@ -517,7 +520,7 @@ function quarantineFindings(
   findings: AgentGateFinding[],
   options: { enabled: boolean; root?: string; now: Date },
 ): AgentGateQuarantine {
-  const highPackageFindings = findings.filter((f) => f.severity === 'high' && f.id.startsWith('npm-'));
+  const highPackageFindings = findings.filter(isPackageRiskFinding);
   if (!options.enabled || highPackageFindings.length === 0) return { enabled: options.enabled, files: [] };
 
   const stamp = options.now.toISOString().replace(/[:.]/g, '-');
@@ -526,9 +529,15 @@ function quarantineFindings(
   fs.mkdirSync(quarantineDir, { recursive: true });
 
   const files: string[] = [];
-  for (const relative of ['package.json', 'package-lock.json', 'pnpm-lock.yaml', 'container.json']) {
+  for (const relative of [
+    'package.json',
+    'package-lock.json',
+    'pnpm-lock.yaml',
+    'container.json',
+    ...PYTHON_EVIDENCE_FILES,
+  ]) {
     const source = path.join(groupDir, relative);
-    if (!fs.existsSync(source)) continue;
+    if (!fs.existsSync(source) || !fs.lstatSync(source).isFile() || fs.statSync(source).size > 2_000_000) continue;
     const dest = path.join(quarantineDir, relative);
     fs.copyFileSync(source, dest);
     files.push(dest);
@@ -554,7 +563,7 @@ function scorePillars(input: {
     input.findings.filter((f) => f.pillar === pillar && f.severity === 'high').length;
   const warn = (pillar: AgentGatePillar) =>
     input.findings.filter((f) => f.pillar === pillar && f.severity === 'warning').length;
-  const blockedPackages = input.findings.filter((f) => f.id.startsWith('npm-')).length;
+  const blockedPackages = input.findings.filter(isPackageRiskFinding).length;
   const missingSecrets = input.secrets.filter((s) => !s.present).length;
   const hasMemory = input.agentFiles.some((file) => file.toLowerCase().includes('memory'));
 

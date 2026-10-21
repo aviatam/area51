@@ -1,4 +1,5 @@
 import type { AgentGateReport } from './agent-gate.js';
+import { isPackageRiskFinding } from './python-package-risk.js';
 
 export type RuntimePolicyProfile = 'local' | 'production' | 'maximum';
 export type RuntimeTrustLevel = 'built-in' | 'approved' | 'third-party' | 'unknown';
@@ -107,9 +108,7 @@ export function selectRuntimePolicy(
 
   riskScore = clampRisk(riskScore);
 
-  const compromisedPackage = report.findings.some(
-    (finding) => finding.severity === 'high' && finding.id.startsWith('npm-'),
-  );
+  const compromisedPackage = report.findings.some(isPackageRiskFinding);
   const quarantineRequired = compromisedPackage || report.quarantine.files.length > 0;
 
   if (quarantineRequired) {
