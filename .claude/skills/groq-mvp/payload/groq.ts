@@ -4,6 +4,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { registerProvider } from './provider-registry.js';
 import { getPendingMessages, markCompleted } from '../db/messages-in.js';
+import { getAllDestinations } from '../destinations.js';
 import { memoryContextForSessionStart, type MemorySessionHookRegistration } from '../memory/session-hook.js';
 import type { AgentProvider, AgentQuery, ProviderEvent, ProviderOptions, QueryInput } from './types.js';
 
@@ -15,6 +16,8 @@ type Message = {
   tool_call_id?: string;
 };
 type History = { continuation: string; messages: Message[]; interrupted: boolean };
+const xml = (value: string) =>
+  value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
 
 /** Normal runner provider; inference and real credentials belong to the host gateway. */
 export class GroqProvider implements AgentProvider {
@@ -107,6 +110,7 @@ export class GroqProvider implements AgentProvider {
             history.messages.push({ role: 'user', content: queue.shift()! });
             save();
             let completed = false;
+            let hostConfirmation: string | undefined;
             for (let round = 0; round < 6; round++) {
               stage = 'model';
               yield { type: 'activity' };
@@ -130,6 +134,13 @@ export class GroqProvider implements AgentProvider {
               const calls = reply.tool_calls ?? [];
               if (calls.length === 0) {
                 stage = 'empty-model-result';
+                if (!reply.content?.trim() && hostConfirmation) {
+                  const destinations = getAllDestinations();
+                  if (destinations.length !== 1) throw new Error('Cannot route a host confirmation unambiguously');
+                  // A definitive host receipt remains usable when inference
+                  // returns no final text. Label its source and never rerun MCP.
+                  reply.content = `<message to="${xml(destinations[0].name)}">Host confirmation: ${xml(hostConfirmation)}</message>`;
+                }
                 if (!reply.content?.trim()) throw new Error('Model returned no response');
                 stage = 'history-save';
                 save();
@@ -190,6 +201,14 @@ export class GroqProvider implements AgentProvider {
                 await new Promise((resolve) => setTimeout(resolve, 500));
               }
               if (!result) throw new Error('Tool outcome unknown: host reconciliation required; no retry');
+              const notification = JSON.parse(result) as { text?: unknown };
+              const prefix = `Tool request ${requestId}: `;
+              if (
+                typeof notification.text === 'string' &&
+                notification.text.startsWith(prefix) &&
+                /^(executed|denied|failed)\b/.test(notification.text.slice(prefix.length))
+              )
+                hostConfirmation = notification.text.slice(prefix.length);
               history.messages.push({ role: 'tool', tool_call_id: call.id, content: result });
               history.interrupted = false;
               save();

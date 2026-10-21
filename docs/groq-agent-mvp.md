@@ -44,6 +44,10 @@ and a reproducible four-turn transcript. Each run provisions ephemeral VMs;
 it is not an always-on chat website. The provider supports queued follow-ups
 through the normal session DB and saves history in its session volume. History
 is bounded and an uncertain tool outcome stops the session for reconciliation.
+If Groq returns an empty final answer after a definitive tool result, the provider
+delivers the correlated **Host confirmation** and its exact URL to the session's
+single configured destination. It does not repeat the tool request or substitute
+a guessed URL. A missing or uncertain host result still stops safely.
 
 The demo controller owns a disposable host reservation database and invokes the
 production broker directly. It does not claim a full production daemon/channel
