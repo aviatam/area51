@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { createServer } from 'node:http';
+import { randomUUID } from 'node:crypto';
 import './index.js';
 import { createProvider } from './factory.js';
 import { initTestSessionDb, closeSessionDb } from '../db/connection.js';
@@ -26,6 +27,7 @@ test(
       )
       .run();
     const observation = path.join(root, 'outbox.json');
+    const resultUrl = `https://example.invalid/area51-contract/${randomUUID()}`;
     const child = path.join(root, 'mcp.ts');
     fs.writeFileSync(
       child,
@@ -59,7 +61,7 @@ setInterval(()=>fs.writeFileSync(${JSON.stringify(observation)},JSON.stringify(o
                   },
                 ],
               }
-            : { role: 'assistant', content: '<message to="e2e">executed</message>' },
+            : { role: 'assistant', content: `<message to="e2e">executed ${resultUrl}</message>` },
         ),
       );
     };
@@ -85,7 +87,10 @@ setInterval(()=>fs.writeFileSync(${JSON.stringify(observation)},JSON.stringify(o
       expect(content.tool).toBe('groq_mvp_check');
       inbound
         .prepare("INSERT INTO messages_in (id,seq,kind,timestamp,content) VALUES ('host-result',1,'system',?,?)")
-        .run(new Date().toISOString(), JSON.stringify({ text: `Tool request ${content.requestId}: executed.` }));
+        .run(
+          new Date().toISOString(),
+          JSON.stringify({ text: `Tool request ${content.requestId}: executed. Public check: ${resultUrl}` }),
+        );
       observed = true;
     }, 50);
     try {
@@ -103,7 +108,7 @@ setInterval(()=>fs.writeFileSync(${JSON.stringify(observation)},JSON.stringify(o
       provider.registerMemorySessionHook(MEMORY_SESSION_HOOK);
       const query = provider.query({
         prompt:
-          'Call area51__tool_action with tool groq_mvp_check and args {"title":"Area51 MVP live demo"}. Wait for the host result, then reply to e2e with the actual status.',
+          'Call area51__tool_action with tool groq_mvp_check and args {"title":"Area51 MVP live demo"}. Wait for the host result, then reply to e2e with the actual status and exact public check URL supplied by the host. Do not invent a URL.',
         cwd: root,
         systemContext: { instructions: buildSystemPromptAddendum('Area51') },
       });
@@ -112,7 +117,7 @@ setInterval(()=>fs.writeFileSync(${JSON.stringify(observation)},JSON.stringify(o
         if (event.type === 'error') throw new Error(event.message);
         if (event.type === 'result') {
           completed = true;
-          expect(event.text).toContain('executed');
+          expect(event.text).toContain(resultUrl);
           query.end();
         }
       }
