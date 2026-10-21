@@ -108,10 +108,12 @@ export function groqAgentGateway(input: {
               model: MODEL,
               messages,
               tools: [FUNCTION],
-              tool_choice: 'auto',
+              // This MVP allows one host action. Once its result arrives,
+              // require a plain-language answer instead of another tool call.
+              tool_choice: messages.at(-1)?.role === 'tool' ? 'none' : 'auto',
               parallel_tool_calls: false,
               temperature: 0,
-              max_completion_tokens: 1024,
+              max_completion_tokens: 2048,
               reasoning_effort: 'low',
             }),
           });
