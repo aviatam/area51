@@ -17,9 +17,8 @@ incus exec "$builder" -- bash -lc '
   export DEBIAN_FRONTEND=noninteractive
   apt-get update
   apt-get install -y --no-install-recommends python3 python3-venv ca-certificates
-  useradd --uid 1000 --create-home node
-  mkdir -p /workspace
-  chown 1000:1000 /workspace
+  mkdir -p /workspace /home/node
+  chown 1000:1000 /workspace /home/node
   python3 -m venv /opt/litellm
   /opt/litellm/bin/pip install --disable-pip-version-check --only-binary=:all: litellm==1.106.2
   /opt/litellm/bin/pip check
