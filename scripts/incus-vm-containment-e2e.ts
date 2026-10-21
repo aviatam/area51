@@ -19,6 +19,7 @@ import { createVmProbeServer } from './vm-probe-server.js';
 import { activeAgentProbe } from './active-agent-probe.js';
 import { ToolBrokerVmFixture } from './tool-broker-vm-fixture.js';
 import { sessionToolVmProof } from './session-tool-vm-proof.js';
+import { groqVmProof } from './groq-vm-proof.js';
 
 const trial = process.env.AREA51_E2E_TRIAL ?? '1';
 if (!/^[1-3]$/.test(trial)) throw new Error('AREA51_E2E_TRIAL must be 1, 2, or 3');
@@ -389,6 +390,23 @@ try {
   console.log(
     'VM session tools: actual guest MCP tool and DB bridge delivered one allowed and one exact approved action.',
   );
+  if (process.env.AREA51_GROQ_VM_PROOF === '1') {
+    const proof = await groqVmProof({
+      primary: plan,
+      primaryDirectory: sessionDir,
+      peer: peerPlan,
+      peerDirectory: peerSessionDir,
+      runGuest,
+      setModelHandler: (handler) => toolBroker.setModelHandler(handler),
+    });
+    fs.writeFileSync(
+      path.join(toolEvidenceDirectory, `groq-vm-trial-${trial}.json`),
+      JSON.stringify(proof, null, 2) + '\n',
+    );
+    console.log(
+      'Groq VM proof: real model gateway, guest MCP, host broker, one GitHub check and replay denial passed.',
+    );
+  }
   const peerFollowup = openInboundDb(path.join(peerSessionDir, 'inbound.db'));
   insertTestMessage(peerFollowup, 'peer-roundtrip-2', 'peer warm follow-up');
   peerFollowup.close();
@@ -447,6 +465,9 @@ try {
   }
   deleteIncusRuntime(plan);
 
+  const { prepareGroqAgentMvp, groqAgentMvp } = await import('./groq-agent-mvp.js');
+  prepareGroqAgentMvp(groupDir);
+
   const restartTransport = makeTransport(`vm-e2e-${suffix}-restart`);
   const restartPlan = makePlan(`${suffix}-r`, restartTransport);
   runtimeResources.push({ plan: restartPlan, transport: restartTransport });
@@ -454,6 +475,22 @@ try {
   const providerRestart = await runGuest(restartPlan, 'bun', ['run', '/run/area51/provider-state.ts', 'verify']);
   if (!providerRestart.includes('area51-claude-provider-state-ok')) {
     throw new Error(`Claude provider restart failed: ${providerRestart}`);
+  }
+
+  if (process.env.AREA51_GROQ_AGENT_MVP === '1') {
+    const proof = await groqAgentMvp({
+      primary: restartPlan,
+      primaryDirectory: sessionDir,
+      peer: peerPlan,
+      peerDirectory: peerSessionDir,
+      runGuest,
+      runIncus,
+      setModelHandler: (handler) => toolBroker.setModelHandler(handler),
+    });
+    fs.writeFileSync(path.join(toolEvidenceDirectory, 'groq-agent-mvp.json'), JSON.stringify(proof, null, 2) + '\n');
+    console.log(
+      'Groq agent MVP: normal entry, conversation, kernel reboot, actual MCP and one real GitHub action passed.',
+    );
   }
 
   const quarantineDecision = selectLiveRuntimePolicy(compromisedGateReport(groupDir), {

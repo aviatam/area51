@@ -1,0 +1,155 @@
+name: Area51 working agent MVP
+on:
+  workflow_dispatch:
+    inputs:
+      prompt:
+        description: Synthetic question for the live agent conversation
+        required: true
+        default: Explain briefly why an isolated AI agent should use host-authorized tools.
+  push:
+    branches: [test/groq-agent-mvp]
+    paths:
+      - scripts/groq-agent-*
+      - .claude/skills/groq-mvp/**
+      - scripts/tool-broker-vm-fixture.ts
+      - scripts/incus-vm-containment-e2e.ts
+      - .github/workflows/groq-agent-mvp.yml
+  pull_request:
+    paths:
+      - .claude/skills/groq-mvp/**
+      - scripts/groq-agent-*
+      - .github/workflows/groq-agent-mvp.yml
+permissions:
+  contents: read
+jobs:
+  host-tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec vitest run scripts/groq-agent-*.test.ts scripts/groq-vm-proof.test.ts scripts/groq-vm-summary.test.ts scripts/tool-broker-vm-fixture.test.ts scripts/mvp-groq-demo.test.ts
+      - run: pnpm exec prettier --check scripts/groq-agent-*.ts .claude/skills/groq-mvp/ .github/workflows/groq-agent-mvp.yml docs/groq-agent-mvp.md
+      - run: pnpm exec eslint scripts/groq-agent-*.ts scripts/tool-broker-vm-fixture.ts
+      - run: pnpm exec tsc --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext --esModuleInterop --skipLibCheck --strict scripts/groq-agent-mvp.ts scripts/groq-agent-gateway.ts scripts/groq-agent-summary.ts
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.12
+      - name: Install and verify provider skill
+        run: |
+          node .claude/skills/groq-mvp/install.mjs
+          node .claude/skills/groq-mvp/install.mjs
+          cd container/agent-runner
+          bun install --frozen-lockfile
+          bun run typecheck
+          bun test src/providers/groq.registration.test.ts
+          cd ../..
+          node .claude/skills/groq-mvp/install.mjs --remove
+          git diff --exit-code -- container/agent-runner/src/providers/index.ts
+  model-contract:
+    if: github.repository == 'aviatam/area51' && ((github.event_name == 'push' && github.ref == 'refs/heads/test/groq-agent-mvp') || (github.event_name == 'workflow_dispatch' && github.actor == 'aviatam' && github.triggering_actor == 'aviatam'))
+    needs: host-tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.12
+      - run: |
+          node .claude/skills/groq-mvp/install.mjs
+          cd container/agent-runner
+          bun install --frozen-lockfile
+      - name: Real Groq provider and MCP contract, with a synthetic host result
+        working-directory: container/agent-runner
+        env:
+          AREA51_LIVE_GROQ_CONTRACT: '1'
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        run: bun test src/providers/groq.registration.test.ts --test-name-pattern 'actual stdio MCP'
+  vm-proof:
+    if: github.repository == 'aviatam/area51' && ((github.event_name == 'push' && github.ref == 'refs/heads/test/groq-agent-mvp') || (github.event_name == 'workflow_dispatch' && github.actor == 'aviatam' && github.triggering_actor == 'aviatam'))
+    needs: model-contract
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      checks: write
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Install provider skill
+        run: node .claude/skills/groq-mvp/install.mjs
+      - name: Enable and verify nested KVM
+        run: |
+          grep -E -m1 '(vmx|svm)' /proc/cpuinfo
+          test -e /dev/kvm
+          ls -l /dev/kvm
+          sudo chmod 0666 /dev/kvm
+          test -r /dev/kvm
+          test -w /dev/kvm
+      - name: Install and initialize Incus
+        run: |
+          bash scripts/prepare-ci-apt.sh
+          key_file="$(mktemp)"
+          curl -fsSL https://pkgs.zabbly.com/key.asc -o "$key_file"
+          gpg --show-keys --with-colons "$key_file" | grep -q '^fpr:::::::::4EFC590696CB15B87C73A3AD82CC8797C838DCFD:'
+          sudo install -d -m 0755 /etc/apt/keyrings
+          sudo install -m 0644 "$key_file" /etc/apt/keyrings/zabbly.asc
+          . /etc/os-release
+          architecture="$(dpkg --print-architecture)"
+          printf '%s\n' \
+            'Enabled: yes' \
+            'Types: deb' \
+            'URIs: https://pkgs.zabbly.com/incus/lts-7.0' \
+            "Suites: ${VERSION_CODENAME}" \
+            'Components: main' \
+            "Architectures: ${architecture}" \
+            'Signed-By: /etc/apt/keyrings/zabbly.asc' | sudo tee /etc/apt/sources.list.d/zabbly-incus-lts-7.0.sources >/dev/null
+          sudo apt-get update
+          sudo apt-get install -y incus acl qemu-system-x86
+          sudo setfacl -m "u:${USER}:rw" /var/lib/incus/unix.socket
+          incus admin init --minimal
+          subnet="$(incus network get incusbr0 ipv4.address)"
+          uplink="$(ip -4 route show default | awk '{print $5; exit}')"
+          sudo sysctl -w net.ipv4.ip_forward=1
+          sudo iptables -I FORWARD 1 -i incusbr0 -o "$uplink" -j ACCEPT
+          sudo iptables -I FORWARD 1 -i "$uplink" -o incusbr0 -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+          sudo iptables -t nat -I POSTROUTING 1 -s "$subnet" -o "$uplink" -j MASQUERADE
+          incus version
+          incus storage volume file push --help | grep -q -- '--create-dirs'
+      - name: Build VM-native Area51 image
+        env:
+          AREA51_INCUS_VM_IMAGE_ALIAS: area51-agent-v2-vm-ci-${{ github.run_id }}
+        run: bash container/incus/build-vm.sh
+      - name: Run normal agent conversation, VM reboot and real tool action
+        env:
+          AREA51_INCUS_VM_IMAGE_ALIAS: area51-agent-v2-vm-ci-${{ github.run_id }}
+          AREA51_INCUS_STORAGE_POOL: default
+          AREA51_GROQ_AGENT_MVP: '1'
+          AREA51_GROQ_PROMPT: ${{ inputs.prompt }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p .area51/diagnostics
+          AREA51_E2E_TRIAL=1 pnpm exec tsx scripts/incus-vm-containment-e2e.ts 2>&1 | tee .area51/diagnostics/groq-agent-mvp.log
+          pnpm exec tsx scripts/groq-agent-summary.ts
+      - name: Upload agent MVP evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: groq-agent-mvp-evidence-${{ github.run_id }}
+          path: .area51/diagnostics
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 30
