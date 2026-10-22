@@ -5,6 +5,7 @@ import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { monitorDependencies, writeDependencyHold, assertNoDependencyHold } from '../../../src/dependency-monitor.js';
 import { scanAgentGate } from '../../../src/agent-gate.js';
 import { selectLiveRuntimePolicy } from '../../../src/live-runtime-policy.js';
 import { applyIncusRuntimePlan, spawnIncusExec } from '../../../src/incus-adapter.js';
@@ -37,7 +38,7 @@ fs.writeFileSync(path.join(root, 'security-policy.md'), 'Only the host decides q
 fs.writeFileSync(path.join(root, 'requirements.txt'), 'litellm==1.106.2\n');
 const relayFile = path.join(root, 'relay.json');
 fs.writeFileSync(relayFile, JSON.stringify({ url: `http://${address}:${port}/v1`, token }), { mode: 0o600 });
-const clean = await scanAgentGate({ groupDir: root, requiredSecrets: [], env: {} });
+const clean = await scanAgentGate({ groupDir: root, requiredSecrets: [], env: {}, dependencySecurity: 'required' });
 if (clean.findings.some((f) => f.severity === 'high')) throw new Error('Clean control rejected');
 const initial = selectLiveRuntimePolicy(clean, {
   backend: 'incus',
@@ -82,6 +83,7 @@ const relay = http.createServer(litellmRelay({ token, key, record: (status) => s
 const incus = (args: string[]) =>
   execFileSync('incus', args, { encoding: 'utf8', timeout: 180000, stdio: ['ignore', 'pipe', 'pipe'] });
 let processReady: Record<string, unknown> | undefined;
+let stopMonitor: (() => void) | undefined;
 try {
   applyIncusRuntimePlan(plan);
   await new Promise<void>((resolve, reject) => {
@@ -102,7 +104,12 @@ try {
   if (!installed.some((p) => p.name === 'litellm' && p.version === '1.106.2'))
     throw new Error('Wrong installed control');
   fs.writeFileSync(path.join(out, 'installed-python-packages.json'), inventory);
-  const installedGate = await scanAgentGate({ groupDir: root, requiredSecrets: [], env: {} });
+  const installedGate = await scanAgentGate({
+    groupDir: root,
+    requiredSecrets: [],
+    env: {},
+    dependencySecurity: 'required',
+  });
   if (installedGate.findings.some((f) => f.severity === 'high')) throw new Error('Installed control rejected');
   const child = spawnIncusExec(
     plan,
@@ -150,17 +157,58 @@ try {
   if (statuses.length !== 2 || statuses.some((s) => s !== 200)) throw new Error('Missing two real inference results');
   // Only the declaration changes. Never install, import or execute a malicious release.
   fs.writeFileSync(path.join(root, 'requirements.txt'), 'litellm==1.107.0\n');
-  const changed = await scanAgentGate({ groupDir: root, requiredSecrets: [], env: {} });
-  if (!changed.findings.some((f) => f.id === 'pypi-litellm-compromised'))
-    throw new Error('Declaration was not detected');
-  const decision = selectLiveRuntimePolicy(changed, {
-    backend: 'incus',
-    incusInstanceKind: 'vm',
-    containerConfig: config,
+  const { changed, decision } = await new Promise<{
+    changed: Awaited<ReturnType<typeof scanAgentGate>>;
+    decision: ReturnType<typeof selectLiveRuntimePolicy>;
+  }>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      stopMonitor?.();
+      reject(new Error('Automatic dependency containment timed out'));
+    }, 150_000);
+    stopMonitor = monitorDependencies({
+      groupDir: root,
+      intervalMs: 1_000, // Accelerated fixture; the production host uses 60 seconds.
+      current: () => true,
+      error: (error) => {
+        clearTimeout(timer);
+        stopMonitor?.();
+        reject(error);
+      },
+      unsafe: async (result) => {
+        try {
+          if (result.summary.status !== 'complete' || !result.findings.length)
+            throw new Error('Automatic scanner did not produce complete findings');
+          const changed = await scanAgentGate({ groupDir: root, requiredSecrets: [], env: {} });
+          changed.findings.push(...result.findings);
+          changed.dependency_scan = result.summary;
+          if (!changed.findings.some((f) => f.id === 'pypi-litellm-compromised'))
+            throw new Error('Declaration was not detected');
+          const decision = selectLiveRuntimePolicy(changed, {
+            backend: 'incus',
+            incusInstanceKind: 'vm',
+            containerConfig: config,
+          });
+          if (decision.action !== 'quarantine') throw new Error('Host did not choose quarantine');
+          writeDependencyHold(path.join(out, 'monitor-host'), 'litellm-live', result);
+          const applied = enforceIncusRuntimeDecision(decision, plan);
+          if (!applied.quarantine?.commands.every((c) => c.ok)) throw new Error('Quarantine incomplete');
+          let held = false;
+          try {
+            assertNoDependencyHold(path.join(out, 'monitor-host'), 'litellm-live');
+          } catch {
+            held = true;
+          }
+          if (!held) throw new Error('Session restart was not held');
+          resolve({ changed, decision });
+        } catch (error) {
+          reject(error);
+        } finally {
+          clearTimeout(timer);
+          stopMonitor?.();
+        }
+      },
+    });
   });
-  if (decision.action !== 'quarantine') throw new Error('Host did not choose quarantine');
-  const applied = enforceIncusRuntimeDecision(decision, plan);
-  if (!applied.quarantine?.commands.every((c) => c.ok)) throw new Error('Quarantine incomplete');
   const list = JSON.parse(incus(['list', plan.instance, '--project', plan.project, '--format', 'json']));
   const instance = list.find((v: { name: string }) => v.name === plan.instance);
   const stopped = instance?.status?.toLowerCase() === 'stopped';
@@ -206,8 +254,12 @@ try {
         execution_rejected: executionRejected,
         malicious_package_executed: false,
         unknown_malware_detection_tested: false,
+        automatic_polling_tested: true,
+        monitor_test_interval_ms: 1000,
+        restart_hold_verified: true,
         continuous_monitoring_tested: false,
-        trigger: 'host explicitly rescanned changed root requirements.txt; installed package remained clean',
+        trigger:
+          'production dependency monitor automatically polled changed host requirements.txt; installed package remained clean',
         requirements_sha256: createHash('sha256').update('litellm==1.107.0\n').digest('hex'),
         findings,
       },
@@ -217,10 +269,11 @@ try {
   );
   fs.writeFileSync(
     path.join(out, 'summary.md'),
-    '## LiteLLM dependency quarantine\n\n| Check | Result |\n|---|---|\n| Actual LiteLLM 1.106.2 agent, two live Groq turns | ✅ |\n| Third-party agent selected VM | ✅ |\n| Changed requirement 1.107.0 detected by host gate | ✅ |\n| Running VM stopped and NIC removed | ✅ |\n| Evidence snapshot retained; execution rejected | ✅ |\n\nKnown-version declaration test. Installed library stayed clean. Host explicitly rescanned; no background detector or unknown-malware detection claimed. Disposable runner evidence expires with runner.\n',
+    '## LiteLLM dependency quarantine\n\n| Check | Result |\n|---|---|\n| Actual LiteLLM 1.106.2 agent, two live Groq turns | ✅ |\n| Third-party agent selected VM | ✅ |\n| Changed requirement 1.107.0 detected by host gate | ✅ |\n| Running VM stopped and NIC removed | ✅ |\n| Evidence snapshot retained; execution rejected | ✅ |\n\nKnown-version declaration test. Installed library stayed clean. The production monitor automatically detected the changed host declaration with an accelerated one-second poll and persisted a restart hold. No unknown-malware or guest-installed-package attestation claimed. Disposable runner evidence expires with runner.\n',
   );
   console.log('LiteLLM live agent and observed VM quarantine passed. Evidence: .area51/diagnostics/litellm');
 } finally {
+  stopMonitor?.();
   relay.closeAllConnections();
   await new Promise<void>((resolve) => relay.close(() => resolve()));
   fs.rmSync(relayFile, { force: true });
