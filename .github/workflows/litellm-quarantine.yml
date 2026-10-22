@@ -2,9 +2,11 @@ name: LiteLLM live agent quarantine
 on:
   workflow_dispatch:
   push:
-    branches: [test/litellm-quarantine]
+    branches: [test/litellm-quarantine, feat/automatic-security-standalone]
   pull_request:
     paths:
+      - src/dependency-*.ts
+      - src/dependency-security-pins.json
       - src/python-package-risk*
       - src/agent-gate.ts
       - src/runtime-policy.ts
@@ -28,10 +30,10 @@ jobs:
       - run: pnpm exec tsc --noEmit
       - run: pnpm exec vitest run
       - run: pnpm exec prettier --check src/python-package-risk*.ts src/agent-gate.ts src/runtime-policy.ts .claude/skills/litellm-quarantine/*.ts scripts/litellm-relay.test.ts .github/workflows/litellm-quarantine.yml
-      - run: pnpm exec tsc --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext --esModuleInterop --skipLibCheck --strict .claude/skills/litellm-quarantine/run.ts
+      - run: pnpm exec tsc --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext --resolveJsonModule --esModuleInterop --skipLibCheck --strict .claude/skills/litellm-quarantine/run.ts
   live:
     needs: tests
-    if: github.repository == 'aviatam/area51' && ((github.event_name == 'push' && github.ref == 'refs/heads/test/litellm-quarantine') || (github.event_name == 'workflow_dispatch' && github.actor == 'aviatam' && github.triggering_actor == 'aviatam'))
+    if: github.repository == 'aviatam/area51' && ((github.event_name == 'push' && (github.ref == 'refs/heads/test/litellm-quarantine' || github.ref == 'refs/heads/feat/automatic-security-standalone')) || (github.event_name == 'workflow_dispatch' && github.actor == 'aviatam' && github.triggering_actor == 'aviatam'))
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     env:
@@ -75,7 +77,7 @@ jobs:
           incus storage volume file push --help | grep -q -- '--create-dirs'
       - name: Build clean LiteLLM image without model credentials
         run: bash .claude/skills/litellm-quarantine/build-image.sh
-      - name: Run actual LiteLLM agent, then detect declaration and quarantine VM
+      - name: Run actual LiteLLM agent, then automatically detect and quarantine VM
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         run: |

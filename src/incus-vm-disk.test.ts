@@ -105,11 +105,44 @@ describe('Incus VM managed disk contract', () => {
       fs.symlinkSync('/app/CLAUDE.md', link);
       const plan = buildIncusVmDiskPlan({ ...options, volumes: [{ ...options.volumes[0], source: root }] });
 
-      expect(plan.prepareCommands).toContainEqual(expect.arrayContaining(['--no-dereference', link]));
+      expect(plan.prepareCommands).toContainEqual([
+        'storage',
+        'volume',
+        'file',
+        'create',
+        '--create-dirs',
+        '--force',
+        '--type=symlink',
+        '--uid',
+        '1000',
+        '--gid',
+        '1000',
+        options.pool,
+        'maximum-session/.claude-shared.md',
+        '/app/CLAUDE.md',
+        '--project',
+        options.project,
+      ]);
+      expect(plan.prepareCommands.flat()).not.toContain(link);
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
     }
   });
+
+  it.runIf(process.platform !== 'win32').each(['../secret', '/app/../../etc/passwd'])(
+    'rejects a traversal link target %s before invoking Incus',
+    (target) => {
+      const root = fs.mkdtempSync(path.join(os.tmpdir(), 'area51-vm-disk-traversal-'));
+      try {
+        fs.symlinkSync(target, path.join(root, 'escape'));
+        expect(() => buildIncusVmDiskPlan({ ...options, volumes: [{ ...options.volumes[0], source: root }] })).toThrow(
+          'Unsupported',
+        );
+      } finally {
+        fs.rmSync(root, { recursive: true, force: true });
+      }
+    },
+  );
 
   it('initializes writable mount ownership inside the running guest', () => {
     const plan = buildIncusVmDiskPlan(options);

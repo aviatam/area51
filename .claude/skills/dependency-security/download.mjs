@@ -3,7 +3,7 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 const directory = path.dirname(fileURLToPath(import.meta.url));
-const pins = JSON.parse(fs.readFileSync(path.join(directory, 'pins.json'), 'utf8'));
+const pins = JSON.parse(fs.readFileSync(path.join(directory, '../../../src/dependency-security-pins.json'), 'utf8'));
 const asset = pins.assets[`${process.platform}-${process.arch}`];
 if (!asset) throw new Error('Unsupported scanner host platform');
 const destination = path.resolve(process.argv[2] ?? path.join(directory, '../../../data/tools', asset.name));

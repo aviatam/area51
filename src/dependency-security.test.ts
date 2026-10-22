@@ -18,7 +18,21 @@ afterEach(() => {
   vi.unstubAllEnvs();
   for (const root of roots.splice(0)) fs.rmSync(root, { recursive: true, force: true });
 });
-describe('installed dependency security skill', () => {
+describe('native dependency security', () => {
+  it('requires coverage for live preflight without an enable flag', async () => {
+    vi.stubEnv('AREA51_DEPENDENCY_SECURITY', '');
+    const root = temp();
+    fs.writeFileSync(path.join(root, 'AGENTS.md'), 'A test agent.');
+    const report = await scanAgentGate({
+      groupDir: root,
+      requiredSecrets: [],
+      env: {},
+      dependencySecurity: 'required',
+    });
+    expect(report.dependency_scan?.status).toBe('incomplete');
+    expect(report.findings.some((f) => f.id === 'dependency-inventory-missing')).toBe(true);
+    expect(selectRuntimePolicy(report, { incusAvailable: false }).action).toBe('block');
+  });
   it('reaches the scanner through the real Agent Gate and reports disabled coverage explicitly', async () => {
     vi.stubEnv('AREA51_DEPENDENCY_SECURITY', '');
     const root = temp();

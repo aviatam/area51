@@ -94,28 +94,57 @@ export function buildIncusVmDiskPlan(options: IncusVmDiskOptions): IncusVmDiskPl
 }
 
 function buildFilePushCommands(source: string, pool: string, volume: string, projectArgs: string[]): string[][] {
-  const entries =
+  const entries: VolumeEntry[] =
     fs.existsSync(source) && fs.lstatSync(source).isDirectory() ? listVolumeEntries(source) : [{ source, target: '' }];
-  return entries.map((entry) => [
-    'storage',
-    'volume',
-    'file',
-    'push',
-    '--create-dirs',
-    '--no-dereference',
-    '--uid',
-    '1000',
-    '--gid',
-    '1000',
-    entry.source,
-    pool,
-    `${volume}/${entry.target}`,
-    ...projectArgs,
-  ]);
+  return entries.map((entry) =>
+    entry.symlinkTarget !== undefined
+      ? [
+          // Incus 7.0.2 push calls os.Stat before applying --no-dereference.
+          // A link valid only inside the VM must be created from its literal target,
+          // never stat'ed or opened through the host filesystem.
+          'storage',
+          'volume',
+          'file',
+          'create',
+          '--create-dirs',
+          '--force',
+          '--type=symlink',
+          '--uid',
+          '1000',
+          '--gid',
+          '1000',
+          pool,
+          `${volume}/${entry.target}`,
+          entry.symlinkTarget,
+          ...projectArgs,
+        ]
+      : [
+          'storage',
+          'volume',
+          'file',
+          'push',
+          '--create-dirs',
+          '--no-dereference',
+          '--uid',
+          '1000',
+          '--gid',
+          '1000',
+          entry.source,
+          pool,
+          `${volume}/${entry.target}`,
+          ...projectArgs,
+        ],
+  );
 }
 
-function listVolumeEntries(root: string): Array<{ source: string; target: string }> {
-  const entries: Array<{ source: string; target: string }> = [];
+interface VolumeEntry {
+  source: string;
+  target: string;
+  symlinkTarget?: string;
+}
+
+function listVolumeEntries(root: string): VolumeEntry[] {
+  const entries: VolumeEntry[] = [];
   const visit = (directory: string, prefix: string): void => {
     for (const name of fs.readdirSync(directory).sort()) {
       const source = resolve(directory, name);
@@ -123,7 +152,7 @@ function listVolumeEntries(root: string): Array<{ source: string; target: string
       const stats = fs.lstatSync(source);
       if (stats.isDirectory()) visit(source, target);
       else if (stats.isFile()) entries.push({ source, target });
-      else if (stats.isSymbolicLink() && isSafeVolumeSymlink(source)) entries.push({ source, target });
+      else if (stats.isSymbolicLink()) entries.push({ source, target, symlinkTarget: safeVolumeSymlinkTarget(source) });
       else throw new Error(`Unsupported Incus VM volume source type: ${source}`);
     }
   };
@@ -131,10 +160,11 @@ function listVolumeEntries(root: string): Array<{ source: string; target: string
   return entries;
 }
 
-function isSafeVolumeSymlink(source: string): boolean {
+function safeVolumeSymlinkTarget(source: string): string {
   const target = fs.readlinkSync(source).replace(/\\/g, '/');
-  if (target.startsWith('/')) return target === '/app' || target.startsWith('/app/');
-  return !target.split('/').includes('..');
+  if (target.split('/').includes('..') || (target.startsWith('/') && target !== '/app' && !target.startsWith('/app/')))
+    throw new Error(`Unsupported Incus VM volume source type: ${source}`);
+  return target;
 }
 
 function validateName(value: string, label: string): void {

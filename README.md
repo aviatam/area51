@@ -410,3 +410,5 @@ VM managed volumes are intentionally treated as copy-based transport, not as liv
 ## License
 
 MIT. See [LICENSE](LICENSE).
+
+Normal agent runs now enforce automatic dependency scanning and periodic holds. Existing installations must supply matching resolved inventories before upgrading; see [automatic security migration](docs/automatic-security-migration.md). Area51 uses its own update sources and sends no inherited setup telemetry.

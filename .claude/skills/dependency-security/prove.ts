@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
+import { monitorDependencies, writeDependencyHold, assertNoDependencyHold } from '../../../src/dependency-monitor.js';
 import { scanAgentGate } from '../../../src/agent-gate.js';
 import { selectRuntimePolicy } from '../../../src/runtime-policy.js';
 import { buildIncusRuntimePlan } from '../../../src/incus-runtime.js';
@@ -21,7 +22,6 @@ const fixtures = JSON.parse(fs.readFileSync(path.join(directory, 'fixtures.json'
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'area51-multi-manager-'));
 const out = path.resolve(process.env.AREA51_DEPENDENCY_PROOF_OUTPUT ?? '.area51/diagnostics/dependency-security');
 fs.mkdirSync(out, { recursive: true });
-process.env.AREA51_DEPENDENCY_SECURITY = 'required';
 fs.writeFileSync(path.join(root, 'AGENTS.md'), 'Metadata-only security probe.');
 for (const fixture of fixtures) {
   const dir = path.join(root, fixture.manager);
@@ -29,7 +29,13 @@ for (const fixture of fixtures) {
   fs.writeFileSync(path.join(dir, fixture.file), fixture.content);
 }
 try {
-  const report = await scanAgentGate({ groupDir: root, requiredSecrets: [], env: {}, quarantine: true });
+  const report = await scanAgentGate({
+    groupDir: root,
+    requiredSecrets: [],
+    env: {},
+    quarantine: true,
+    dependencySecurity: 'required',
+  });
   const summary = report.dependency_scan as {
     status: string;
     scanner: string;
@@ -90,6 +96,48 @@ try {
     !commands.some((c) => c.slice(0, 3).join(' ') === 'config device remove')
   )
     throw new Error('Missing production enforcement commands');
+  // Real periodic trigger and fresh OSV lookup; containment remains a recording executor here.
+  await new Promise<void>((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      stop();
+      reject(new Error('Automatic monitor timed out'));
+    }, 120_000);
+    const stop = monitorDependencies({
+      groupDir: root,
+      intervalMs: 1_000,
+      current: () => true,
+      error: (error) => {
+        clearTimeout(timeout);
+        stop();
+        reject(error);
+      },
+      unsafe: (result) => {
+        try {
+          if (result.summary.status !== 'complete' || !result.findings.length)
+            throw new Error('Monitor did not produce complete advisory evidence');
+          writeDependencyHold(path.join(out, 'monitor-host'), 'proof-session', result);
+          let held = false;
+          try {
+            assertNoDependencyHold(path.join(out, 'monitor-host'), 'proof-session');
+          } catch {
+            held = true;
+          }
+          if (!held) throw new Error('Automatic session hold did not block restart');
+          enforceIncusRuntimeDecision(decision, plan, {
+            executor: (argv) => {
+              commands.push(argv);
+            },
+          });
+          resolve();
+        } catch (error) {
+          reject(error);
+        } finally {
+          clearTimeout(timeout);
+          stop();
+        }
+      },
+    });
+  });
   fs.cpSync(root, path.join(out, 'inputs'), {
     recursive: true,
     filter: (source) => !source.includes(`${path.sep}.area51`),
@@ -108,6 +156,9 @@ try {
     actual_vm_quarantine_tested: false,
     target_packages_installed: false,
     unknown_malware_detection_tested: false,
+    automatic_polling_tested: true,
+    monitor_test_interval_ms: 1000,
+    persistent_restart_hold_verified: true,
     continuous_monitoring_tested: false,
     input_hashes: fixtures.map((f) => ({
       file: `${f.manager}/${f.file}`,
@@ -125,7 +176,7 @@ try {
             `| ${row.manager} | ${row.package}@${row.version} | ${row.advisories.length} | ✅ quarantine / block |`,
         )
         .join('\n') +
-      '\n\nActual pinned scanner and current OSV lookup; target packages are metadata only. Production policy and quarantine command construction were exercised with a recording executor. This proof does not run a VM or test language runtimes, unknown malware, build containment, or continuous monitoring. The separate LiteLLM live VM proof covers actual stop/NIC removal on Linux.\n',
+      '\n\nActual pinned scanner and current OSV lookup; target packages are metadata only. Production policy and quarantine command construction were exercised with a recording executor. Automatic polling (accelerated to one second) performed another real scan and persisted a restart hold. This proof does not run a VM or test guest inventory changes, language runtimes, unknown malware, build containment, or long-running monitoring. The separate LiteLLM live VM proof covers actual stop/NIC removal on Linux.\n',
   );
   console.log(`Verified ${rows.length} managers with actual OSV matching and Area51 host decisions.`);
 } finally {

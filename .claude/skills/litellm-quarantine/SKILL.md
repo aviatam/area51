@@ -9,11 +9,11 @@ Run the `LiteLLM live agent quarantine` GitHub workflow on a KVM-capable disposa
 
 The Python task agent calls the actual LiteLLM completion API for two live Groq turns. Only a two-request relay capability enters the VM; the real provider key remains in the host process. The initial third-party workload is selected for VM isolation before it runs.
 
-The harness changes the host-side root `requirements.txt` declaration to `litellm==1.107.0`, explicitly invokes Agent Gate again, and enforces its returned quarantine decision on the existing VM. It verifies the stopped state, removed NIC, evidence snapshot, exited process and rejected execution. Review `report.json` and the workflow summary.
+The harness changes the host-side root `requirements.txt` declaration to `litellm==1.107.0`, lets the production dependency monitor detect it automatically (one-second test interval; 60 seconds in production), and enforces the returned quarantine decision on the existing VM. It verifies the stopped state, removed NIC, evidence snapshot, exited process and rejected execution. It also verifies a persistent session restart hold. Initial declared control inventories receive a real OSV scan. Review `report.json` and the workflow summary.
 
 ## Evidence limits
 
-This is a known-version declaration test. The installed package remains 1.106.2 throughout. Never install/import/download 1.107.0, 1.82.7 or 1.82.8 as part of this workflow. The test does not prove detection of unknown malware, compromise during installation, automatic background rescanning, or live migration of an already running container. The process starts in a VM; quarantine stops it rather than continuing risky execution.
+This is a known-version declaration test. The installed package remains 1.106.2 throughout. Never install/import/download 1.107.0, 1.82.7 or 1.82.8 as part of this workflow. The test does not prove detection of unknown malware, compromise during installation, guest package attestation, long-duration advisory monitoring, or live migration of an already running container. The process starts in a VM; quarantine stops it rather than continuing risky execution.
 
 Core Agent Gate scans root `requirements.txt`, `requirements.lock` and a `python-packages.json` exported with `pip list --format=json`. Nested requirements, pyproject.toml, uv/Poetry lockfiles and arbitrary Docker layers are outside this scanner's coverage. An inventory describes versions; it does not attest to file integrity. Exact unblocked versions are not a blanket safety certification. Unresolved LiteLLM declarations fail closed for review.
 

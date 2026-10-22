@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 
 import YAML from 'yaml';
+import { scanDependencySecurity } from './dependency-security.js';
 import { isPackageRiskFinding, PYTHON_EVIDENCE_FILES, scanPythonPackageRisk } from './python-package-risk.js';
 
 export type AgentGatePillar = 'capabilities' | 'evolution' | 'skill_efficiency' | 'integration' | 'security';
@@ -37,6 +38,7 @@ export interface AgentGateQuarantine {
 }
 
 export interface AgentGateReport {
+  dependency_scan?: Record<string, unknown>;
   schema: 'area51.agent_gate.v1';
   generated_at: string;
   group_path: string;
@@ -64,6 +66,8 @@ export interface AgentGateReport {
 }
 
 export interface ScanAgentGateOptions {
+  /** The live runner requires coverage even when the optional CLI mode is unset. */
+  dependencySecurity?: 'required';
   groupDir: string;
   requiredSecrets?: string[];
   env?: NodeJS.ProcessEnv;
@@ -138,6 +142,11 @@ export async function scanAgentGate(options: ScanAgentGateOptions): Promise<Agen
   const findings: AgentGateFinding[] = [];
   const python = scanPythonPackageRisk(groupDir);
   findings.push(...python.findings);
+  const dependencySecurity = await scanDependencySecurity(groupDir, {
+    preserveEvidence: options.quarantine ?? true,
+    required: options.dependencySecurity === 'required',
+  });
+  findings.push(...dependencySecurity.findings);
 
   if (agentFiles.length === 0) {
     findings.push({
@@ -222,6 +231,8 @@ export async function scanAgentGate(options: ScanAgentGateOptions): Promise<Agen
     now,
   });
 
+  quarantine.files.push(...dependencySecurity.evidenceFiles);
+
   const pillars = scorePillars({
     agentFiles,
     policyFiles,
@@ -250,6 +261,7 @@ export async function scanAgentGate(options: ScanAgentGateOptions): Promise<Agen
 
   return {
     schema: 'area51.agent_gate.v1',
+    dependency_scan: dependencySecurity.summary,
     generated_at: now.toISOString(),
     group_path: groupDir,
     passed,
@@ -264,7 +276,7 @@ export async function scanAgentGate(options: ScanAgentGateOptions): Promise<Agen
       policy_files: policyFiles.length,
       scenario_files: scenarioFiles.length,
       mcp_servers: mcpServers.length,
-      packages: packages.length + python.packages,
+      packages: packages.length + python.packages + dependencySecurity.summary.packages.length,
       findings: findings.length,
       high_findings: highFindings,
     },

@@ -2,15 +2,23 @@ name: Dependency security across managers
 on:
   workflow_dispatch:
   push:
-    branches: [test/litellm-quarantine]
+    branches: [main, feat/automatic-security-standalone]
     paths:
       - .claude/skills/dependency-security/**
       - src/python-package-risk.ts
+      - src/dependency-*.ts
+      - src/dependency-security-pins.json
+      - src/container-runner.ts
+      - src/agent-gate.ts
       - .github/workflows/dependency-security.yml
   pull_request:
     paths:
       - .claude/skills/dependency-security/**
       - src/python-package-risk.ts
+      - src/dependency-*.ts
+      - src/dependency-security-pins.json
+      - src/container-runner.ts
+      - src/agent-gate.ts
       - .github/workflows/dependency-security.yml
 permissions:
   contents: read
@@ -45,7 +53,7 @@ jobs:
         run: |
           pnpm exec tsc --noEmit
           pnpm exec tsc --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext --resolveJsonModule --esModuleInterop --skipLibCheck --strict .claude/skills/dependency-security/prove.ts
-          pnpm exec vitest run src/dependency-security.test.ts src/python-package-risk.test.ts src/agent-gate.test.ts src/runtime-policy.test.ts src/incus-quarantine-policy.test.ts
+          pnpm exec vitest run src/dependency-security.test.ts src/dependency-monitor.test.ts src/dependency-scanner.test.ts src/python-package-risk.test.ts src/agent-gate.test.ts src/runtime-policy.test.ts src/incus-quarantine-policy.test.ts
       - name: Unix host decision-file permissions
         if: runner.os != 'Windows'
         run: pnpm exec vitest run src/live-runtime-policy.test.ts
@@ -57,20 +65,14 @@ jobs:
         run: |
           pnpm exec prettier --check .claude/skills/dependency-security/ .github/workflows/dependency-security.yml src/python-package-risk.ts src/agent-gate.ts
           pnpm exec eslint src/dependency-security.ts src/dependency-security.test.ts src/python-package-risk.ts
-      - name: Download checksum-pinned scanner
-        run: |
-          scanner_path="$(node .claude/skills/dependency-security/download.mjs)"
-          printf 'AREA51_DEPENDENCY_SCANNER=%s\n' "$scanner_path" >> "$GITHUB_ENV"
-      - name: Ten actual manager parsers and live advisory decisions
-        env:
-          AREA51_DEPENDENCY_SECURITY: required
+      - name: Automatic tool provisioning, ten actual manager parsers, live advisory decisions and monitor
         run: |
           pnpm exec tsx .claude/skills/dependency-security/prove.ts
           cat .area51/diagnostics/dependency-security/summary.md >> "$GITHUB_STEP_SUMMARY"
-      - name: Verify complete removal
+      - name: Verify compatibility installer preserves native enforcement
         run: |
-          node .claude/skills/dependency-security/install.mjs --remove
-          git diff --exit-code -- src/agent-gate.ts
+          node .claude/skills/dependency-security/install.mjs
+          git diff --exit-code -- src/
           pnpm exec tsc --noEmit
       - name: Upload exact scan evidence
         if: always()

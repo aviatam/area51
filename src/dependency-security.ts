@@ -6,6 +6,7 @@ import path from 'node:path';
 import type { AgentGateFinding } from './agent-gate.js';
 import { isKnownCompromisedPythonPackage } from './python-package-risk.js';
 import pins from './dependency-security-pins.json' with { type: 'json' };
+import { ensureDependencyScanner } from './dependency-scanner.js';
 
 export const DEPENDENCY_FORMATS: Record<string, string> = {
   'package-lock.json': 'npm',
@@ -179,7 +180,7 @@ export function interpretDependencyReport(
 
 export async function scanDependencySecurity(
   groupDir: string,
-  options: { preserveEvidence?: boolean } = {},
+  options: { preserveEvidence?: boolean; required?: boolean } = {},
 ): Promise<DependencySecurityResult> {
   const result: DependencySecurityResult = {
     findings: [],
@@ -193,11 +194,11 @@ export async function scanDependencySecurity(
       limitations: [
         'Known advisory and supplied-version evidence; no unknown-malware detection or artifact attestation.',
         'Maven manifest resolution and build/call analysis are disabled. Use resolved lockfiles or SBOMs for complete transitive coverage.',
-        'No continuous monitoring is installed by this skill. Each preflight or explicit scan queries the current OSV service.',
+        'Inventories describe declared dependencies, not installed-package attestation. The live host refreshes running sessions every 60 seconds; scans may take up to 90 seconds.',
       ],
     },
   };
-  if (process.env.AREA51_DEPENDENCY_SECURITY !== 'required') return result;
+  if (!options.required && process.env.AREA51_DEPENDENCY_SECURITY !== 'required') return result;
   result.summary.status = 'incomplete';
   const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'area51-dependency-scan-'));
   const staged = path.join(temporary, 'inputs');
@@ -214,7 +215,7 @@ export async function scanDependencySecurity(
       );
       return result;
     }
-    const binary = process.env.AREA51_DEPENDENCY_SCANNER;
+    const binary = await ensureDependencyScanner();
     const asset = pins.assets[`${process.platform}-${process.arch}` as keyof typeof pins.assets];
     if (
       !binary ||
