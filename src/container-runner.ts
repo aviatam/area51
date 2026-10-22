@@ -3,7 +3,7 @@
  * Spawns agent containers with session folder + agent group folder mounts.
  * The container runs the v2 agent-runner which polls the session DB.
  */
-import { ChildProcess, exec, spawn } from 'child_process';
+import { ChildProcess, exec, execFileSync, spawn } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import { promisify } from 'util';
@@ -38,7 +38,14 @@ import { getContainerConfig } from './db/container-configs.js';
 import { updateContainerConfigScalars } from './db/container-configs.js';
 import { CONTAINER_RUNTIME_BIN, hostGatewayArgs, readonlyMountArgs, stopContainer } from './container-runtime.js';
 import { EGRESS_NETWORK, egressNetworkArgs, ensureEgressNetwork } from './egress-lockdown.js';
-import { applyIncusRuntimePlan, deleteIncusRuntime, ensureIncusRuntimeReady, spawnIncusExec } from './incus-adapter.js';
+import {
+  applyIncusRuntimePlan,
+  deleteIncusRuntime,
+  ensureIncusRuntimeReady,
+  spawnIncusExec,
+  quarantineIncusInstance,
+} from './incus-adapter.js';
+import { assertNoDependencyHold, monitorDependencies, writeDependencyHold } from './dependency-monitor.js';
 import { buildIncusRuntimePlan, type IncusRuntimePlan } from './incus-runtime.js';
 import { prepareIncusOneCliConfig } from './incus-onecli.js';
 import { buildIncusVmRuntimeTransport } from './incus-vm-runtime.js';
@@ -101,6 +108,57 @@ const INCUS_VM_DATABASE_SYNC_MS = 1_000;
  * racy double-replies.
  */
 const wakePromises = new Map<string, Promise<boolean>>();
+const dependencyHeldSessions = new Set<string>();
+
+function watchDependencies(session: Session, groupDir: string): void {
+  const entry = activeContainers.get(session.id);
+  if (!entry) return;
+  const stop = monitorDependencies({
+    groupDir,
+    current: () => activeContainers.get(session.id) === entry,
+    unsafe: (result) => {
+      dependencyHeldSessions.add(session.id);
+      // Hold even if evidence persistence fails; do not let a disk error leave the agent running.
+      try {
+        writeDependencyHold(DATA_DIR, session.id, result);
+      } catch (error) {
+        log.error('Failed to persist dependency hold', { sessionId: session.id, error });
+      }
+      stop();
+      log.warn('Automatic dependency containment', { sessionId: session.id, status: result.summary.status });
+      if (entry.backend === 'incus') {
+        // Set before stopping: close/error handlers must not delete evidence or resync guest data.
+        entry.cleanupStarted = true;
+        clearInterval(entry.syncTimer);
+        try {
+          quarantineIncusInstance(entry.plan, { reason: 'Automatic dependency security hold' });
+        } catch (error) {
+          log.error('Dependency quarantine failed; forcing runtime stop', { sessionId: session.id, error });
+          // A failed snapshot must still leave the runtime stopped. Never delete the preserved instance.
+          try {
+            execFileSync('incus', ['stop', entry.plan.instance, '--force', '--project', entry.plan.project], {
+              timeout: 30_000,
+              stdio: 'ignore',
+            });
+          } finally {
+            entry.process.kill('SIGKILL');
+          }
+        }
+      } else {
+        // Docker has no equivalent evidence snapshot; block restarts and stop execution.
+        try {
+          stopContainer(entry.containerName);
+        } catch (error) {
+          log.error('Dependency stop failed; forcing container kill', { sessionId: session.id, error });
+          execFileSync(CONTAINER_RUNTIME_BIN, ['kill', entry.containerName], { timeout: 30_000, stdio: 'ignore' });
+        }
+      }
+    },
+    error: (error) => log.error('Dependency monitor failed', { sessionId: session.id, error }),
+  });
+  entry.process.once('close', stop);
+  entry.process.once('error', stop);
+}
 
 export function getActiveContainerCount(): number {
   return activeContainers.size;
@@ -123,6 +181,13 @@ export function isContainerRunning(sessionId: string): boolean {
  * can branch on the boolean.
  */
 export function wakeContainer(session: Session): Promise<boolean> {
+  if (dependencyHeldSessions.has(session.id)) return Promise.resolve(false);
+  try {
+    assertNoDependencyHold(DATA_DIR, session.id);
+  } catch (error) {
+    log.warn('Dependency hold prevents session wake', { sessionId: session.id, error });
+    return Promise.resolve(false);
+  }
   const active = activeContainers.get(session.id);
   if (active) {
     log.debug('Container already running', { sessionId: session.id });
@@ -200,6 +265,7 @@ async function spawnContainer(session: Session): Promise<void> {
     env: { ANTHROPIC_API_KEY: 'onecli-managed' },
     requiredSecrets: providerName === 'claude' ? ['ANTHROPIC_API_KEY'] : [],
     quarantine: true,
+    dependencySecurity: 'required',
   });
   const runtimeDecision = selectLiveRuntimePolicy(gateReport, {
     backend: AREA51_RUNTIME_BACKEND,
@@ -215,6 +281,11 @@ async function spawnContainer(session: Session): Promise<void> {
     riskScore: runtimeDecision.riskScore,
     decisionPath,
   });
+  // Nothing is running yet. Do not allocate a fresh VM merely to quarantine
+  // incomplete inventory on every host-sweep retry. A later wake can rescan.
+  if (gateReport.findings.some((finding) => finding.severity === 'high' && finding.id.startsWith('dependency-'))) {
+    throw new Error('Dependency security blocked startup; inspect the gate findings and resolved inventory.');
+  }
   if (runtimeDecision.action === 'block' || !runtimeDecision.runtime) {
     throw new Error(`Runtime Policy blocked agent startup: ${runtimeDecision.reasons.join('; ')}`);
   }
@@ -253,6 +324,7 @@ async function spawnContainer(session: Session): Promise<void> {
   const container = spawn(CONTAINER_RUNTIME_BIN, args, { stdio: ['ignore', 'pipe', 'pipe'] });
 
   activeContainers.set(session.id, { process: container, containerName, backend: 'docker' });
+  watchDependencies(session, path.resolve(GROUPS_DIR, agentGroup.folder));
   markContainerRunning(session.id);
 
   // Log stderr. A container that dies at boot (unknown provider, missing
@@ -308,6 +380,10 @@ export function killContainer(sessionId: string, reason: string, onExit?: () => 
   log.info('Killing container', { sessionId, reason, containerName: entry.containerName });
   try {
     if (entry.backend === 'incus') {
+      if (entry.cleanupStarted) {
+        entry.process.kill('SIGKILL');
+        return;
+      }
       clearInterval(entry.syncTimer);
       if (entry.plan.instanceKind === 'vm') {
         try {
@@ -479,6 +555,7 @@ async function spawnIncusAgent(args: {
   }, INCUS_VM_DATABASE_SYNC_MS);
   activeEntry.syncTimer.unref();
   activeContainers.set(session.id, activeEntry);
+  watchDependencies(session, path.resolve(GROUPS_DIR, agentGroup.folder));
   markContainerRunning(session.id);
 
   const stderrTail: string[] = [];

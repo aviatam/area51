@@ -30,7 +30,9 @@ Two phases: **Extract** (build the migration guide) and **Upgrade** (use it). If
 
 # Phase 0: Refresh this skill first
 
-The migration process itself evolves, so run its newest version before doing anything else:
+Validate `git remote get-url upstream` before fetching or reading executable instructions. By default accept only `https://github.com/aviatam/area51.git` or `git@github.com:aviatam/area51.git`. If it points elsewhere, including NanoClaw, stop and explain the mismatch. Preserve that remote; use a reviewed separately named Area51 source remote and substitute it consistently throughout the migration. Never refresh skills from an unvalidated inherited remote. Apply this validation again during preflight.
+
+The migration process itself evolves, so run its newest version after validating its source:
 - Ensure the `upstream` remote exists (default `https://github.com/aviatam/area51.git`) and fetch: `git fetch upstream --prune`. Detect the upstream branch (`main` or `master`).
 - Refresh this skill from upstream: `git checkout upstream/<branch> -- .claude/skills/migrate-area51/`
 - Re-read `.claude/skills/migrate-area51/SKILL.md`. If it changed, **follow the updated version from the top** instead of this one.

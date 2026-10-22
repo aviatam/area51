@@ -5,19 +5,19 @@ description: Add host-side dependency scanning for npm, pnpm, pip, uv, Poetry, M
 
 # Dependency security
 
-Apply this utility skill to an Area51 checkout containing the Python package-risk gate. The skill adds a host preflight scanner; its canonical implementation and tests live in `payload/`.
+Dependency security is built into Area51. Use this skill to verify coverage and diagnose a hold; do not copy or patch core source files.
 
-## Install
+## Verify automatic operation
 
-1. Run `node .claude/skills/dependency-security/install.mjs` from the checkout. Reapplying the same version is idempotent; changed installed files are preserved by refusing replacement.
-2. Run `node .claude/skills/dependency-security/download.mjs` to install the pinned OSV-Scanner 2.7.0 into `data/tools/`. The downloader verifies the platform-specific SHA-256 from `pins.json`, recorded from the official GitHub release assets. This verifies consistency with the reviewed pin, not independent release provenance.
-3. In the **host service environment**, set `AREA51_DEPENDENCY_SECURITY=required` and `AREA51_DEPENDENCY_SCANNER` to the absolute path printed by the downloader. Restart the host service through the deployment's normal process. Leave these variables outside agent/session environments.
-4. Run `pnpm exec tsc --noEmit` and `pnpm exec vitest run src/dependency-security.test.ts` in the composed checkout.
-5. Run `pnpm exec tsx .claude/skills/dependency-security/prove.ts` with the same host environment to exercise all ten manager fixtures against the current OSV service. Review `.area51/diagnostics/dependency-security/summary.md` and `report.json`. The GitHub `Dependency security across managers` workflow performs the composed tests and real lookups on Linux, Windows and macOS.
+Normal host agent startup requires a completed dependency scan without an enable flag or manual installation. On first use the host downloads OSV-Scanner 2.7.0 from its fixed official release URL and verifies the SHA-256 in `src/dependency-security-pins.json`. An optional absolute `AREA51_DEPENDENCY_SCANNER` points to an already provisioned pinned tool. A changed binary, unavailable service, missing inventory or unsupported parser coverage blocks execution.
+
+For a standalone CLI scan or the proof harness, set `AREA51_DEPENDENCY_SECURITY=required`. Diagnostic scans retain their explicit opt-in; live agent enforcement does not depend on this flag.
+
+The host refreshes each running session every 60 seconds, without overlapping scans. A scan can take 90 seconds (plus first tool provisioning). A new finding or incomplete coverage automatically places a persistent host-side session hold, stops Docker execution, or invokes Incus stop, network removal and snapshot quarantine. There is no per-incident approval. Holds prevent automatic restart after a host restart; an operator must review and release them. See `docs/automatic-security-migration.md`.
+
+Run `pnpm exec vitest run src/dependency-security.test.ts src/dependency-monitor.test.ts` and `pnpm exec tsx .claude/skills/dependency-security/prove.ts` with required mode for the ten-manager live proof. Review `.area51/diagnostics/dependency-security/summary.md` and `report.json`.
 
 ## Behavior
-
-Each normal Agent Gate preflight and each explicit gate scan invokes the installed scanner. With required mode unset, `dependency_scan.status` is `disabled`; installing files alone does not silently activate network lookups. Required mode without a verified binary, inventory, parser coverage or available service produces an incomplete finding and prevents a clean security result. The CLI scan reports findings; the runtime controller applies its decision.
 
 The host stages only bounded regular dependency files from the group tree. Agent-provided OSV configuration, ignore rules, code and environment files are omitted. A host-owned empty scanner configuration takes precedence. The scanner runs with a minimal environment and no provider/GitHub secrets; Maven resolution and Go/Rust call/build analysis are explicitly disabled. It runs `scan`, never `fix`, package install, or a language build.
 
@@ -44,7 +44,7 @@ Manifest scanning is not installed-package attestation. A Maven pom without reso
 
 The proof uses actual scanner parsing and current OSV responses for metadata containing known vulnerable versions. It exercises the real runtime policy and production adapter with a recording executor. It does not install the target vulnerable packages or execute ten different agents. Actual VM stop/NIC removal was separately demonstrated by the LiteLLM live proof.
 
-There is no continuous background monitor, scheduled advisory refresh, isolated package-build service, automatic repair, or unknown-malware behavioral detector in this skill. New advisories are considered on the next preflight or explicit scan. Treat container/VM migration as a separate runtime operation; the host stops quarantined workloads.
+The monitor covers host-visible group inventories, not arbitrary package changes inside a guest. It does not provide an isolated package-build service, automatic repair, unknown-malware detection or live migration. Supply resolved inventories matching the actual runtime, including transitive packages; the host stops held workloads.
 
 The pinned scanner itself runs as a trusted host executable. Its minimal environment excludes provider/CI secrets, but is not a filesystem sandbox. Parser vulnerabilities or a malicious release accepted into the reviewed pin remain host-side risks; the agent VM boundary does not isolate the scanner process.
 

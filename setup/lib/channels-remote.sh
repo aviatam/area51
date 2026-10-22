@@ -8,7 +8,7 @@
 # forks. This helper walks `git remote -v`, picks the remote whose URL points
 # at aviatam/area51, and prints its name.
 #
-# Fallback: if no existing remote matches, add `upstream` pointing at
+# Fallback: if no existing remote matches, add `area51-source` pointing at
 # github.com/aviatam/area51 and return that — keeps forks without an
 # explicit upstream configured working on the first try.
 #
@@ -27,16 +27,19 @@ resolve_channels_remote() {
   local remote url
   while IFS=$'\t' read -r remote url; do
     case "$url" in
-      *qwibitai/area51|*qwibitai/area51.git|*aviatam/area51|*aviatam/area51.git)
+      https://github.com/aviatam/area51|https://github.com/aviatam/area51.git|git@github.com:aviatam/area51.git|ssh://git@github.com/aviatam/area51.git)
         printf '%s' "$remote"
         return 0
         ;;
     esac
   done < <(git remote -v 2>/dev/null | awk '$3 == "(fetch)" { print $1"\t"$2 }')
 
-  # No matching remote — add `upstream` and use it. Silent on failure so
-  # callers see the eventual `git fetch` error rather than a cryptic
-  # remote-add failure.
-  git remote add upstream https://github.com/aviatam/area51.git 2>/dev/null || true
-  printf '%s' "upstream"
+  # No matching remote — preserve unrelated remotes and add an owned source.
+  # Never reuse an existing upstream remote: it may still point at NanoClaw.
+  if git remote get-url area51-source >/dev/null 2>&1; then
+    printf '%s\n' 'area51-source exists but does not point at aviatam/area51; review its URL.' >&2
+    return 1
+  fi
+  git remote add area51-source https://github.com/aviatam/area51.git || return 1
+  printf '%s' "area51-source"
 }
