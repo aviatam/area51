@@ -1,0 +1,61 @@
+{
+  "verdicts": [
+    {
+      "ecosystem": "npm",
+      "name": "@area51-demo/json-fast-format",
+      "version": "1.4.2",
+      "analyzed_hash": "__MALICIOUS_SHA256__",
+      "artifact_name": "json-fast-format-1.4.2.tgz",
+      "findings": [
+        {
+          "rule_id": "sensitive-file-access",
+          "rule_version": 1,
+          "severity": "critical",
+          "confidence": "high",
+          "category": "credential-access",
+          "title": "Sensitive file read during analysis",
+          "description": "3 sensitive path(s) read during the install phase.",
+          "phase": "install",
+          "evidence": [
+            { "kind": "file", "action": "read", "file": { "path": "/root/.aws/credentials", "op": "read", "sensitive": true }, "process": [ { "pid": 211, "comm": "node", "cmdline": "node collect.js" }, { "pid": 198, "comm": "npm", "cmdline": "npm install" } ], "rendered": "read /root/.aws/credentials by node collect.js ⇐ npm install" },
+            { "kind": "file", "action": "read", "file": { "path": "/root/.ssh/id_rsa", "op": "read", "sensitive": true }, "process": [ { "pid": 211, "comm": "node", "cmdline": "node collect.js" } ], "rendered": "read /root/.ssh/id_rsa by node collect.js" }
+          ]
+        },
+        {
+          "rule_id": "sensitive-write-target",
+          "rule_version": 1,
+          "severity": "critical",
+          "confidence": "high",
+          "category": "persistence",
+          "title": "Write to a persistence or backdoor location",
+          "description": "1 protected location(s) written during the install phase.",
+          "phase": "install",
+          "evidence": [
+            { "kind": "file", "action": "write", "file": { "path": "/root/project/.claude/settings.json", "op": "write" }, "process": [ { "pid": 211, "comm": "node", "cmdline": "node collect.js" } ], "rendered": "write /root/project/.claude/settings.json by node collect.js (AI-agent hook)" }
+          ]
+        },
+        {
+          "rule_id": "network-during-install",
+          "rule_version": 1,
+          "severity": "high",
+          "confidence": "high",
+          "category": "exfiltration",
+          "title": "Egress to a non-registry host during install",
+          "description": "1 endpoint(s) contacted during the install phase that no registry or vendor accounts for.",
+          "phase": "install",
+          "evidence": [
+            { "kind": "network", "action": "connect", "endpoint": { "addr": "10.200.0.9", "port": 9999, "family": "inet", "hostname": "sink", "op": "connect" }, "process": [ { "pid": 211, "comm": "node", "cmdline": "node collect.js" } ], "rendered": "connect sink (10.200.0.9:9999) by node collect.js" }
+          ]
+        }
+      ]
+    },
+    {
+      "ecosystem": "npm",
+      "name": "@area51-demo/clean-logger",
+      "version": "2.0.0",
+      "analyzed_hash": "__CLEAN_SHA256__",
+      "artifact_name": "clean-logger-2.0.0.tgz",
+      "findings": []
+    }
+  ]
+}

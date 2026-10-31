@@ -1,0 +1,7 @@
+{
+  "name": "@area51-demo/clean-logger",
+  "version": "2.0.0",
+  "description": "DEMO ONLY: a harmless package for the Area51 + Mend Intent demo.",
+  "main": "index.js",
+  "license": "MIT"
+}

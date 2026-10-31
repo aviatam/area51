@@ -36,6 +36,7 @@ import {
 import { CONTAINER_PLUGINS_DIR, materializeContainerJson } from './container-config.js';
 import { getContainerConfig } from './db/container-configs.js';
 import { updateContainerConfigScalars } from './db/container-configs.js';
+import { prepareIntentRuntime } from './intent-verdicts.js';
 import { CONTAINER_RUNTIME_BIN, hostGatewayArgs, readonlyMountArgs, stopContainer } from './container-runtime.js';
 import { EGRESS_NETWORK, egressNetworkArgs, ensureEgressNetwork } from './egress-lockdown.js';
 import {
@@ -920,6 +921,15 @@ async function buildContainerArgs(
     } else {
       args.push('-v', `${mount.hostPath}:${mount.containerPath}`);
     }
+  }
+
+  // Mend Intent (optional): the shim becomes the agent's npm/npx, so a runtime install
+  // is held until Intent decides on the exact bytes. Absent config leaves the OSS path.
+  const intentRuntime = prepareIntentRuntime(DATA_DIR);
+  if (intentRuntime) {
+    args.push(...readonlyMountArgs(intentRuntime.hostDir, intentRuntime.containerDir));
+    for (const [key, value] of Object.entries(intentRuntime.env)) args.push('-e', `${key}=${value}`);
+    log.info('Mend Intent runtime shim applied', { containerName });
   }
 
   // OneCLI gateway — injects HTTPS_PROXY + certs so container API calls

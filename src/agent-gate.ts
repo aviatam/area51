@@ -3,6 +3,7 @@ import path from 'path';
 
 import YAML from 'yaml';
 import { scanDependencySecurity } from './dependency-security.js';
+import { checkIntentVerdicts, formatIntentSummary, type IntentSummary } from './intent-verdicts.js';
 import { isPackageRiskFinding, PYTHON_EVIDENCE_FILES, scanPythonPackageRisk } from './python-package-risk.js';
 
 export type AgentGatePillar = 'capabilities' | 'evolution' | 'skill_efficiency' | 'integration' | 'security';
@@ -39,6 +40,7 @@ export interface AgentGateQuarantine {
 
 export interface AgentGateReport {
   dependency_scan?: Record<string, unknown>;
+  intent?: IntentSummary;
   schema: 'area51.agent_gate.v1';
   generated_at: string;
   group_path: string;
@@ -68,6 +70,8 @@ export interface AgentGateReport {
 export interface ScanAgentGateOptions {
   /** The live runner requires coverage even when the optional CLI mode is unset. */
   dependencySecurity?: 'required';
+  /** Mend Intent provider settings; defaults to the host process environment. */
+  intent?: { env?: NodeJS.ProcessEnv; fetchImpl?: typeof fetch };
   groupDir: string;
   requiredSecrets?: string[];
   env?: NodeJS.ProcessEnv;
@@ -147,6 +151,8 @@ export async function scanAgentGate(options: ScanAgentGateOptions): Promise<Agen
     required: options.dependencySecurity === 'required',
   });
   findings.push(...dependencySecurity.findings);
+  const intent = await checkIntentVerdicts(groupDir, { ...options.intent, now });
+  findings.push(...intent.findings);
 
   if (agentFiles.length === 0) {
     findings.push({
@@ -262,6 +268,7 @@ export async function scanAgentGate(options: ScanAgentGateOptions): Promise<Agen
   return {
     schema: 'area51.agent_gate.v1',
     dependency_scan: dependencySecurity.summary,
+    intent: intent.summary,
     generated_at: now.toISOString(),
     group_path: groupDir,
     passed,
@@ -313,6 +320,7 @@ export function formatAgentGateReport(report: AgentGateReport): string {
   lines.push(
     `  files=${report.counts.files_scanned} agents=${report.counts.agent_files} policies=${report.counts.policy_files} scenarios=${report.counts.scenario_files} mcp=${report.counts.mcp_servers} packages=${report.counts.packages}`,
   );
+  lines.push(...formatIntentSummary(report.intent));
   lines.push('');
   lines.push('Secrets:');
   for (const secret of report.secrets) {
