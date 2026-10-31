@@ -1,0 +1,18 @@
+# Demo registry: @area51-demo/* is served locally, everything else proxies npmjs.
+storage: /verdaccio/storage/data
+auth:
+  htpasswd:
+    file: /verdaccio/storage/htpasswd
+    max_users: 100
+uplinks:
+  npmjs:
+    url: https://registry.npmjs.org/
+packages:
+  '@area51-demo/*':
+    access: $all
+    publish: $all
+    unpublish: $all
+  '**':
+    access: $all
+    proxy: npmjs
+log: { type: stdout, format: pretty, level: warn }

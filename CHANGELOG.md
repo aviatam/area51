@@ -4,6 +4,8 @@ All notable changes to Area51 will be documented in this file.
 
 ## [Unreleased]
 
+- **Mend Intent can judge dependencies by behavior.** Set `AREA51_INTENT_API_URL` and `AREA51_INTENT_TOKEN` and Agent Gate asks Mend Intent for a detonation verdict on every pinned npm/PyPI dependency; a blocked package quarantines the group and the agent does not start. With `AREA51_INTENT_SHIM`, the Docker runtime mounts the Intent shim as the agent's `npm`/`npx`, so runtime installs are judged too. Unset, nothing changes. Demo and evidence: `lab/intent-demo`.
+
 - **Enterprise SSO has a guided setup path.** Run `/configure-enterprise-sso` to connect Microsoft Entra ID or Okta to Area51 registry sign-in through the existing WorkOS AuthKit device flow, verify assigned and denied users, and retain a tested break-glass rollback path.
 
 - **Windows now has a resumable WSL2 installer.** An Administrator PowerShell command validates the host, installs WSL2 and Ubuntu when needed, enforces WSL2 plus a regular Linux user, enables systemd without discarding existing WSL configuration, and delegates Docker, authentication, and service setup to Area51 inside the distribution. The flow states that native Windows and Incus VM isolation remain unsupported.

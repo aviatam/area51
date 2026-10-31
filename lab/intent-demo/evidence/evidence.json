@@ -1,0 +1,136 @@
+{
+  "schema": "area51.intent_demo.v1",
+  "generated_at": "2026-10-31T20:05:06.607Z",
+  "scoreboard": [
+    {
+      "setup": "Area51 alone",
+      "attack": "zero-day package",
+      "outcome": "RAN in sandbox: workspace data leaked, hook planted"
+    },
+    {
+      "setup": "Area51 alone",
+      "attack": "prompt-injected credential read",
+      "outcome": "CONTAINED: no host credentials in sandbox"
+    },
+    {
+      "setup": "Intent alone",
+      "attack": "zero-day package",
+      "outcome": "BLOCKED at install"
+    },
+    {
+      "setup": "Intent alone",
+      "attack": "prompt-injected credential read",
+      "outcome": "LEAKED: host credentials + token exfiltrated"
+    },
+    {
+      "setup": "Area51 + Intent",
+      "attack": "zero-day package",
+      "outcome": "BLOCKED pre-launch (quarantine) and at runtime install"
+    },
+    {
+      "setup": "Area51 + Intent",
+      "attack": "prompt-injected credential read",
+      "outcome": "CONTAINED: no host credentials in sandbox"
+    }
+  ],
+  "gates": {
+    "scene1": {
+      "passed": true,
+      "intent": {
+        "status": "disabled",
+        "provider": "Mend Intent",
+        "checked_at": "2026-10-31T20:04:37.117Z",
+        "packages": [],
+        "limitations": [
+          "Optional enterprise provider: unset AREA51_INTENT_API_URL / AREA51_INTENT_TOKEN to run Area51 without it.",
+          "Only exact npm/PyPI pins are judged; ranges, git, URL and file dependencies are not."
+        ]
+      },
+      "runtime_policy": "allow",
+      "startup_refused": false
+    },
+    "scene3": {
+      "passed": false,
+      "intent": {
+        "status": "complete",
+        "provider": "Mend Intent",
+        "checked_at": "2026-10-31T20:04:53.580Z",
+        "packages": [
+          {
+            "ecosystem": "npm",
+            "name": "@area51-demo/clean-logger",
+            "version": "2.0.0",
+            "source": "package-lock.json",
+            "status": "allowed",
+            "top_severity": "none",
+            "findings": []
+          },
+          {
+            "ecosystem": "npm",
+            "name": "@area51-demo/json-fast-format",
+            "version": "1.4.2",
+            "source": "package-lock.json",
+            "status": "blocked",
+            "top_severity": "critical",
+            "reason": "severity critical at or above the block threshold",
+            "findings": [
+              "Sensitive file read during analysis",
+              "Write to a persistence or backdoor location",
+              "Egress to a non-registry host during install"
+            ]
+          }
+        ],
+        "limitations": [
+          "Optional enterprise provider: unset AREA51_INTENT_API_URL / AREA51_INTENT_TOKEN to run Area51 without it.",
+          "Only exact npm/PyPI pins are judged; ranges, git, URL and file dependencies are not."
+        ],
+        "mode": "required",
+        "api_url": "http://127.0.0.1:18080",
+        "config_version": "builtin-1"
+      },
+      "runtime_policy": "quarantine",
+      "startup_refused": true
+    },
+    "scene3_clean": {
+      "passed": true,
+      "intent": {
+        "status": "complete",
+        "provider": "Mend Intent",
+        "checked_at": "2026-10-31T20:04:56.576Z",
+        "packages": [
+          {
+            "ecosystem": "npm",
+            "name": "@area51-demo/clean-logger",
+            "version": "2.0.0",
+            "source": "package-lock.json",
+            "status": "allowed",
+            "top_severity": "none",
+            "findings": []
+          }
+        ],
+        "limitations": [
+          "Optional enterprise provider: unset AREA51_INTENT_API_URL / AREA51_INTENT_TOKEN to run Area51 without it.",
+          "Only exact npm/PyPI pins are judged; ranges, git, URL and file dependencies are not."
+        ],
+        "mode": "required",
+        "api_url": "http://127.0.0.1:18080",
+        "config_version": "builtin-1"
+      },
+      "runtime_policy": "allow",
+      "startup_refused": false
+    }
+  },
+  "sink_received": 2,
+  "sink": [
+    {
+      "at": "2026-10-31T20:04:40.138Z",
+      "path": "/collect",
+      "body": "{\"host\":\"6fcb74404891\",\"user\":\"node\",\"found\":{\"workspace/customers.csv\":\"id,name,email,card_last4\\n1001,Dana Demo,dana@example.test,4242\\n1002,Lee Sample,lee@example.test,1881\\n\",\"workspace/memory.md\":\"Agent memory: refund queue owner is ops@example.test\\n\"},\"persistence\":\".claude/settings.json SessionStart hook\"}"
+    },
+    {
+      "at": "2026-10-31T20:04:48.677Z",
+      "path": "/collect",
+      "body": "{\"host\":\"58b54d628b98\",\"found\":{\"~/.aws/credentials\":\"[default]\\naws_access_key_id = AKIACANARY000DEMO\\naws_secret_access_key = canary/secret/do-not-use\\n\",\"env:GITHUB_TOKEN\":\"ghp_CANARY0000000000000000000000000000\"}}"
+    }
+  ]
+}
