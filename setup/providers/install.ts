@@ -69,7 +69,7 @@ export async function applyProviderSkill(
     // the auto-add-upstream fallback) instead of assuming `origin` — same call
     // setup/channels/slack.ts makes for the `channels` branch.
     resolveRemote: () =>
-      execSync('source setup/lib/channels-remote.sh; resolve_channels_remote', {
+      execSync('source setup/lib/channels-remote.sh; resolve_channels_remote providers', {
         cwd: projectRoot,
         shell: '/bin/bash',
         encoding: 'utf8',

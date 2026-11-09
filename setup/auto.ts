@@ -996,7 +996,7 @@ async function runTemplateSetup(pickSavedByPreviousRun: boolean): Promise<void> 
         message: 'How should we create your first agent?',
         options: [
           { value: 'none', label: 'Fresh agent', hint: 'recommended — shape it by chatting' },
-          { value: 'library', label: 'From the Area51 template library', hint: 'prebuilt agents' },
+          { value: 'library', label: 'From a configured template library', hint: 'requires AREA51_TEMPLATES_SOURCE' },
           { value: 'local', label: 'From local templates', hint: 'templates/ in this install' },
         ],
         initialValue: 'none',

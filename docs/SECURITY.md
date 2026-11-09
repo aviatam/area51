@@ -5,6 +5,8 @@ This model must be checked against the implementation at the commit being deploy
 the VM disk/network transport modules. The hosted acceptance report linked in the
 [README](../README.md#reproduce-the-release-proof) identifies exactly what was tested.
 
+For vulnerability reporting and release support, see [SECURITY.md](../SECURITY.md).
+
 ## Runtime Selection and Evidence
 
 Runtime Policy owns the live decision before Area51 creates an agent runtime.
@@ -21,12 +23,13 @@ A VM is an Incus-managed VM backed by KVM; KVM is not a further escalation after
 the VM tier. Area51 blocks when the required isolation cannot be provided rather
 than silently selecting a weaker runtime.
 
-The public proof currently covers 22 cases: commit-pinned Linux installation,
+The historical release proof linked from the README covers 28 cases: commit-pinned Linux installation,
 same-VM reboot/persistence, runtime selection, hostile access attempts, egress
 controls, provider-state restoration and quarantine. Its host-credential and
 sibling-workspace probes use synthetic, unmounted canaries. They do not establish
-protection of credentials deliberately made available inside a guest, isolation
-between two active agents, or general MCP/tool authorization. Live Entra/Okta
+protection of credentials deliberately made available inside a guest or general
+MCP/tool authorization. The expanded VM fixture tests two concurrently active
+agents with synthetic private files and blocked cross-agent network probes. Live Entra/Okta
 authorization and physical-host reboot remain outside that proof. Passing one
 acceptance run is not a production reliability guarantee; the README records
 earlier vsock provisioning failures and links the exact evidence.

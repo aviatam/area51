@@ -12,8 +12,7 @@ must stay inside this directory — absolute paths, `~`, and `../` escapes are
 rejected. Override the location with `AREA51_TEMPLATES_DIR=/another/local/path`
 (a local path only — never a URL).
 
-To use a template from the public registry
-([`aviatam/area51-templates`](https://github.com/aviatam/area51-templates)),
+To use a template from a trusted source,
 clone or download it yourself and copy the chosen template *into this folder*,
 then stamp from the local copy. There is no remote fetch — templates are only
 ever resolved from here.
@@ -73,6 +72,8 @@ Re-fetch the template from the registry, or convert it (add `plugin.json`,
 rename `.mcp.json` to `mcp.json` with the spec `$schema` + per-server `type`,
 move `context/` and `tasks/` under `ai.area51.agent/`).
 
-Full authoring reference: the
-[registry README](https://github.com/aviatam/area51-templates#anatomy-of-a-template)
-and [docs/templates.md](../docs/templates.md).
+Full authoring reference: [docs/templates.md](../docs/templates.md).
+
+No public first-party template registry is currently published. Use local templates
+or set `AREA51_TEMPLATES_SOURCE` to a reviewed readable Git repository. See
+[registry source configuration](../docs/registry-sources.md).
