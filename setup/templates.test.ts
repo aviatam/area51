@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -41,6 +42,7 @@ import type { AgentGroup } from '../src/types.js';
 import {
   applyTemplatePick,
   clearTemplatePick,
+  cloneRegistry,
   copyTemplate,
   installTemplateAgent,
   listTemplatesFromDir,
@@ -55,6 +57,41 @@ describe('setup template library', () => {
   });
 
   afterEach(() => fs.rmSync(root, { recursive: true, force: true }));
+
+  it('requires explicit template source rather than fetching an unpublished registry', () => {
+    const previous = process.env.AREA51_TEMPLATES_SOURCE;
+    delete process.env.AREA51_TEMPLATES_SOURCE;
+    try {
+      expect(() => cloneRegistry()).toThrow(/No public template library.*fresh agent.*AREA51_TEMPLATES_SOURCE/);
+    } finally {
+      if (previous === undefined) delete process.env.AREA51_TEMPLATES_SOURCE;
+      else process.env.AREA51_TEMPLATES_SOURCE = previous;
+    }
+  });
+
+  it('clones an explicitly configured local template source', () => {
+    const source = path.join(root, 'registry');
+    fs.mkdirSync(path.join(source, 'example'), { recursive: true });
+    fs.writeFileSync(path.join(source, 'example', 'plugin.json'), '{"name":"example"}');
+    const git = (...args: string[]) => execFileSync('git', args, { cwd: source, stdio: 'pipe' });
+    git('init');
+    git('add', '.');
+    git('-c', 'user.name=Test', '-c', 'user.email=test@example.invalid', 'commit', '-m', 'fixture');
+    const previous = process.env.AREA51_TEMPLATES_SOURCE;
+    process.env.AREA51_TEMPLATES_SOURCE = source;
+    try {
+      const registry = cloneRegistry();
+      try {
+        expect(listTemplatesFromDir(registry.dir)).toEqual([{ ref: 'example', name: 'example' }]);
+      } finally {
+        registry.cleanup();
+      }
+      expect(fs.existsSync(registry.dir)).toBe(false);
+    } finally {
+      if (previous === undefined) delete process.env.AREA51_TEMPLATES_SOURCE;
+      else process.env.AREA51_TEMPLATES_SOURCE = previous;
+    }
+  });
 
   it('finds nested templates by plugin.json and copies one without git metadata', () => {
     const source = path.join(root, 'source');

@@ -42,7 +42,7 @@ A skill is a self-contained add-on: a `SKILL.md` with the apply steps written as
 
 #### 1. Channel and provider skills (registry branches)
 
-Add a messaging channel or an agent provider. The SKILL.md contains the install steps; the actual code lives on a long-lived registry branch (`channels` or `providers`) that we keep in sync with `main`.
+Add a messaging channel or an agent provider. The SKILL.md contains the install steps; the actual code lives on a long-lived registry branch (`channels` or `providers`) in a separately configured trusted source. First-party registry branches are not currently published; see [registry sources](docs/registry-sources.md).
 
 **Location:** `.claude/skills/` on `main` (instructions only), code on the `channels` or `providers` branch
 
@@ -137,7 +137,7 @@ Instructions here...
 
 ## Templates
 
-Agent templates (reusable bundles of instructions + MCP servers + skills) ship in the separate [`aviatam/area51-templates`](https://github.com/aviatam/area51-templates) repo, not this one. Contribute them there via PR (its README has the anatomy and checklist). For how templates load and the OneCLI credential model, see [docs/templates.md](docs/templates.md).
+Agent templates (reusable bundles of instructions + MCP servers + skills) can be supplied locally or through an explicitly configured trusted Git repository. No public first-party template registry is currently published. See [docs/templates.md](docs/templates.md) for the format and [registry sources](docs/registry-sources.md) for configuration.
 
 ## Testing
 

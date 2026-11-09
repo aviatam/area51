@@ -357,23 +357,15 @@ export function referenceProse(md: string): string {
   return sections.filter(Boolean).join('\n\n').trim();
 }
 
-// A hardcoded `origin` breaks forks where the registry branch lives on
-// `upstream`. Generic mirror of channels-remote.sh: explicit override → the
-// first remote that actually has the branch → origin.
+// Use the same explicit/owned-source policy as interactive setup. Never scan
+// unrelated remotes and silently select a former upstream registry.
 function defaultResolveRemote(branch: string, root: string): string {
-  const override = process.env.AREA51_CHANNELS_REMOTE;
-  if (override) return override;
-  const cap = (cmd: string): string => {
-    try {
-      return execSync(cmd, { cwd: root, stdio: ['ignore', 'pipe', 'ignore'] }).toString();
-    } catch {
-      return '';
-    }
-  };
-  const remotes = cap('git remote').split('\n').map((s) => s.trim()).filter(Boolean);
-  const ordered = remotes.includes('origin') ? ['origin', ...remotes.filter((r) => r !== 'origin')] : remotes;
-  for (const r of ordered) if (cap(`git ls-remote --heads ${r} ${branch}`).trim()) return r;
-  return 'origin';
+  if (branch !== 'channels' && branch !== 'providers') throw new Error('Unsupported registry branch');
+  return execSync(`source setup/lib/channels-remote.sh; resolve_channels_remote ${branch}`, {
+    cwd: root,
+    shell: '/bin/bash',
+    encoding: 'utf8',
+  }).trim();
 }
 
 // The prose an agent reads when a step degrades: nearest heading + the

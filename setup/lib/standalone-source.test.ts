@@ -16,32 +16,37 @@ it('does not transmit inherited setup diagnostics', () => {
   }
 });
 
-it.skipIf(process.platform === 'win32')(
-  'preserves a NanoClaw upstream and resolves an Area51-owned source instead',
-  () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'area51-source-test-'));
-    const helper = path.resolve('setup/lib/channels-remote.sh');
-    const git = (...args: string[]) =>
-      execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
-    const resolve = () =>
-      execFileSync('bash', ['-c', 'source "$1"; resolve_channels_remote', 'bash', helper], {
-        cwd: root,
-        encoding: 'utf8',
-        env: { ...process.env, AREA51_CHANNELS_REMOTE: '' },
-      }).trim();
-    try {
-      git('init');
-      git('remote', 'add', 'upstream', 'https://github.com/nanocoai/nanoclaw.git');
-      git('remote', 'add', 'spoof', 'https://evil.example/aviatam/area51.git');
-      expect(resolve()).toBe('area51-source');
-      expect(git('remote', 'get-url', 'upstream')).toBe('https://github.com/nanocoai/nanoclaw.git');
-      expect(git('remote', 'get-url', 'area51-source')).toBe('https://github.com/aviatam/area51.git');
-      expect(resolve()).toBe('area51-source');
-      git('remote', 'set-url', 'area51-source', 'https://example.com/wrong.git');
-      expect(() => resolve()).toThrow();
-      expect(git('remote', 'get-url', 'area51-source')).toBe('https://example.com/wrong.git');
-    } finally {
-      fs.rmSync(root, { recursive: true, force: true });
-    }
-  },
-);
+it.skipIf(process.platform === 'win32')('requires an accessible explicit registry without adding upstream remotes', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'area51-source-test-'));
+  const helper = path.resolve('setup/lib/channels-remote.sh');
+  const git = (...args: string[]) =>
+    execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+  const resolve = (remote = '', branch = 'channels') =>
+    execFileSync('bash', ['-c', 'source "$1"; resolve_channels_remote "$2"', 'bash', helper, branch], {
+      cwd: root,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+      env: { ...process.env, AREA51_CHANNELS_REMOTE: remote },
+    }).trim();
+  try {
+    git('init');
+    git('remote', 'add', 'upstream', 'https://github.com/nanocoai/nanoclaw.git');
+    git('remote', 'add', 'spoof', 'https://evil.example/aviatam/area51.git');
+    expect(() => resolve()).toThrow(/No registry remote configured/);
+    expect(git('remote')).not.toContain('area51-source');
+    expect(git('remote', 'get-url', 'upstream')).toBe('https://github.com/nanocoai/nanoclaw.git');
+    git('remote', 'add', 'registry', root);
+    expect(() => resolve('registry')).toThrow(/absent or inaccessible/);
+    git('-c', 'user.name=Test', '-c', 'user.email=test@example.invalid', 'commit', '--allow-empty', '-m', 'fixture');
+    git('branch', 'channels');
+    expect(resolve('registry')).toBe('registry');
+    expect(() => resolve('registry', 'providers')).toThrow(/absent or inaccessible/);
+    git('branch', 'providers');
+    expect(resolve('registry', 'providers')).toBe('registry');
+    expect(() => resolve('registry', 'main')).toThrow(/Unsupported registry branch/);
+    expect(() => resolve('missing')).toThrow(/No registry remote configured/);
+    expect(() => resolve('registry; echo unsafe')).toThrow(/name is invalid/);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});

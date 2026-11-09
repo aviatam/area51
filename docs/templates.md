@@ -24,10 +24,11 @@ consequences:
 Templates are purely additive and require no DB migration. **Templates
 are stamped only from a local directory**: `templates/` at the
 project root by default (committed but shipped empty), or whatever
-`AREA51_TEMPLATES_DIR` points at (a local path only). The public registry
-([`aviatam/area51-templates`](https://github.com/aviatam/area51-templates))
-is a copy source: setup can fetch a chosen template into that local directory,
-or you can populate it yourself.
+`AREA51_TEMPLATES_DIR` points at (a local path only). No public first-party
+template registry is currently published. Populate the local directory yourself,
+or set `AREA51_TEMPLATES_SOURCE` to a reviewed Git repository URL or local Git
+repository path. Setup clones that source only when you choose the library.
+Without it, choose a fresh agent or local template. See [registry sources](registry-sources.md).
 
 > **Migrating from the pre-plugin layout?** The old format (a bare
 > `context/instructions.md` marker, `.mcp.json`) is no longer read; stamping
@@ -39,7 +40,7 @@ or you can populate it yourself.
 ## Using a template
 
 **During installation:** run `bash area51.sh`. Before the sandbox build, setup
-offers a fresh agent, the public template library, or templates already in your
+offers a fresh agent, an explicitly configured template library, or templates already in your
 local `templates/` directory. A library choice is copied locally first, then
 setup stamps the agent through the same `area51 groups create --template` command
 used below. The agent is created even when channel setup is skipped or cannot
@@ -91,9 +92,7 @@ is never a URL and never changes at runtime.
 
 ## What's in a template
 
-The full authoring reference lives in the
-[templates repo README](https://github.com/aviatam/area51-templates#anatomy-of-a-template).
-The short version: only `plugin.json` is required; everything else is optional
+The template format is described below. In brief: only `plugin.json` is required; everything else is optional
 and defaults sensibly:
 
 ```
@@ -402,19 +401,14 @@ around. This is matched on the outbound HTTP request (host + method + path),
 configured on the credentials proxy, and answered by Area51 (it DMs an approver). The host side is
 already wired; see
 [the credentialed-approval flow in CLAUDE.md](../CLAUDE.md#requiring-approval-for-credential-use)
-and the [`sales/sdr` template README](https://github.com/aviatam/area51-templates/blob/main/sales/sdr/README.md)
-for a worked example.
+for the configuration boundaries. A live deployment must verify that its own
+proxy enforces the required approval policy.
 
 ## Contributing a template
 
-Templates ship in the separate
-[`aviatam/area51-templates`](https://github.com/aviatam/area51-templates)
-repo, not this one. To add one: create a branch there, drop a plugin directory at
-`<category>/<template>/` with at least `plugin.json` and (registry policy) a
-persona at `ai.area51.agent/context/instructions.md`, run that repo's
-`node scripts/check-templates.mjs`, test it end to end (copy it under
-`templates/` and run
-`area51 groups create --template <category>/<template> --name Test`), confirm
-any predefined tasks appear under `area51 tasks list --status paused`, confirm no
-secrets are committed, and open a PR. The repo's README has the full anatomy,
-category conventions, and checklist.
+No public first-party template repository is currently published. Create a plugin
+in a local `templates/<category>/<template>/` directory with at least `plugin.json`.
+Test it with `area51 groups create --template <category>/<template> --name Test`,
+confirm predefined tasks are paused, and ensure no secrets are committed. Share it
+through a repository you own and configure that source explicitly; see
+[registry sources](registry-sources.md).

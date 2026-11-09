@@ -427,13 +427,15 @@ function defaultOnEvent(
 }
 
 /** Fork-aware registry-branch remote (same resolver setup/channels/slack.ts uses). */
-function channelsRemote(projectRoot: string): () => string {
-  return () =>
-    execSync('source setup/lib/channels-remote.sh; resolve_channels_remote', {
+function channelsRemote(projectRoot: string): (branch: string) => string {
+  return (branch) => {
+    if (branch !== 'channels' && branch !== 'providers') throw new Error('Unsupported registry branch');
+    return execSync(`source setup/lib/channels-remote.sh; resolve_channels_remote ${branch}`, {
       cwd: projectRoot,
       shell: '/bin/bash',
       encoding: 'utf8',
     }).trim();
+  };
 }
 
 export interface RunSkillOptions {

@@ -1,4 +1,4 @@
-/** Setup-only discovery for the fixed Area51 template registry. */
+/** Setup-only discovery for an explicitly configured template source. */
 import { execFileSync } from 'child_process';
 import fs from 'fs';
 import os from 'os';
@@ -8,7 +8,9 @@ import { resolveLocalTemplate } from '../src/templates/local-dir.js';
 import type { AgentGroup } from '../src/types.js';
 import { upsertEnvVar } from './set-env.js';
 
-export const DEFAULT_TEMPLATES_SOURCE = 'https://github.com/aviatam/area51-templates';
+// No public first-party registry is currently published. Never fall back to
+// an unrelated upstream or advertise a repository that cannot be fetched.
+export const DEFAULT_TEMPLATES_SOURCE = '';
 
 // The template pick lives in process.env for this run AND in .env for the
 // next: the wizard re-execs itself (`sg docker`, fail-retry) and a rerun over
@@ -79,15 +81,26 @@ const MARKER = 'plugin.json';
 const LEGACY_MARKER = 'context/instructions.md';
 
 export function cloneRegistry(): ClonedRegistry {
+  const source = process.env.AREA51_TEMPLATES_SOURCE?.trim() || DEFAULT_TEMPLATES_SOURCE;
+  if (!source) {
+    throw new Error(
+      'No public template library is configured. Choose a fresh agent or a local template, ' +
+        'or set AREA51_TEMPLATES_SOURCE to a Git repository you trust and can read. See docs/templates.md.',
+    );
+  }
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'area51-tpl-'));
   try {
-    execFileSync('git', ['clone', '--depth', '1', '--', DEFAULT_TEMPLATES_SOURCE, dir], {
+    execFileSync('git', ['clone', '--depth', '1', '--', source, dir], {
       stdio: 'pipe',
       env: { ...process.env, GIT_TERMINAL_PROMPT: '0' },
     });
   } catch (err) {
     fs.rmSync(dir, { recursive: true, force: true });
-    throw new Error('Could not clone the template library', { cause: err });
+    throw new Error(
+      'Could not clone the configured template library. Check AREA51_TEMPLATES_SOURCE and repository access, ' +
+        'or choose a fresh agent/local template. See docs/templates.md.',
+      { cause: err },
+    );
   }
   return { dir, cleanup: () => fs.rmSync(dir, { recursive: true, force: true }) };
 }
