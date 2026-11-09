@@ -28,7 +28,7 @@ for (const fixture of fixtures) {
   fs.mkdirSync(dir);
   fs.writeFileSync(path.join(dir, fixture.file), fixture.content);
 }
-try {
+async function prove(): Promise<void> {
   const report = await scanAgentGate({
     groupDir: root,
     requiredSecrets: [],
@@ -42,6 +42,37 @@ try {
     checked_at: string;
     packages: Array<{ name: string; version: string; ecosystem: string; source: string; advisoryIds: string[] }>;
   };
+  if (process.platform !== 'linux') {
+    const blocked = selectRuntimePolicy(report, { incusAvailable: false, allowDockerFallback: false });
+    if (
+      summary?.status !== 'incomplete' ||
+      !report.findings.some((finding) => finding.id === 'dependency-scan-incomplete') ||
+      blocked.action !== 'block'
+    )
+      throw new Error('Unsupported host did not fail closed');
+    fs.writeFileSync(
+      path.join(out, 'report.json'),
+      JSON.stringify(
+        {
+          schema: 'area51.unsupported_dependency_host.v1',
+          measured_at: new Date().toISOString(),
+          host_platform: process.platform,
+          dependency_status: summary.status,
+          host_decision: blocked.action,
+          unsupported_host_block_verified: true,
+          live_advisory_lookup: false,
+          actual_vm_quarantine_tested: false,
+        },
+        null,
+        2,
+      ) + '\n',
+    );
+    fs.writeFileSync(
+      path.join(out, 'summary.md'),
+      '## Unsupported dependency-scanning host\n\nVerified incomplete coverage and blocked execution. Secure staging requires Linux procfs. No live advisory lookup or VM containment was performed on this host.\n',
+    );
+    return;
+  }
   if (summary?.status !== 'complete') throw new Error('Live dependency scan is incomplete');
   const rows = fixtures.map((fixture) => {
     const found = summary.packages.find(
@@ -88,6 +119,7 @@ try {
   enforceIncusRuntimeDecision(decision, plan, {
     executor: (argv) => {
       commands.push(argv);
+      return argv[0] === 'list' ? JSON.stringify([{ name: plan.instance, status: 'Stopped' }]) : '';
     },
   });
   if (
@@ -126,6 +158,7 @@ try {
           enforceIncusRuntimeDecision(decision, plan, {
             executor: (argv) => {
               commands.push(argv);
+              return argv[0] === 'list' ? JSON.stringify([{ name: plan.instance, status: 'Stopped' }]) : '';
             },
           });
           resolve();
@@ -179,6 +212,9 @@ try {
       '\n\nActual pinned scanner and current OSV lookup; target packages are metadata only. Production policy and quarantine command construction were exercised with a recording executor. Automatic polling (accelerated to one second) performed another real scan and persisted a restart hold. This proof does not run a VM or test guest inventory changes, language runtimes, unknown malware, build containment, or long-running monitoring. The separate LiteLLM live VM proof covers actual stop/NIC removal on Linux.\n',
   );
   console.log(`Verified ${rows.length} managers with actual OSV matching and Area51 host decisions.`);
+}
+try {
+  await prove();
 } finally {
   fs.rmSync(root, { recursive: true, force: true });
 }
