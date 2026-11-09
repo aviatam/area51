@@ -20,6 +20,7 @@ export type IncusExecutor = (argv: string[]) => string | void;
 
 export interface IncusAdapterOptions {
   executor?: IncusExecutor;
+  preservedInstances?: { instance: string; project: string }[];
   vmAgentRetryAttempts?: number;
   vmAgentRetryDelayMs?: number;
 }
@@ -254,7 +255,6 @@ export function quarantineIncusInstance(
   const commands: string[][] = [
     ['config', 'set', plan.instance, `user.area51.quarantine_reason=${reason}`, '--project', plan.project],
     ['freeze', plan.instance, '--project', plan.project],
-    ['snapshot', 'create', plan.instance, snapshot, '--project', plan.project],
     ['stop', plan.instance, '--force', '--project', plan.project],
   ];
   if (plan.vmNetwork) {
@@ -273,8 +273,27 @@ export function quarantineIncusInstance(
       // eslint-disable-next-line no-catch-all/no-catch-all -- quarantine must continue later containment phases
     } catch (error) {
       results.push({ argv, ok: false, error });
-      firstFailure ??= error instanceof Error ? error : new Error(String(error));
+      const reconciled =
+        (argv[0] === 'profile' &&
+          argv[1] === 'add' &&
+          /already.*(applied|exists)|already.*profile/i.test(errorText(error))) ||
+        (((argv[0] === 'profile' && argv[1] === 'remove') ||
+          (argv[0] === 'config' && argv[1] === 'device' && argv[2] === 'remove')) &&
+          /not found|does not exist|not.*(applied|attached)/i.test(errorText(error)));
+      if (argv[0] !== 'freeze' && argv[0] !== 'stop' && !reconciled)
+        firstFailure ??= error instanceof Error ? error : new Error(String(error));
     }
+  }
+  // Never spend the snapshot timeout while execution may still be active.
+  try {
+    verifyIncusStopped(plan, options);
+    if (!firstFailure) {
+      results.push(
+        ...runCommands([['snapshot', 'create', plan.instance, snapshot, '--project', plan.project]], options).commands,
+      );
+    }
+  } catch (error) {
+    firstFailure ??= error instanceof Error ? error : new Error(String(error));
   }
   if (firstFailure) {
     throw new Error(`Incus quarantine enforcement incomplete for ${plan.project}/${plan.instance}`, {
@@ -282,6 +301,22 @@ export function quarantineIncusInstance(
     });
   }
   return { commands: results };
+}
+
+/** Require a separate host state observation; CLI acknowledgement alone is insufficient. */
+export function verifyIncusStopped(plan: IncusRuntimePlan, options: IncusAdapterOptions = {}): void {
+  validatePlan(plan);
+  const output = (options.executor ?? defaultExecutor)([
+    'list',
+    plan.instance,
+    '--project',
+    plan.project,
+    '--format=json',
+  ]);
+  const entries: unknown = JSON.parse(typeof output === 'string' ? output : 'null');
+  if (!Array.isArray(entries) || !entries.some((entry) => entry.name === plan.instance && entry.status === 'Stopped')) {
+    throw new Error(`Incus stop not verified for ${plan.project}/${plan.instance}`);
+  }
 }
 
 export function spawnIncusExec(
@@ -337,16 +372,28 @@ export function cleanupIncusOrphans(installSlug: string, options: IncusAdapterOp
   const commands: string[][] = [];
   for (const entry of entries) {
     const config = { ...(objectRecord(entry.config) ?? {}), ...(objectRecord(entry.expanded_config) ?? {}) };
-    if (
-      config['user.area51.install'] !== installSlug ||
-      'user.area51.quarantine_reason' in config ||
-      config['user.area51.quarantined'] === 'true'
-    ) {
-      continue;
-    }
+    if (config['user.area51.install'] !== installSlug) continue;
     if (typeof entry.name !== 'string' || typeof entry.project !== 'string') continue;
     assertSafeName(entry.name, 'instance');
     assertSafeName(entry.project, 'project');
+    if (
+      'user.area51.quarantine_reason' in config ||
+      config['user.area51.quarantined'] === 'true' ||
+      options.preservedInstances?.some((target) => target.instance === entry.name && target.project === entry.project)
+    ) {
+      // A crash may have interrupted enforcement after the durable marker. Preserve,
+      // but never leave such an orphan executing while the host starts accepting work.
+      try {
+        executor(['stop', entry.name, '--force', '--project', entry.project]);
+      } catch {
+        // Already-stopped acknowledgements may fail: the independent read decides.
+      }
+      const observed = executor(['list', entry.name, '--project', entry.project, '--format=json']);
+      const states: unknown = JSON.parse(typeof observed === 'string' ? observed : 'null');
+      if (!Array.isArray(states) || !states.some((state) => state.name === entry.name && state.status === 'Stopped'))
+        throw new Error(`Quarantined orphan stop not verified: ${entry.project}/${entry.name}`);
+      continue;
+    }
     commands.push(['delete', entry.name, '--force', '--project', entry.project]);
     for (const volume of parseManagedVolumes(config['user.area51.vm_volumes'])) {
       commands.push(['storage', 'volume', 'delete', volume.pool, volume.name, '--project', entry.project]);
