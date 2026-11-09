@@ -21,6 +21,8 @@ import {
   CONTAINER_RUNTIME_BIN,
   readonlyMountArgs,
   stopContainer,
+  containContainer,
+  reconcileContainment,
   ensureContainerRuntimeRunning,
   cleanupOrphans,
 } from './container-runtime.js';
@@ -45,6 +47,7 @@ describe('stopContainer', () => {
     stopContainer('area51-test-123');
     expect(mockExecFileSync).toHaveBeenCalledWith(CONTAINER_RUNTIME_BIN, ['stop', '-t', '1', 'area51-test-123'], {
       stdio: 'pipe',
+      timeout: 10_000,
     });
   });
 
@@ -97,36 +100,13 @@ describe('cleanupOrphans', () => {
     );
   });
 
-  it('stops orphaned area51 containers', () => {
-    // docker ps returns container names, one per line
-    mockExecFileSync.mockReturnValueOnce('area51-group1-111\narea51-group2-222\n');
-    // stop calls succeed
-    mockExecFileSync.mockReturnValue('');
-
+  it('stops and verifies each orphan', () => {
+    mockExecFileSync.mockReset();
+    mockExecFileSync.mockImplementation((_bin, argv) =>
+      argv[0] === 'ps' ? 'agent-1\nagent-2\n' : argv[0] === 'inspect' ? 'false' : '',
+    );
     cleanupOrphans();
-
-    // ps + 2 stop calls
-    expect(mockExecFileSync).toHaveBeenCalledTimes(3);
-    expect(mockExecFileSync).toHaveBeenNthCalledWith(
-      2,
-      CONTAINER_RUNTIME_BIN,
-      ['stop', '-t', '1', 'area51-group1-111'],
-      {
-        stdio: 'pipe',
-      },
-    );
-    expect(mockExecFileSync).toHaveBeenNthCalledWith(
-      3,
-      CONTAINER_RUNTIME_BIN,
-      ['stop', '-t', '1', 'area51-group2-222'],
-      {
-        stdio: 'pipe',
-      },
-    );
-    expect(log.info).toHaveBeenCalledWith('Stopped orphaned containers', {
-      count: 2,
-      names: ['area51-group1-111', 'area51-group2-222'],
-    });
+    expect(mockExecFileSync.mock.calls.map((call) => call[1][0])).toEqual(['ps', 'stop', 'inspect', 'stop', 'inspect']);
   });
 
   it('does nothing when no orphans exist', () => {
@@ -138,34 +118,112 @@ describe('cleanupOrphans', () => {
     expect(log.info).not.toHaveBeenCalled();
   });
 
-  it('warns and continues when ps fails', () => {
+  it('fails startup when runtime state cannot be reconciled', () => {
     mockExecFileSync.mockImplementationOnce(() => {
       throw new Error('docker not available');
     });
 
-    cleanupOrphans(); // should not throw
+    expect(() => cleanupOrphans()).toThrow('docker not available');
 
-    expect(log.warn).toHaveBeenCalledWith(
+    expect(log.error).toHaveBeenCalledWith(
       'Failed to clean up orphaned containers',
       expect.objectContaining({ err: expect.any(Error) }),
     );
   });
 
-  it('continues stopping remaining containers when one stop fails', () => {
-    mockExecFileSync.mockReturnValueOnce('area51-a-1\narea51-b-2\n');
-    // First stop fails
-    mockExecFileSync.mockImplementationOnce(() => {
-      throw new Error('already stopped');
+  it('fails startup when orphan containment remains unknown', () => {
+    mockExecFileSync.mockReset();
+    mockExecFileSync.mockReturnValueOnce('agent-1\n').mockImplementation(() => {
+      throw new Error('daemon unavailable');
     });
-    // Second stop succeeds
-    mockExecFileSync.mockReturnValueOnce('');
+    expect(() => cleanupOrphans()).toThrow('Orphan containment not verified');
+  });
+});
 
-    cleanupOrphans(); // should not throw
-
-    expect(mockExecFileSync).toHaveBeenCalledTimes(3);
-    expect(log.info).toHaveBeenCalledWith('Stopped orphaned containers', {
-      count: 2,
-      names: ['area51-a-1', 'area51-b-2'],
+describe('verified containment', () => {
+  it('escalates a successful stop acknowledgement when daemon still reports running', () => {
+    mockExecFileSync.mockReset();
+    mockExecFileSync
+      .mockReturnValueOnce('')
+      .mockReturnValueOnce('true')
+      .mockReturnValueOnce('')
+      .mockReturnValueOnce('false');
+    containContainer('agent');
+    expect(mockExecFileSync.mock.calls.map((call) => call[1][0])).toEqual(['stop', 'inspect', 'kill', 'inspect']);
+  });
+  it('fails when kill acknowledgement leaves execution running', () => {
+    mockExecFileSync.mockReset();
+    mockExecFileSync
+      .mockReturnValueOnce('')
+      .mockReturnValueOnce('true')
+      .mockReturnValueOnce('')
+      .mockReturnValueOnce('true');
+    expect(() => containContainer('agent')).toThrow('not verified');
+  });
+  it('still attempts kill if the first state read fails', () => {
+    mockExecFileSync.mockReset();
+    mockExecFileSync
+      .mockReturnValueOnce('')
+      .mockImplementationOnce(() => {
+        throw new Error('transient read failure');
+      })
+      .mockReturnValueOnce('')
+      .mockReturnValueOnce('false');
+    containContainer('agent');
+    expect(mockExecFileSync.mock.calls.map((call) => call[1][0])).toEqual(['stop', 'inspect', 'kill', 'inspect']);
+  });
+  it('does not interpret daemon failure as stopped', () => {
+    mockExecFileSync.mockReset();
+    mockExecFileSync.mockReturnValueOnce('').mockImplementation(() => {
+      throw new Error('daemon unavailable');
     });
+    expect(() => containContainer('agent')).toThrow('daemon unavailable');
+  });
+});
+
+describe('held target reconciliation', () => {
+  it('keeps retrying failed enforcement and completes only after verified success', () => {
+    vi.useFakeTimers();
+    try {
+      const attempt = vi
+        .fn()
+        .mockImplementationOnce(() => {
+          throw new Error('daemon down');
+        })
+        .mockImplementationOnce(() => {
+          throw new Error('still running');
+        })
+        .mockImplementationOnce(() => {});
+      const success = vi.fn();
+      const error = vi.fn();
+      reconcileContainment({ current: () => true, attempt, success, error });
+      expect(success).not.toHaveBeenCalled();
+      vi.advanceTimersByTime(10_000);
+      expect(success).not.toHaveBeenCalled();
+      vi.advanceTimersByTime(10_000);
+      expect(success).toHaveBeenCalledTimes(1);
+      expect(error).toHaveBeenCalledTimes(2);
+      vi.advanceTimersByTime(60_000);
+      expect(attempt).toHaveBeenCalledTimes(3);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+  it('does not act on a replacement target when a retry fires', () => {
+    vi.useFakeTimers();
+    try {
+      let current = true;
+      const attempt = vi.fn(() => {
+        throw new Error('stop failed');
+      });
+      const success = vi.fn();
+      reconcileContainment({ current: () => current, attempt, success, error: vi.fn() });
+      current = false;
+      vi.advanceTimersByTime(10_000);
+      expect(attempt).toHaveBeenCalledTimes(1);
+      expect(success).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

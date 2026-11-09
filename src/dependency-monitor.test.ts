@@ -6,6 +6,7 @@ import {
   assertNoDependencyHold,
   dependencyHoldPath,
   monitorDependencies,
+  listDependencyHeldIncusTargets,
   writeDependencyHold,
 } from './dependency-monitor.js';
 import type { DependencySecurityResult } from './dependency-security.js';
@@ -119,5 +120,35 @@ it('persists holds outside session mounts and blocks restart without overwriting
     expect(JSON.parse(fs.readFileSync(destination, 'utf8')).session_id).toBe('../session');
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+it('recovers persisted host runtime identity before a daemon marker exists', () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'area51-hold-target-'));
+  try {
+    writeDependencyHold(directory, 'session', clean, {
+      backend: 'incus',
+      instance: 'held-agent',
+      project: 'held-project',
+    });
+    expect(listDependencyHeldIncusTargets(directory)).toEqual([{ instance: 'held-agent', project: 'held-project' }]);
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+it.each([
+  { backend: 'incus', instance: 'bad;name', project: 'project' },
+  { backend: 'incus', instance: 'agent' },
+  { backend: 'unknown' },
+  null,
+])('rejects malformed persisted runtime target %j before recovery cleanup', (runtime) => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'area51-hold-invalid-'));
+  try {
+    const file = writeDependencyHold(directory, 'session', clean);
+    fs.writeFileSync(file, JSON.stringify({ runtime }));
+    expect(() => listDependencyHeldIncusTargets(directory)).toThrow('Invalid dependency hold');
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
   }
 });

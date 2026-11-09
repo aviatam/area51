@@ -30,7 +30,62 @@ export function stopContainer(name: string): void {
   if (!/^[a-zA-Z0-9][a-zA-Z0-9_.-]*$/.test(name)) {
     throw new Error(`Invalid container name: ${name}`);
   }
-  execFileSync(CONTAINER_RUNTIME_BIN, ['stop', '-t', '1', name], { stdio: 'pipe' });
+  execFileSync(CONTAINER_RUNTIME_BIN, ['stop', '-t', '1', name], { stdio: 'pipe', timeout: 10_000 });
+}
+
+/** Bounded escalation followed by a separate daemon state read. Unknown state is failure. */
+export function containContainer(name: string): void {
+  if (!/^[a-zA-Z0-9][a-zA-Z0-9_.-]*$/.test(name)) throw new Error(`Invalid container name: ${name}`);
+  try {
+    stopContainer(name);
+  } catch (error) {
+    log.warn('Graceful containment stop failed', { name, error });
+  }
+  const stopped = (): boolean => {
+    let output: string;
+    try {
+      output = execFileSync(CONTAINER_RUNTIME_BIN, ['inspect', '--format', '{{.State.Running}}', name], {
+        encoding: 'utf8',
+        timeout: 10_000,
+        stdio: 'pipe',
+      });
+    } catch (error) {
+      const stderr = (error as { stderr?: Buffer }).stderr?.toString() ?? '';
+      if (/No such (object|container):/.test(stderr)) return true;
+      throw error;
+    }
+    return output.trim() === 'false';
+  };
+  try {
+    if (stopped()) return;
+  } catch (error) {
+    log.warn('Containment state unavailable; attempting kill', { name, error });
+  }
+  execFileSync(CONTAINER_RUNTIME_BIN, ['kill', name], { timeout: 10_000, stdio: 'pipe' });
+  if (!stopped()) throw new Error(`Container containment not verified: ${name}`);
+}
+
+/** Retry a held target independently of its exec client, without touching a replacement. */
+export function reconcileContainment(options: {
+  current: () => boolean;
+  attempt: () => void;
+  success: () => void;
+  error: (error: unknown) => void;
+  intervalMs?: number;
+}): void {
+  const reconcile = (): void => {
+    if (!options.current()) return;
+    try {
+      options.attempt();
+    } catch (error) {
+      options.error(error);
+      const retry = setTimeout(reconcile, options.intervalMs ?? 10_000);
+      retry.unref();
+      return;
+    }
+    options.success();
+  };
+  reconcile();
 }
 
 /** Ensure the container runtime is running, starting it if needed. */
@@ -72,20 +127,22 @@ export function cleanupOrphans(): void {
       {
         stdio: ['pipe', 'pipe', 'pipe'],
         encoding: 'utf-8',
+        timeout: 10_000,
       },
     );
     const orphans = output.trim().split('\n').filter(Boolean);
     for (const name of orphans) {
       try {
-        stopContainer(name);
-      } catch {
-        /* already stopped */
+        containContainer(name);
+      } catch (error) {
+        throw new Error(`Orphan containment not verified: ${name}`, { cause: error });
       }
     }
     if (orphans.length > 0) {
       log.info('Stopped orphaned containers', { count: orphans.length, names: orphans });
     }
   } catch (err) {
-    log.warn('Failed to clean up orphaned containers', { err });
+    log.error('Failed to clean up orphaned containers', { err });
+    throw err;
   }
 }

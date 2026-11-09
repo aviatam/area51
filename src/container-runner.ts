@@ -3,7 +3,7 @@
  * Spawns agent containers with session folder + agent group folder mounts.
  * The container runs the v2 agent-runner which polls the session DB.
  */
-import { ChildProcess, exec, execFileSync, spawn } from 'child_process';
+import { ChildProcess, exec, spawn } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import { promisify } from 'util';
@@ -36,7 +36,14 @@ import {
 import { CONTAINER_PLUGINS_DIR, materializeContainerJson } from './container-config.js';
 import { getContainerConfig } from './db/container-configs.js';
 import { updateContainerConfigScalars } from './db/container-configs.js';
-import { CONTAINER_RUNTIME_BIN, hostGatewayArgs, readonlyMountArgs, stopContainer } from './container-runtime.js';
+import {
+  CONTAINER_RUNTIME_BIN,
+  hostGatewayArgs,
+  readonlyMountArgs,
+  stopContainer,
+  containContainer,
+  reconcileContainment,
+} from './container-runtime.js';
 import { EGRESS_NETWORK, egressNetworkArgs, ensureEgressNetwork } from './egress-lockdown.js';
 import {
   applyIncusRuntimePlan,
@@ -113,46 +120,46 @@ const dependencyHeldSessions = new Set<string>();
 function watchDependencies(session: Session, groupDir: string): void {
   const entry = activeContainers.get(session.id);
   if (!entry) return;
+  let containmentPending = false;
   const stop = monitorDependencies({
     groupDir,
     current: () => activeContainers.get(session.id) === entry,
     unsafe: (result) => {
+      if (containmentPending) return;
+      containmentPending = true;
       dependencyHeldSessions.add(session.id);
       // Hold even if evidence persistence fails; do not let a disk error leave the agent running.
       try {
-        writeDependencyHold(DATA_DIR, session.id, result);
+        writeDependencyHold(
+          DATA_DIR,
+          session.id,
+          result,
+          entry.backend === 'incus'
+            ? { backend: 'incus', instance: entry.plan.instance, project: entry.plan.project }
+            : { backend: 'docker', name: entry.containerName },
+        );
       } catch (error) {
         log.error('Failed to persist dependency hold', { sessionId: session.id, error });
       }
-      stop();
       log.warn('Automatic dependency containment', { sessionId: session.id, status: result.summary.status });
-      if (entry.backend === 'incus') {
-        // Set before stopping: close/error handlers must not delete evidence or resync guest data.
-        entry.cleanupStarted = true;
-        clearInterval(entry.syncTimer);
-        try {
-          quarantineIncusInstance(entry.plan, { reason: 'Automatic dependency security hold' });
-        } catch (error) {
-          log.error('Dependency quarantine failed; forcing runtime stop', { sessionId: session.id, error });
-          // A failed snapshot must still leave the runtime stopped. Never delete the preserved instance.
-          try {
-            execFileSync('incus', ['stop', entry.plan.instance, '--force', '--project', entry.plan.project], {
-              timeout: 30_000,
-              stdio: 'ignore',
-            });
-          } finally {
-            entry.process.kill('SIGKILL');
+      // Reconcile independently of the exec client: its exit does not prove guest termination.
+      reconcileContainment({
+        current: () => {
+          const replacement = activeContainers.get(session.id);
+          return !replacement || replacement === entry;
+        },
+        attempt: () => {
+          if (entry.backend === 'incus') {
+            entry.cleanupStarted = true;
+            clearInterval(entry.syncTimer);
+            quarantineIncusInstance(entry.plan, { reason: 'Automatic dependency security hold' });
+          } else {
+            containContainer(entry.containerName);
           }
-        }
-      } else {
-        // Docker has no equivalent evidence snapshot; block restarts and stop execution.
-        try {
-          stopContainer(entry.containerName);
-        } catch (error) {
-          log.error('Dependency stop failed; forcing container kill', { sessionId: session.id, error });
-          execFileSync(CONTAINER_RUNTIME_BIN, ['kill', entry.containerName], { timeout: 30_000, stdio: 'ignore' });
-        }
-      }
+        },
+        success: stop,
+        error: (error) => log.error('Dependency containment pending; retrying', { sessionId: session.id, error }),
+      });
     },
     error: (error) => log.error('Dependency monitor failed', { sessionId: session.id, error }),
   });

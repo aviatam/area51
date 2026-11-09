@@ -13,6 +13,7 @@ import { initDb } from './db/connection.js';
 import { runMigrations } from './db/migrations/index.js';
 import { ensureContainerRuntimeRunning, cleanupOrphans } from './container-runtime.js';
 import { cleanupIncusOrphans, ensureIncusAvailable } from './incus-adapter.js';
+import { listDependencyHeldIncusTargets } from './dependency-monitor.js';
 import { startActiveDeliveryPoll, startSweepDeliveryPoll, setDeliveryAdapter, stopDeliveryPolls } from './delivery.js';
 import { startHostSweep, stopHostSweep } from './host-sweep.js';
 import { startHostModules, stopHostModules } from './host-lifecycle.js';
@@ -86,7 +87,7 @@ async function main(): Promise<void> {
   // 2. Container runtime
   if (AREA51_RUNTIME_BACKEND === 'incus') {
     ensureIncusAvailable();
-    cleanupIncusOrphans(INSTALL_SLUG);
+    cleanupIncusOrphans(INSTALL_SLUG, { preservedInstances: listDependencyHeldIncusTargets(DATA_DIR) });
   } else {
     ensureContainerRuntimeRunning();
     cleanupOrphans();

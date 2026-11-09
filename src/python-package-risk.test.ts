@@ -56,7 +56,9 @@ describe('LiteLLM dependency gate integration', () => {
           volumes: [{ name: 'litellm-workspace', source: root, path: '/workspace', readonly: false, size: '1GiB' }],
         },
       });
-      const executor = vi.fn();
+      const executor = vi.fn((argv: string[]) =>
+        argv[0] === 'list' ? JSON.stringify([{ name: plan.instance, status: 'Stopped' }]) : '',
+      );
       enforceIncusRuntimeDecision(decision, plan, { executor });
       expect(executor).toHaveBeenCalledWith(['stop', plan.instance, '--force', '--project', plan.project]);
       expect(

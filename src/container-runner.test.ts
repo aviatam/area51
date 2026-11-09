@@ -161,7 +161,8 @@ describe('Incus runtime backend wiring (structural)', () => {
   it('selects Incus recovery without requiring Docker at startup', () => {
     const src = fs.readFileSync(path.join(process.cwd(), 'src', 'index.ts'), 'utf-8');
     expect(src).toContain("AREA51_RUNTIME_BACKEND === 'incus'");
-    expect(src).toContain('cleanupIncusOrphans(INSTALL_SLUG)');
+    expect(src).toContain('cleanupIncusOrphans(INSTALL_SLUG,');
+    expect(src).toContain('preservedInstances: listDependencyHeldIncusTargets(DATA_DIR)');
     expect(src).toMatch(
       /if \(AREA51_RUNTIME_BACKEND === 'incus'\)[\s\S]*?else \{[\s\S]*?ensureContainerRuntimeRunning/,
     );

@@ -15,12 +15,55 @@ export function assertNoDependencyHold(dataDir: string, sessionId: string): void
 }
 
 /** Persist before containment, so restart/sweep cannot silently resume a held workload. */
-export function writeDependencyHold(dataDir: string, sessionId: string, result: DependencySecurityResult): string {
+export interface HeldIncusTarget {
+  instance: string;
+  project: string;
+}
+
+/** Host-written targets survive a daemon outage before the guest marker is stamped. */
+export function listDependencyHeldIncusTargets(dataDir: string): HeldIncusTarget[] {
+  const directory = path.join(dataDir, 'dependency-holds');
+  if (!fs.existsSync(directory)) return [];
+  return fs
+    .readdirSync(directory)
+    .filter((file) => file.endsWith('.json'))
+    .flatMap((file) => {
+      const location = path.join(directory, file);
+      if (!fs.lstatSync(location).isFile()) throw new Error('Invalid dependency hold file');
+      const hold = JSON.parse(fs.readFileSync(location, 'utf8'));
+      if (!hold || typeof hold !== 'object') throw new Error('Invalid dependency hold');
+      if (hold.runtime === undefined) return []; // Legacy holds had no runtime identity.
+      if (!hold.runtime || typeof hold.runtime !== 'object') throw new Error('Invalid dependency hold runtime');
+      if (
+        hold.runtime.backend === 'docker' &&
+        typeof hold.runtime.name === 'string' &&
+        /^[a-zA-Z0-9][a-zA-Z0-9_.-]*$/.test(hold.runtime.name)
+      )
+        return [];
+      if (hold.runtime.backend !== 'incus') throw new Error('Invalid dependency hold runtime backend');
+      const { instance, project } = hold.runtime;
+      if (
+        typeof instance !== 'string' ||
+        typeof project !== 'string' ||
+        !/^[a-zA-Z0-9][a-zA-Z0-9_.-]*$/.test(instance) ||
+        !/^[a-zA-Z0-9][a-zA-Z0-9_.-]*$/.test(project)
+      )
+        throw new Error('Invalid dependency hold runtime identity');
+      return [{ instance, project }];
+    });
+}
+
+export function writeDependencyHold(
+  dataDir: string,
+  sessionId: string,
+  result: DependencySecurityResult,
+  runtime?: { backend: 'incus'; instance: string; project: string } | { backend: 'docker'; name: string },
+): string {
   const destination = dependencyHoldPath(dataDir, sessionId);
   fs.mkdirSync(path.dirname(destination), { recursive: true, mode: 0o700 });
   fs.writeFileSync(
     destination,
-    JSON.stringify({ session_id: sessionId, held_at: new Date().toISOString(), ...result }, null, 2) + '\n',
+    JSON.stringify({ session_id: sessionId, held_at: new Date().toISOString(), runtime, ...result }, null, 2) + '\n',
     {
       mode: 0o600,
       flag: 'wx',

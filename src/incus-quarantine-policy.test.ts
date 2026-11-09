@@ -7,7 +7,9 @@ import { selectRuntimePolicy } from './runtime-policy.js';
 
 describe('Incus live quarantine policy', () => {
   it('freezes and snapshots a live instance when Agent Gate produced quarantine evidence', () => {
-    const executor = vi.fn();
+    const executor = vi.fn((argv: string[]) =>
+      argv[0] === 'list' ? JSON.stringify([{ name: 'area51-support-agent', status: 'Stopped' }]) : '',
+    );
     const plan = buildIncusRuntimePlan({ agentGroupFolder: 'support', groupDir: '/srv/groups/support' });
 
     const result = enforceIncusRuntimeDecision(decision(report(true), plan), plan, { executor });

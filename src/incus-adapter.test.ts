@@ -613,6 +613,7 @@ describe('Incus adapter', () => {
   it('reaps only this install runtime and preserves quarantined evidence', () => {
     const executor = vi.fn((argv: string[]) => {
       if (argv[0] !== 'list') return;
+      if (argv[1] !== '--all-projects') return JSON.stringify([{ name: argv[1], status: 'Stopped' }]);
       return JSON.stringify([
         {
           name: 'area51-owned-agent',
@@ -651,13 +652,21 @@ describe('Incus adapter', () => {
       '--project',
       'area51-owned-vm',
     ]);
-    expect(executor.mock.calls.flat().flat().join(' ')).not.toContain('area51-evidence-agent');
+    expect(executor).not.toHaveBeenCalledWith(expect.arrayContaining(['delete', 'area51-evidence-agent']));
+    expect(executor).toHaveBeenCalledWith([
+      'stop',
+      'area51-evidence-agent',
+      '--force',
+      '--project',
+      'area51-evidence-vm',
+    ]);
     expect(executor.mock.calls.flat().flat().join(' ')).not.toContain('area51-peer-agent');
   });
 
   it('preserves quarantined evidence across restart even when recovery metadata is corrupt', () => {
     const executor = vi.fn((argv: string[]) => {
       if (argv[0] !== 'list') return;
+      if (argv[1] !== '--all-projects') return JSON.stringify([{ name: argv[1], status: 'Stopped' }]);
       return JSON.stringify([
         {
           name: 'area51-evidence-agent',
@@ -672,8 +681,42 @@ describe('Incus adapter', () => {
     });
 
     expect(() => cleanupIncusOrphans('install-a', { executor })).not.toThrow();
-    expect(executor).toHaveBeenCalledTimes(1);
+    expect(executor).toHaveBeenCalledTimes(3);
     expect(executor).toHaveBeenCalledWith(['list', '--all-projects', '--format=json']);
+  });
+
+  it('preserves host-held target before the daemon quarantine marker exists', () => {
+    const executor = vi.fn((_argv: string[]) =>
+      JSON.stringify([
+        {
+          name: 'area51-held-agent',
+          project: 'area51-held',
+          status: 'Stopped',
+          config: { 'user.area51.install': 'install-a' },
+        },
+      ]),
+    );
+    cleanupIncusOrphans('install-a', {
+      executor,
+      preservedInstances: [{ instance: 'area51-held-agent', project: 'area51-held' }],
+    });
+    expect(executor.mock.calls.some(([argv]) => argv[0] === 'delete')).toBe(false);
+    expect(executor).toHaveBeenCalledWith(['stop', 'area51-held-agent', '--force', '--project', 'area51-held']);
+  });
+
+  it('blocks startup if preserved evidence is still executing', () => {
+    const executor = vi.fn((_argv: string[]) =>
+      JSON.stringify([
+        {
+          name: 'area51-evidence-agent',
+          project: 'area51-evidence-vm',
+          status: 'Running',
+          config: { 'user.area51.install': 'install-a', 'user.area51.quarantine_reason': 'risk' },
+        },
+      ]),
+    );
+    expect(() => cleanupIncusOrphans('install-a', { executor })).toThrow('stop not verified');
+    expect(executor.mock.calls.some(([argv]) => argv[0] === 'delete')).toBe(false);
   });
 
   it('fails closed on malformed managed-volume recovery metadata', () => {
@@ -757,7 +800,9 @@ describe('Incus adapter', () => {
   });
 
   it('quarantines with a JS timestamp instead of shell command substitution', () => {
-    const executor = vi.fn();
+    const executor = vi.fn((argv: string[]) =>
+      argv[0] === 'list' ? JSON.stringify([{ name: 'area51-support-agent', status: 'Stopped' }]) : '',
+    );
     const plan = buildIncusRuntimePlan({
       agentGroupFolder: 'support',
       groupDir: '/srv/area51/groups/support',
@@ -808,8 +853,10 @@ describe('Incus adapter', () => {
   });
 
   it('stops a quarantined VM and removes its managed network device', () => {
-    const executor = vi.fn();
     const plan = vmPlan();
+    const executor = vi.fn((argv: string[]) =>
+      argv[0] === 'list' ? JSON.stringify([{ name: plan.instance, status: 'Stopped' }]) : '',
+    );
 
     quarantineIncusInstance(plan, { executor, reason: 'npm-compromise' });
 
@@ -958,5 +1005,27 @@ describe('Incus adapter', () => {
     stopIncusInstance(plan, { executor });
 
     expect(executor).toHaveBeenCalledWith(['stop', 'area51-support-agent', '--project', 'area51-support', '--force']);
+  });
+  describe('quarantine state verification', () => {
+    it('does not snapshot an instance that remains running after stop acknowledgement', () => {
+      const plan = vmPlan();
+      const executor = vi.fn((argv: string[]) =>
+        argv[0] === 'list' ? JSON.stringify([{ name: plan.instance, status: 'Running' }]) : '',
+      );
+      expect(() => quarantineIncusInstance(plan, { executor })).toThrow('enforcement incomplete');
+      expect(executor.mock.calls.some(([argv]) => argv[0] === 'snapshot')).toBe(false);
+      expect(executor.mock.calls.some(([argv]) => argv[0] === 'config' && argv[1] === 'device')).toBe(true);
+    });
+    it('isolates and verifies before snapshot even when freeze fails', () => {
+      const plan = vmPlan();
+      const executor = vi.fn((argv: string[]) => {
+        if (argv[0] === 'freeze') throw new Error('not freezable');
+        return argv[0] === 'list' ? JSON.stringify([{ name: plan.instance, status: 'Stopped' }]) : '';
+      });
+      quarantineIncusInstance(plan, { executor });
+      const names = executor.mock.calls.map(([argv]) => argv[0]);
+      expect(names.indexOf('stop')).toBeLessThan(names.indexOf('snapshot'));
+      expect(names.indexOf('list')).toBeLessThan(names.indexOf('snapshot'));
+    });
   });
 });
