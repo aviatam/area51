@@ -62,52 +62,85 @@ const issue = (id: string, detail: string, evidence: string[] = []): AgentGateFi
     'Keep the workload stopped or isolated, review the evidence, and rebuild from reviewed resolved dependencies.',
 });
 
-/** Only regular, bounded dependency files are staged. Agent ignore/config files and executable code never reach the scanner. */
+/**
+ * Linux procfs supplies descriptor-relative lookup without reopening mutable ancestors.
+ * Reject unsupported hosts rather than falling back to racy path/realpath validation.
+ * The destination must be a private host-owned directory (as created by the caller).
+ */
 export function stageDependencyFiles(groupDir: string, destination: string): Array<{ path: string; sha256: string }> {
-  const result: Array<{ path: string; sha256: string }> = [];
-  let entries = 0,
-    bytes = 0;
-  const walk = (directory: string, depth: number): void => {
-    if (depth > 12) throw new Error('directory depth budget');
-    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
-      if (++entries > 10000) throw new Error('directory entry budget');
-      if (SKIP.has(entry.name)) continue;
-      const source = path.join(directory, entry.name);
-      if (entry.isDirectory()) {
-        walk(source, depth + 1);
-        continue;
-      }
-      if (!supported(entry.name)) continue;
-      if (!entry.isFile()) throw new Error('non-regular dependency file');
-      const size = fs.lstatSync(source).size;
-      if (size > 2_000_000 || (bytes += size) > 16_000_000 || result.length >= 100)
-        throw new Error('dependency file budget');
-      const relative = path.relative(groupDir, source);
-      const target = path.join(destination, relative);
-      fs.mkdirSync(path.dirname(target), { recursive: true });
-      const fd = fs.openSync(source, fs.constants.O_RDONLY | (fs.constants.O_NOFOLLOW ?? 0));
-      let content: Buffer;
-      try {
-        const stat = fs.fstatSync(fd);
-        if (!stat.isFile() || stat.size > 2_000_000) throw new Error('changed dependency file');
-        content = fs.readFileSync(fd);
-        if (content.length > 2_000_000) throw new Error('dependency file grew during scan');
-      } finally {
-        fs.closeSync(fd);
-      }
-      if (entry.name === 'requirements.txt' || entry.name === 'requirements.lock') {
-        for (const line of content.toString('utf8').split(/\r?\n/)) {
-          if (!line.trim() || /^\s*(?:#|--hash=)/.test(line)) continue;
-          if (!/^\s*[A-Za-z0-9][A-Za-z0-9_.-]*(?:\[[^\]]+\])?\s*==\s*[A-Za-z0-9_.+!-]+(?:\s|;|#|\\|$)/.test(line))
-            throw new Error('requirements must be resolved exact pins');
-        }
-      }
-      fs.writeFileSync(target, content, { mode: 0o600 });
-      result.push({ path: relative.replace(/\\/g, '/'), sha256: createHash('sha256').update(content).digest('hex') });
+  if (process.platform !== 'linux' || fs.statfsSync('/proc/self/fd').type !== 0x9fa0)
+    throw new Error('Secure dependency staging requires Linux procfs');
+  const directoryFlags = fs.constants.O_RDONLY | fs.constants.O_DIRECTORY | fs.constants.O_NOFOLLOW;
+  const anchored = (fd: number, name: string): string => `/proc/self/fd/${fd}/${name}`;
+  // Anchor the complete root path too: a symlink in any input ancestor is rejected.
+  let root = fs.openSync('/', directoryFlags);
+  try {
+    for (const component of path.resolve(groupDir).split('/').filter(Boolean)) {
+      const next = fs.openSync(anchored(root, component), directoryFlags);
+      fs.closeSync(root);
+      root = next;
     }
-  };
-  walk(path.resolve(groupDir), 0);
-  return result.sort((a, b) => a.path.localeCompare(b.path));
+    const result: Array<{ path: string; sha256: string }> = [];
+    let entries = 0,
+      bytes = 0;
+    const walk = (directory: number, prefix: string, depth: number): void => {
+      if (depth > 12) throw new Error('directory depth budget');
+      for (const entry of fs.readdirSync(`/proc/self/fd/${directory}`, { withFileTypes: true })) {
+        if (++entries > 10000) throw new Error('directory entry budget');
+        if (SKIP.has(entry.name)) continue;
+        const source = anchored(directory, entry.name);
+        const relative = prefix ? `${prefix}/${entry.name}` : entry.name;
+        if (entry.isDirectory()) {
+          const child = fs.openSync(source, directoryFlags);
+          try {
+            walk(child, relative, depth + 1);
+          } finally {
+            fs.closeSync(child);
+          }
+          continue;
+        }
+        if (!supported(entry.name)) continue;
+        if (!entry.isFile()) throw new Error('non-regular dependency file');
+        if (result.length >= 100) throw new Error('dependency file budget');
+        // NONBLOCK prevents a raced FIFO replacement from hanging before fstat.
+        const fd = fs.openSync(source, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW | fs.constants.O_NONBLOCK);
+        let content: Buffer;
+        try {
+          const stat = fs.fstatSync(fd);
+          if (!stat.isFile() || stat.size > 2_000_000) throw new Error('changed dependency file');
+          // Read at most the remaining budget plus one byte, including concurrent growth.
+          const limit = Math.min(2_000_000, 16_000_000 - bytes);
+          const buffer = Buffer.alloc(limit + 1);
+          let length = 0;
+          while (length < buffer.length) {
+            const count = fs.readSync(fd, buffer, length, buffer.length - length, null);
+            if (!count) break;
+            length += count;
+          }
+          if (length > limit) throw new Error('dependency file budget');
+          content = buffer.subarray(0, length);
+          bytes += length;
+        } finally {
+          fs.closeSync(fd);
+        }
+        if (entry.name === 'requirements.txt' || entry.name === 'requirements.lock') {
+          for (const line of content.toString('utf8').split(/\r?\n/)) {
+            if (!line.trim() || /^\s*(?:#|--hash=)/.test(line)) continue;
+            if (!/^\s*[A-Za-z0-9][A-Za-z0-9_.-]*(?:\[[^\]]+\])?\s*==\s*[A-Za-z0-9_.+!-]+(?:\s|;|#|\\|$)/.test(line))
+              throw new Error('requirements must be resolved exact pins');
+          }
+        }
+        const target = path.join(destination, relative);
+        fs.mkdirSync(path.dirname(target), { recursive: true });
+        fs.writeFileSync(target, content, { mode: 0o600 });
+        result.push({ path: relative, sha256: createHash('sha256').update(content).digest('hex') });
+      }
+    };
+    walk(root, '', 0);
+    return result.sort((a, b) => a.path.localeCompare(b.path));
+  } finally {
+    fs.closeSync(root);
+  }
 }
 
 /** Validate the pinned scanner's JSON, preserving ecosystem identity and all active advisories. */

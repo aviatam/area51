@@ -4,6 +4,8 @@ All notable changes to Area51 will be documented in this file.
 
 ## [Unreleased]
 
+- [BREAKING] **Harden dependency intake and containment verification.** Required dependency staging uses Linux procfs descriptor anchors and rejects symlinked input ancestry; unsupported hosts fail closed. File budgets count actual bytes read. Runtime containment uses bounded stop/state verification and prioritizes isolation over snapshots. The existing 72-hour pnpm age policy is now configured at workspace root. See [migration: detect, fix, verify and rollback](docs/security-hardening-migration.md).
+
 - **Enterprise SSO has a guided setup path.** Run `/configure-enterprise-sso` to connect Microsoft Entra ID or Okta to Area51 registry sign-in through the existing WorkOS AuthKit device flow, verify assigned and denied users, and retain a tested break-glass rollback path.
 
 - **Windows now has a resumable WSL2 installer.** An Administrator PowerShell command validates the host, installs WSL2 and Ubuntu when needed, enforces WSL2 plus a regular Linux user, enables systemd without discarding existing WSL configuration, and delegates Docker, authentication, and service setup to Area51 inside the distribution. The flow states that native Windows and Incus VM isolation remain unsupported.

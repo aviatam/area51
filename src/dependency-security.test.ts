@@ -16,6 +16,7 @@ function temp() {
 }
 afterEach(() => {
   vi.unstubAllEnvs();
+  vi.restoreAllMocks();
   for (const root of roots.splice(0)) fs.rmSync(root, { recursive: true, force: true });
 });
 describe('native dependency security', () => {
@@ -30,7 +31,11 @@ describe('native dependency security', () => {
       dependencySecurity: 'required',
     });
     expect(report.dependency_scan?.status).toBe('incomplete');
-    expect(report.findings.some((f) => f.id === 'dependency-inventory-missing')).toBe(true);
+    expect(
+      report.findings.some(
+        (f) => f.id === (process.platform === 'linux' ? 'dependency-inventory-missing' : 'dependency-scan-incomplete'),
+      ),
+    ).toBe(true);
     expect(selectRuntimePolicy(report, { incusAvailable: false }).action).toBe('block');
   });
   it('reaches the scanner through the real Agent Gate and reports disabled coverage explicitly', async () => {
@@ -98,7 +103,9 @@ describe('native dependency security', () => {
           volumes: [{ name: 'dependency-work', source: group, path: '/workspace', readonly: false, size: '1GiB' }],
         },
       });
-      const executor = vi.fn();
+      const executor = vi.fn((argv: string[]) =>
+        argv[0] === 'list' ? JSON.stringify([{ name: plan.instance, status: 'Stopped' }]) : '',
+      );
       enforceIncusRuntimeDecision(decision, plan, { executor });
       expect(executor).toHaveBeenCalledWith(['stop', plan.instance, '--force', '--project', plan.project]);
     },
@@ -140,32 +147,134 @@ describe('native dependency security', () => {
       ]),
     ).toThrow();
   });
-  it('stages nested dependency evidence but leaves agent ignore rules, code and environment files behind', () => {
-    const root = temp(),
-      destination = temp();
-    fs.mkdirSync(path.join(root, 'nested'));
-    fs.mkdirSync(path.join(root, 'node_modules'));
-    fs.writeFileSync(path.join(root, 'nested', 'poetry.lock'), 'fixture');
-    fs.writeFileSync(path.join(root, 'node_modules', 'Cargo.lock'), 'ignored');
-    fs.writeFileSync(path.join(root, 'osv-scanner.toml'), '[[IgnoredVulns]]');
-    fs.writeFileSync(path.join(root, '.env'), 'HOST_SECRET=never-copy');
-    fs.writeFileSync(path.join(root, 'setup.py'), 'raise Exception("never execute")');
-    const files = stageDependencyFiles(root, destination);
-    expect(files.map((f) => f.path)).toEqual(['nested/poetry.lock']);
-    expect(fs.readdirSync(destination)).toEqual(['nested']);
-  });
-  it.skipIf(process.platform === 'win32')('rejects a symlink inventory without following it', () => {
+  it.skipIf(process.platform !== 'linux')(
+    'stages nested dependency evidence but leaves agent ignore rules, code and environment files behind',
+    () => {
+      const root = temp(),
+        destination = temp();
+      fs.mkdirSync(path.join(root, 'nested'));
+      fs.mkdirSync(path.join(root, 'node_modules'));
+      fs.writeFileSync(path.join(root, 'nested', 'poetry.lock'), 'fixture');
+      fs.writeFileSync(path.join(root, 'node_modules', 'Cargo.lock'), 'ignored');
+      fs.writeFileSync(path.join(root, 'osv-scanner.toml'), '[[IgnoredVulns]]');
+      fs.writeFileSync(path.join(root, '.env'), 'HOST_SECRET=never-copy');
+      fs.writeFileSync(path.join(root, 'setup.py'), 'raise Exception("never execute")');
+      const files = stageDependencyFiles(root, destination);
+      expect(files.map((f) => f.path)).toEqual(['nested/poetry.lock']);
+      expect(fs.readdirSync(destination)).toEqual(['nested']);
+    },
+  );
+  it.skipIf(process.platform !== 'linux')('rejects a symlink inventory without following it', () => {
     const root = temp(),
       outside = temp();
     fs.writeFileSync(path.join(outside, 'secret'), 'secret');
     fs.symlinkSync(path.join(outside, 'secret'), path.join(root, 'uv.lock'));
     expect(() => stageDependencyFiles(root, temp())).toThrow('non-regular');
   });
-  it('rejects ranged requirements rather than treating an extracted lower bound as installed', () => {
-    const root = temp();
-    fs.writeFileSync(path.join(root, 'requirements.txt'), 'requests>=2.0\n');
-    expect(() => stageDependencyFiles(root, temp())).toThrow('exact pins');
+  it.skipIf(process.platform !== 'linux')('rejects a directory swap before opening the child', () => {
+    const root = temp(),
+      outside = temp(),
+      destination = temp();
+    const nested = path.join(root, 'nested');
+    fs.mkdirSync(nested);
+    fs.writeFileSync(path.join(nested, 'uv.lock'), 'original');
+    fs.writeFileSync(path.join(outside, 'uv.lock'), 'outside');
+    const readdir = fs.readdirSync.bind(fs);
+    let swapped = false;
+    vi.spyOn(fs, 'readdirSync').mockImplementation(((directory: fs.PathLike, options: unknown) => {
+      const entries = readdir(directory, options as never);
+      if (!swapped && fs.statSync(directory).ino === fs.statSync(root).ino) {
+        swapped = true;
+        fs.renameSync(nested, nested + '-saved');
+        fs.symlinkSync(outside, nested);
+      }
+      return entries;
+    }) as typeof fs.readdirSync);
+    expect(() => stageDependencyFiles(root, destination)).toThrow();
+    expect(swapped).toBe(true);
+    expect(fs.readdirSync(destination)).toEqual([]);
   });
+  it.skipIf(process.platform !== 'linux')('keeps an opened directory anchored after its path is replaced', () => {
+    const root = temp(),
+      outside = temp(),
+      destination = temp();
+    const nested = path.join(root, 'nested');
+    fs.mkdirSync(nested);
+    fs.writeFileSync(path.join(nested, 'uv.lock'), 'original');
+    fs.writeFileSync(path.join(outside, 'uv.lock'), 'outside');
+    const inode = fs.statSync(nested).ino;
+    const readdir = fs.readdirSync.bind(fs);
+    let swapped = false;
+    vi.spyOn(fs, 'readdirSync').mockImplementation(((directory: fs.PathLike, options: unknown) => {
+      if (!swapped && fs.statSync(directory).ino === inode) {
+        swapped = true;
+        fs.renameSync(nested, nested + '-saved');
+        fs.symlinkSync(outside, nested);
+      }
+      return readdir(directory, options as never);
+    }) as typeof fs.readdirSync);
+    expect(stageDependencyFiles(root, destination).map((f) => f.path)).toEqual(['nested/uv.lock']);
+    expect(swapped).toBe(true);
+    expect(fs.readFileSync(path.join(destination, 'nested', 'uv.lock'), 'utf8')).toBe('original');
+  });
+  it.skipIf(process.platform !== 'linux')('charges actual copied bytes when files grow after stat', () => {
+    const root = temp(),
+      destination = temp();
+    for (let i = 0; i < 9; i++) fs.writeFileSync(path.join(root, `${i}.cdx.json`), 'x');
+    const fstat = fs.fstatSync.bind(fs);
+    vi.spyOn(fs, 'fstatSync').mockImplementation(((fd: number) => {
+      const stat = fstat(fd);
+      const source = fs.readlinkSync(`/proc/self/fd/${fd}`);
+      if (source.endsWith('.cdx.json')) fs.writeFileSync(source, Buffer.alloc(1_900_000, 32));
+      return stat;
+    }) as typeof fs.fstatSync);
+    expect(() => stageDependencyFiles(root, destination)).toThrow('budget');
+    const bytes = fs
+      .readdirSync(destination)
+      .reduce((total, name) => total + fs.statSync(path.join(destination, name)).size, 0);
+    expect(bytes).toBe(8 * 1_900_000);
+  });
+  it.skipIf(process.platform !== 'linux')(
+    'bounds the read when an opened file grows beyond the individual limit',
+    () => {
+      const root = temp();
+      const source = path.join(root, 'uv.lock');
+      fs.writeFileSync(source, 'x');
+      const fstat = fs.fstatSync.bind(fs);
+      vi.spyOn(fs, 'fstatSync').mockImplementation(((fd: number) => {
+        const stat = fstat(fd);
+        fs.writeFileSync(source, Buffer.alloc(3_000_000));
+        return stat;
+      }) as typeof fs.fstatSync);
+      const read = vi.spyOn(fs, 'readSync');
+      expect(() => stageDependencyFiles(root, temp())).toThrow('budget');
+      expect(read.mock.calls.every((call) => call[1].byteLength <= 2_000_001)).toBe(true);
+    },
+  );
+  it.skipIf(process.platform !== 'linux')('rejects symlinks in the input root ancestry', () => {
+    const parent = temp(),
+      outside = temp();
+    fs.mkdirSync(path.join(outside, 'group'));
+    fs.writeFileSync(path.join(outside, 'group', 'uv.lock'), 'outside');
+    fs.symlinkSync(outside, path.join(parent, 'link'));
+    expect(() => stageDependencyFiles(path.join(parent, 'link', 'group'), temp())).toThrow();
+  });
+  it.skipIf(process.platform !== 'linux')('fails closed without procfs descriptor lookup', () => {
+    vi.spyOn(fs, 'statfsSync').mockReturnValue({ type: 0 } as fs.StatsFs);
+    expect(() => stageDependencyFiles(temp(), temp())).toThrow('Linux procfs');
+  });
+  it('fails closed when descriptor-relative staging is unsupported', () => {
+    vi.spyOn(process, 'platform', 'get').mockReturnValue('darwin');
+    expect(() => stageDependencyFiles(temp(), temp())).toThrow('Linux procfs');
+  });
+  it.skipIf(process.platform !== 'linux')(
+    'rejects ranged requirements rather than treating an extracted lower bound as installed',
+    () => {
+      const root = temp();
+      fs.writeFileSync(path.join(root, 'requirements.txt'), 'requests>=2.0\n');
+      expect(() => stageDependencyFiles(root, temp())).toThrow('exact pins');
+    },
+  );
   it('rejects empty package results and version ranges', () => {
     const root = temp();
     expect(() =>
